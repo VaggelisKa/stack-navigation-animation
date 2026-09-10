@@ -149,6 +149,25 @@ s = await state();
 eq(s.pages.join(','), 'app-home', 'routerLink home popped to the kept home');
 eq(await page.textContent('.counter b'), '2', 'home state still there after all that');
 
+// ---- 6b. a replaced page sits between home and the top in history, not in the stack
+await transitioned(() => page.click('.sn-page-visible a:has-text("Settings")'), '11b-push-settings');
+await page.click('.sn-page-visible button:has-text("About, as a replace")');
+await settled();
+s = await state();
+eq(s.pages.join(','), 'app-home,app-about', 'about replaced settings above home');
+const box2 = await page.locator('sn-outlet').boundingBox();
+await page.mouse.move(box2.x + 6, box2.y + 300);
+await page.mouse.down();
+for (let x = 20; x <= 340; x += 40) await page.mouse.move(box2.x + x, box2.y + 300);
+await page.mouse.up();
+await settled();
+await page.waitForFunction(() => location.pathname === '/');
+await page.waitForTimeout(600);
+s = await state();
+eq(s.pages.join(','), 'app-home', 'swipe revealed home, not the replaced settings entry');
+eq(s.url, '/', 'router navigated to home rather than back to /settings');
+eq(await page.textContent('.counter b'), '2', 'the kept home survived');
+
 // ---- 7. explicit replace, then history back onto a page that is not kept ---
 await page.click('.sn-page-visible button:has-text("Settings, as a replace")');
 await settled();

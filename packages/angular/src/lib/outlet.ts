@@ -21,6 +21,7 @@ import {
   ActivatedRoute,
   ChildrenOutletContexts,
   NavigationCancel,
+  NavigationEnd,
   NavigationError,
   NavigationSkipped,
   PRIMARY_OUTLET,
@@ -173,6 +174,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
     this.subs.add(
       this.router.events.subscribe((e) => {
         if (e instanceof NavigationCancel || e instanceof NavigationError || e instanceof NavigationSkipped) this.restorePending();
+        else if (e instanceof NavigationEnd && this.activeView) this.activeView.url = e.urlAfterRedirects;
       }),
     );
 
@@ -295,6 +297,8 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
   private show(view: View, activatedRoute: ActivatedRoute, leaving: View | null, reused: boolean): void {
     const nav = this.history.current;
     const from = leaving ?? this.views[this.views.length - 1] ?? null;
+    // Resolvers may have rerun and a custom keyOf may group several snapshots: never trust the old one.
+    view.routeRef = this.routeRefOf(activatedRoute.snapshot, view.key);
     const alreadyOnScreen = reused && !this.stack.busy && this.stack.top?.el === view.el;
     let direction = this.config.resolve({
       from: from?.routeRef ?? null,
@@ -400,11 +404,16 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
     const lower = this.views[this.views.length - 1];
     if (!lower) return;
     const previous = this.history.previousUrl;
-    if (previous != null && startsWith(segmentsOf(previous), segmentsOf(lower.key))) {
+    if (previous != null && this.sameUrl(previous, lower.url)) {
       this.browserLocation.back();
     } else {
       void this.router.navigateByUrl(lower.url, { state: { [this.config.stateKey]: { direction: 'pop', animated: false } } });
     }
+  }
+
+  private sameUrl(a: string, b: string): boolean {
+    const norm = (u: string) => this.router.serializeUrl(this.router.parseUrl(u));
+    return norm(a) === norm(b);
   }
 
   /** The router refused the navigation the swipe asked for: put the page back. */
@@ -459,8 +468,4 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
 
 function sourceOf(trigger: 'imperative' | 'history' | undefined): NavigationSource {
   return trigger === 'history' ? 'history' : 'api';
-}
-
-function startsWith(segments: string[], prefix: string[]): boolean {
-  return prefix.length <= segments.length && prefix.every((s, i) => s === segments[i]);
 }

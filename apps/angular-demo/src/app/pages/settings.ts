@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { StackNavBack } from '@stacknav/angular';
+import { StackNav, StackNavBack } from '@stacknav/angular';
 
 @Component({
   selector: 'app-settings',
@@ -12,8 +12,11 @@ import { StackNavBack } from '@stacknav/angular';
         <p class="lede">This route carries <code>data.stackLevel = 2</code>. Home is unnumbered and About is 3, so About pushes over this and Home is a pop.</p>
         <a class="item" routerLink="/about"><span>About</span><small>stackLevel 3</small><i>›</i></a>
         <a class="item" routerLink="/"><span>Home, via routerLink</span><small>pops: it is kept beneath</small><i>›</i></a>
+        <button class="item" type="button" (click)="nav.replace(['/about'])"><span>About, as a replace</span><small>this page goes away</small><i>›</i></button>
       </div>
     </div>
   `,
 })
-export class Settings {}
+export class Settings {
+  readonly nav = inject(StackNav);
+}
