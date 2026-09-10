@@ -1,0 +1,54 @@
+{
+  "name": "@stacknav/angular",
+  "version": "0.1.0",
+  "description": "Angular router outlet with iOS-style push/pop transitions and interactive swipe back, built on @stacknav/core.",
+  "license": "MIT",
+  "keywords": [
+    "angular",
+    "router",
+    "navigation",
+    "transition",
+    "ios",
+    "swipe-back",
+    "stack",
+    "animation"
+  ],
+  "scripts": {
+    "build": "ng-packagr -p ng-package.json -c tsconfig.lib.json",
+    "test": "echo \"@stacknav/angular: covered by apps/angular-demo e2e\""
+  },
+  "peerDependencies": {
+    "@angular/common": ">=19.0.0",
+    "@angular/core": ">=19.0.0",
+    "@angular/router": ">=19.0.0",
+    "@stacknav/core": "workspace:*",
+    "rxjs": "^7.4.0"
+  },
+  "dependencies": {
+    "tslib": "^2.8.0"
+  },
+  "devDependencies": {
+    "@angular/common": "^22.1.0",
+    "@angular/compiler": "^22.1.0",
+    "@angular/compiler-cli": "^22.1.0",
+    "@angular/core": "^22.1.0",
+    "@angular/platform-browser": "^22.1.0",
+    "@angular/router": "^22.1.0",
+    "@stacknav/core": "workspace:*",
+    "ng-packagr": "^22.1.0",
+    "rxjs": "^7.8.0",
+    "typescript": "~6.0.0",
+    "zone.js": "^0.16.0"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "module": "./dist/fesm2022/stacknav-angular.mjs",
+  "typings": "./dist/types/stacknav-angular.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "directory": "dist",
+    "linkDirectory": true
+  }
+}

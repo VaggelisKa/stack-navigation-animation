@@ -1,3 +1,6 @@
 node_modules/
 dist/
+out-tsc/
+.angular/
 .DS_Store
+apps/angular-demo/e2e/shots/
