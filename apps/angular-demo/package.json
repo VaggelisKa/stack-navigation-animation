@@ -5,7 +5,7 @@
   "scripts": {
     "start": "ng serve",
     "build": "ng build",
-    "e2e": "node e2e/run.mjs"
+    "e2e": "node e2e/run.mjs && node e2e/demos.mjs"
   },
   "dependencies": {
     "@angular/common": "^22.1.0",

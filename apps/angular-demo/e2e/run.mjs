@@ -1,63 +1,11 @@
 // End-to-end check of @stacknav/angular against the built demo (dist/browser).
 // Run `ng build` first. Uses the preinstalled Chromium through playwright-core.
-import { chromium } from 'playwright-core';
-import { createServer } from 'node:http';
-import { readFile, mkdir } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { extname, join } from 'node:path';
+// This suite covers the router mechanics on the small pages; demos.mjs drives
+// the demo apps.
+import { join } from 'node:path';
+import { launch } from './harness.mjs';
 
-const ROOT = new URL('../dist/browser/', import.meta.url).pathname;
-const SHOTS = new URL('./shots/', import.meta.url).pathname;
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.map': 'application/json' };
-
-const server = createServer(async (req, res) => {
-  const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-  let file = join(ROOT, path);
-  if (!existsSync(file) || path === '/' || !extname(path)) file = join(ROOT, 'index.html');
-  res.setHeader('content-type', TYPES[extname(file)] || 'application/octet-stream');
-  res.end(await readFile(file));
-});
-await new Promise((r) => server.listen(0, r));
-const base = `http://127.0.0.1:${server.address().port}`;
-
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
-const page = await browser.newPage({ viewport: { width: 420, height: 800 } });
-const errors = [];
-page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-await mkdir(SHOTS, { recursive: true });
-
-let failures = 0;
-const check = (cond, msg) => {
-  console.log(`${cond ? 'ok  ' : 'FAIL'} ${msg}`);
-  if (!cond) failures++;
-};
-const eq = (a, b, msg) => check(a === b, `${msg} (${JSON.stringify(a)}${a === b ? '' : ' ≠ ' + JSON.stringify(b)})`);
-
-// ---- helpers that read the outlet's DOM ------------------------------------
-const state = () =>
-  page.evaluate(() => {
-    const outlet = document.querySelector('sn-outlet');
-    const pages = [...outlet.querySelectorAll(':scope > .sn-page')];
-    return {
-      url: location.pathname,
-      busy: outlet.classList.contains('sn-busy'),
-      pages: pages.map((p) => p.tagName.toLowerCase()),
-      visible: pages.filter((p) => p.classList.contains('sn-page-visible')).map((p) => p.tagName.toLowerCase()),
-      title: pages.at(-1)?.querySelector('h1')?.textContent?.trim(),
-    };
-  });
-const settled = () => page.waitForFunction(() => !document.querySelector('sn-outlet').classList.contains('sn-busy'));
-const transitioned = async (act, name) => {
-  await act();
-  await page.waitForFunction(() => document.querySelector('sn-outlet').classList.contains('sn-busy'), null, { timeout: 2000 }).catch(() => {});
-  const mid = await state();
-  await page.screenshot({ path: join(SHOTS, `${name}.png`) });
-  await settled();
-  return mid;
-};
-const scrollTop = () => page.evaluate(() => document.querySelector('sn-outlet > .sn-page-visible').scrollTop);
+const { page, base, check, eq, state, settled, transitioned, scrollTop, shots, finish } = await launch();
 
 // ---- 1. first load: one page, no animation ---------------------------------
 await page.goto(base + '/');
@@ -120,7 +68,7 @@ const y = box.y + box.height / 2;
 await page.mouse.move(box.x + 6, y);
 await page.mouse.down();
 for (let x = 20; x <= 120; x += 20) await page.mouse.move(box.x + x, y);
-await page.screenshot({ path: join(SHOTS, '07-swipe-mid.png') });
+await page.screenshot({ path: join(shots, '07-swipe-mid.png') });
 s = await state();
 eq(s.visible.join(','), 'app-home,app-item', 'both pages visible mid-swipe');
 for (let x = 140; x <= 320; x += 30) await page.mouse.move(box.x + x, y);
@@ -213,11 +161,4 @@ eq(s.pages.join(','), 'app-item', 'fallback replaced the deep-linked page with i
 eq(s.url, '/items/5', 'fallback url');
 eq(s.title, 'Item 5', 'fallback page got its input');
 
-await browser.close();
-server.close();
-if (errors.length) {
-  failures++;
-  console.log('browser errors:\n' + errors.join('\n'));
-}
-console.log(failures ? `\n${failures} failure(s)` : '\nall checks passed');
-process.exit(failures ? 1 : 0);
+await finish();
