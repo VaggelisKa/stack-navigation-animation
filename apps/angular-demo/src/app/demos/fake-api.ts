@@ -233,8 +233,13 @@ export class FakeApi {
     return new Promise<T>((resolve, reject) => {
       setTimeout(() => {
         this.inflight.update((n) => n - 1);
-        if (fail) reject(new Error('The network is unreachable (simulated).'));
-        else resolve(make());
+        if (fail) return reject(new Error('The network is unreachable (simulated).'));
+        // `make()` runs inside the timer, not the executor: a throw here (an unknown id, say) must reject, not escape.
+        try {
+          resolve(make());
+        } catch (e) {
+          reject(e);
+        }
       }, ms);
     });
   }
@@ -306,6 +311,7 @@ export class FakeApi {
   }
   thread(id: number): Promise<Message[]> {
     return this.request(() => {
+      if (!Number.isInteger(id) || id < 1 || id > AUTHORS.length) throw new Error(`No conversation ${id}`);
       let m = this.messages.get(id);
       if (!m) {
         const r = rng(100 + id);

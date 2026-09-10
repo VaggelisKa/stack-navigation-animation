@@ -156,6 +156,12 @@ check((await count('.sn-page-visible .chat-bubble')) > 2, 'and the reply that ar
 await transitioned(() => page.goBack(), 'chat-back');
 await transitioned(() => page.goBack(), 'chat-home');
 eq((await state()).pages.join(','), 'app-home', 'back on the demos');
+// unknown ids must reach the error state, not crash the page or hang the request
+for (const url of ['/messages/foo', '/feed/post/999', '/gallery/0']) {
+  await page.goto(base + url);
+  await page.waitForSelector('.err', { timeout: 5000 });
+}
+check(true, 'unknown ids on deep links render an error box instead of throwing');
 
 // ============================================================ lab + gallery
 section('gallery in slow motion: dark page, data arriving mid-transition, sibling replace, filmstrip, swipe');

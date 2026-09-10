@@ -65,8 +65,12 @@ export class ChatInbox {
       <header class="hdr chat-hdr">
         <button type="button" class="back" snBack="/messages">‹ Messages</button>
         <div class="chat-peer">
-          <demo-avatar [name]="peer().name" [hue]="peer().hue" [size]="30" />
-          <h1>{{ peer().name }}</h1>
+          @if (peer(); as p) {
+            <demo-avatar [name]="p.name" [hue]="p.hue" [size]="30" />
+            <h1>{{ p.name }}</h1>
+          } @else {
+            <h1>Conversation</h1>
+          }
         </div>
         <span class="spacer"></span>
       </header>
@@ -95,7 +99,11 @@ export class ChatThread {
   readonly id = input.required<string>();
   private readonly api = inject(FakeApi);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-  readonly peer = computed(() => AUTHORS[(Number(this.id()) - 1) % AUTHORS.length]);
+  /** Null for an id that names no conversation (`/messages/0`, `/messages/foo`); the thread resource reports the error. */
+  readonly peer = computed(() => {
+    const n = Number(this.id());
+    return Number.isInteger(n) && n >= 1 && n <= AUTHORS.length ? AUTHORS[n - 1] : null;
+  });
   readonly thread = resource({ params: () => Number(this.id()), loader: ({ params }) => this.api.thread(params) });
   readonly sent = signal<Message[]>([]);
   /** What the backend gave us plus what happened since; a reload of the thread carries the latter, so dedupe. */
