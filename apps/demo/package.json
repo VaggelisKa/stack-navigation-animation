@@ -1,0 +1,16 @@
+{
+  "name": "@stacknav/demo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs && npx --yes serve dist"
+  },
+  "dependencies": {
+    "@stacknav/core": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  }
+}
