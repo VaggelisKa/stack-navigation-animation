@@ -1,0 +1,22 @@
+{
+  "name": "stacknav",
+  "version": "0.1.0",
+  "description": "A drop-in iOS-style push/pop navigation transition, with interactive edge-swipe back, for any web app.",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./stacknav.css": "./lib/stacknav.css"
+  },
+  "files": ["lib"],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "npx --yes serve .",
+    "test": "node --test \"test/**/*.test.js\""
+  },
+  "keywords": ["navigation", "transition", "ios", "swipe-back", "stack", "animation"],
+  "license": "MIT",
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
