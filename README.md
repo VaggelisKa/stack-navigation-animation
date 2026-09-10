@@ -10,6 +10,23 @@ iOS-style push/pop navigation for the web: a framework-agnostic core, and ports 
 
 Demos: [`apps/demo`](apps/demo) (vanilla, no router) and [`apps/angular-demo`](apps/angular-demo) (Angular router).
 
+## The Angular demo
+
+The home page shows the router mechanics on small pages. Above them sit eight demo apps, each with its own design and layout, all backed by a fake API that answers after a delay (and can be told to fail), so the transition can be watched around content that is loading, arriving mid-flight, or failing:
+
+| Demo | Layout | What it exercises |
+| --- | --- | --- |
+| Feed | cards, cover + tabs profile | skeletons, "load more", likes kept on popped-back-to cards, cross-links that always push (`[pushTo]`) |
+| Shop | 2-column grid, full-bleed hero, sticky buy bar | a `resolve` that holds the push until the product is loaded, a cart, a checkout form whose success page *replaces* it (page and history entry), pop to root |
+| Messages | inbox, chat bubbles, composer stuck to the bottom | scroll-to-bottom on a page that is the scroll container, replies that arrive after you popped away |
+| Gallery | 3-column tiles, dark full-screen viewer, filmstrip | dim over a dark page, siblings replaced in place vs pushed, `@defer`, swipe between dark pages |
+| Forms | iOS grouped settings, long form, wizard | inputs kept while away, async save, steps ordered by `stackLevel`, a replaced ending, pop to root |
+| Search | search field in the header | debounced requests cancelled in flight, the query in the URL, results that push pages of other demos |
+| Dashboard | segmented tabs, stat tiles, bar chart, wide table | a nested `<router-outlet>` inside a kept page, tabs that replace their history entry |
+| Lab | knobs and stress pages | slow motion, swipe from anywhere, API latency and failures, a 600-row page, a stack five siblings deep, a 2 s resolver, horizontal scrollers under the edge swipe |
+
+`pnpm e2e` builds the demo and drives all of it in Chromium: `e2e/run.mjs` for the mechanics, `e2e/demos.mjs` for the demo apps.
+
 ## The idea
 
 Everything is a function of one number, `p`: how much of the upper page is showing. Push runs `p` from 0 to 1, pop from 1 to 0, and a swipe sets `p` straight from the finger. Pages beneath the top stay mounted and hidden, so scroll position, form state and focus are untouched when you come back.
@@ -45,6 +62,8 @@ pnpm dev:angular    # Angular demo on http://localhost:4200
 ```
 
 Node 22.18+ runs the core (its tests use Node's built-in TypeScript stripping). The Angular tooling wants Node 22.22.3+ or 24.
+
+The demo runs without zone.js, so a click's view update lands on the next animation frame; the e2e helpers wait for one before reading the DOM.
 
 ## Layout
 
