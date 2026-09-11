@@ -9,6 +9,9 @@ jobs:
   changeset:
     name: Pull request declares a bump
     runs-on: ubuntu-latest
+    # The release pull request applies the pending changesets and deletes them,
+    # so by its own rule it declares nothing. Leave it alone.
+    if: github.head_ref != 'changeset-release/main'
     steps:
       - uses: actions/checkout@v7
         with:
