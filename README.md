@@ -1,11 +1,11 @@
 # stacknav
 
-iOS-style push/pop navigation for the web: a framework-agnostic core, and ports that make it feel native to a framework's router.
+iOS-style push/pop navigation for the web: a framework-agnostic core, and ports that sit alongside a framework's router rather than replacing it.
 
 | Package | What it is |
 | --- | --- |
 | [`@stacknav/core`](packages/core) | The engine. A stack of page elements, the UIKit transition (slide, parallax, dim, shadow), an interactive edge-swipe pop, direction resolution, and a `history.state` adapter for router-less apps. No dependencies. |
-| [`@stacknav/angular`](packages/angular) | `<sn-outlet />`, a drop-in replacement for `<router-outlet>` that keeps pages alive beneath the top, animates every navigation, and swipes back. |
+| [`@stacknav/angular`](packages/angular) | `<sn-outlet />`, a router outlet for Angular Router that keeps pages alive beneath the top, animates every navigation, and swipes back. No navigation API of its own: the router, `routerLink` and `Location` do that. |
 | `@stacknav/react` | Planned. |
 
 Demos: [`apps/demo`](apps/demo) (vanilla, no router) and [`apps/angular-demo`](apps/angular-demo) (Angular router).

@@ -12,7 +12,7 @@
     "build:all": "pnpm -r build",
     "test": "pnpm --filter @stacknav/core test",
     "typecheck": "pnpm --filter @stacknav/core typecheck",
-    "e2e": "pnpm --filter @stacknav/angular-demo build && pnpm --filter @stacknav/angular-demo e2e",
+    "e2e": "pnpm build && pnpm --filter @stacknav/angular-demo build && pnpm --filter @stacknav/angular-demo e2e",
     "dev:demo": "pnpm --filter @stacknav/demo dev",
     "dev:angular": "pnpm --filter @stacknav/angular-demo start"
   }

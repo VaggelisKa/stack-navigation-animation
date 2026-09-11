@@ -1,12 +1,11 @@
 import { Component, input, signal } from '@angular/core';
-import { StackNavBack } from '@stacknav/angular';
+import { useBack } from '../back';
 
 @Component({
   selector: 'app-reviews',
-  imports: [StackNavBack],
   template: `
     <div class="page">
-      <header class="hdr"><button type="button" class="back" [snBack]="['/items', id()]">‹ Item {{ id() }}</button><h1>Reviews</h1><span class="spacer"></span></header>
+      <header class="hdr"><button type="button" class="back" (click)="back(['/items', id()])">‹ Item {{ id() }}</button><h1>Reviews</h1><span class="spacer"></span></header>
       <div class="body">
         <p class="lede">Three levels deep. Swipe from the left edge, press the browser back button, or tap Back: all three pop.</p>
         @for (r of reviews; track r) {<div class="item"><span>{{ r }}</span></div>}
@@ -21,4 +20,5 @@ export class Reviews {
   readonly id = input.required<string>();
   readonly lock = signal(false);
   readonly reviews = ['Five stars, would push again.', 'Popped right back where I was.', 'The parallax is subtle. I like it.'];
+  readonly back = useBack();
 }
