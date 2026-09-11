@@ -39,7 +39,7 @@ mid = await transitioned(() => page.click('.sn-page-visible a:has-text("Reviews"
 s = await state();
 eq(s.pages.join(','), 'app-home,app-item,app-reviews', 'three pages kept');
 eq(s.url, '/items/3/reviews', 'url after second push');
-// a canDeactivate guard refuses the swipe: the page must come back
+// a canDeactivate guard refuses the swipe, so the page must come back
 await page.click('.sn-page-visible input[type=checkbox]');
 const box0 = await page.locator('sn-outlet').boundingBox();
 await page.mouse.move(box0.x + 6, box0.y + 300);

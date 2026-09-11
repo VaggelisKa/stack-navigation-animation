@@ -1,12 +1,12 @@
-/* Styles for the demo apps. Each demo commits to its own look, light or dark,
-   so every page declares the page colour tokens from styles.css on its own
-   root. Declaring them here rather than letting `:root` supply them is what
-   keeps the global dark-scheme block out of a light demo's header, cards and
-   lede -- and the other way round for the dark gallery viewer. */
+/* Styles for the demo apps. Each demo has its own look, light or dark, so every
+   page declares the page colour tokens from styles.css on its own root.
+   Declaring them here, rather than letting `:root` supply them, keeps the global
+   dark-scheme block out of a light demo's header, cards and lede, and keeps the
+   light tokens out of the dark gallery viewer. */
 
 .feed, .shop, .chat, .gal, .frm, .srch, .dash, .lab {
-  /* `color-scheme` as well as the tokens: it is what native controls -- the
-     lab's range sliders, the form's selects -- paint themselves from. */
+  /* `color-scheme` as well as the tokens: native controls, such as the lab's
+     range sliders and the form's selects, paint themselves from it. */
   color-scheme: light;
   --page-bg: #f7f7f9;
   --page-fg: #111;
@@ -322,7 +322,7 @@
 .dash-profile .btn.ghost { background: transparent; color: #4f46e5; }
 
 /* ---------------------------------------------------------------- lab */
-/* The lab keeps the shared tokens above; nothing to override. */
+/* The lab uses the shared tokens above, with nothing to override. */
 .lab .frm-group { margin: 0 16px; }
 .lab .body .frm-group { margin: 0; }
 .lab-range { flex-direction: column; align-items: stretch !important; gap: 4px !important; padding: 10px 16px !important; }

@@ -1,6 +1,6 @@
 import { tween, type Easing } from './animate.ts';
 
-/** One mounted page. `key` and `data` are the caller's; the stack only carries them. */
+/** One mounted page. `key` and `data` belong to the caller; the stack only carries them. */
 export interface StackEntry<T = unknown> {
   el: HTMLElement;
   index: number;
@@ -14,8 +14,9 @@ export interface SettleInput {
 }
 
 /**
- * What the pages look like at any progress p (1 = upper page fully open,
- * 0 = upper page fully off-screen). Push runs p from 0 to 1, pop from 1 to 0.
+ * Describes what the pages look like at any progress p (1 = upper page fully
+ * open, 0 = upper page fully off-screen). Push runs p from 0 to 1, pop from
+ * 1 to 0.
  */
 export interface Transition {
   readonly duration: number;
@@ -28,7 +29,7 @@ export interface Transition {
 
 export type TransitionKind = 'push' | 'pop' | 'interactive';
 
-/** Where an operation came from: `api`, `gesture`, `history`, or anything a port defines. */
+/** Where an operation came from: `api`, `gesture`, `history`, or any value a port defines. */
 export type NavigationSource = 'api' | 'gesture' | 'history' | (string & {});
 
 export interface MountOptions<T = unknown> {
@@ -72,7 +73,7 @@ type Listener<E> = (detail: E) => void;
 
 /**
  * A stack of page elements inside one container. The stack owns mounting,
- * ordering, visibility and the transition lifecycle; a `Transition` decides
+ * ordering, visibility and the transition lifecycle. A `Transition` decides
  * what the pages look like at any progress p.
  *
  * Operations are serialized: one called during a transition waits its turn.
@@ -107,7 +108,7 @@ export class NavigationStack {
   canPop(): boolean {
     return !this.busy && this.entries.length > 1;
   }
-  /** The entry holding `el`, or the entry with `key`, if mounted. */
+  /** The entry holding `el`, or the entry with `key`, if either is mounted. */
   entryOf(elOrKey: HTMLElement | string): StackEntry | null {
     return this.entries.find((e) => (typeof elOrKey === 'string' ? e.key === elOrKey : e.el === elOrKey)) || null;
   }
@@ -127,9 +128,9 @@ export class NavigationStack {
 
   // ------------------------------------------------------------ operations
   /**
-   * Push an element (or a function returning one). Resolves with the entry
-   * once the transition has finished. If the element is already mounted
-   * lower in the stack it is moved to the top.
+   * Pushes an element, or a function returning one. Resolves with the entry
+   * once the transition has finished. An element already mounted lower in the
+   * stack is moved to the top.
    */
   push<T = unknown>(elOrFactory: HTMLElement | (() => HTMLElement), { animated = true, data = null, key = null, source = 'api' }: MountOptions<T> = {}): Promise<StackEntry> {
     return this._run(async () => {
@@ -145,12 +146,12 @@ export class NavigationStack {
     });
   }
 
-  /** Pop one level. Resolves with the removed entry (its element is detached, not destroyed). */
+  /** Pops one level. Resolves with the removed entry; its element is detached, not destroyed. */
   pop(opts: { animated?: boolean; source?: NavigationSource } = {}): Promise<StackEntry | null> {
     return this.popTo(this.entries.length - 1, opts);
   }
 
-  /** Pop until `depth` entries remain (≥ 1). Intermediates are removed without animation. */
+  /** Pops until `depth` entries remain (≥ 1). Intermediate pages are removed without animation. */
   popTo(depth: number, { animated = true, source = 'api' }: { animated?: boolean; source?: NavigationSource } = {}): Promise<StackEntry | null> {
     return this._run(async () => {
       if (depth < 1 || this.entries.length <= depth) return null;
@@ -159,10 +160,11 @@ export class NavigationStack {
   }
 
   /**
-   * Pop the top page, revealing `el`. If `el` is already mounted beneath the
-   * top, everything above it is removed (like `popTo`). If it is not mounted
+   * Pops the top page, revealing `el`. If `el` is already mounted beneath the
+   * top, everything above it is removed, as in `popTo`. If it is not mounted,
    * it is placed directly beneath the top first, so a page that no longer
-   * exists (a fresh instance after a deep link, say) still arrives with a pop.
+   * exists (for example a fresh instance after a deep link) still arrives with
+   * a pop.
    */
   popWith<T = unknown>(el: HTMLElement, { animated = true, data = null, key = null, source = 'api' }: MountOptions<T> = {}): Promise<StackEntry | null> {
     return this._run(async () => {
@@ -183,7 +185,7 @@ export class NavigationStack {
     });
   }
 
-  /** Swap the top page for `el` without animation. Returns the removed entry. */
+  /** Swaps the top page for `el` without animation. Returns the removed entry. */
   replace<T = unknown>(el: HTMLElement, { data = null, key = null, source = 'api' }: MountOptions<T> = {}): Promise<StackEntry | null> {
     return this._run(async () => {
       const old = this.top;
@@ -199,7 +201,7 @@ export class NavigationStack {
   }
 
   /**
-   * Convenience for ports that already know the direction: `push`, `pop`
+   * Convenience for ports that already resolved the direction: `push`, `pop`
    * (via `popWith`) or `replace`.
    */
   present<T = unknown>(el: HTMLElement, direction: 'push' | 'pop' | 'replace', opts: MountOptions<T> = {}): Promise<StackEntry | null> {
@@ -208,7 +210,7 @@ export class NavigationStack {
     return this.push(el, opts);
   }
 
-  /** Remove a mounted page without animation, wherever it sits. Returns its entry, or null. */
+  /** Removes a mounted page without animation, wherever it sits. Returns its entry, or null. */
   remove(el: HTMLElement, { source = 'api' }: { source?: NavigationSource } = {}): Promise<StackEntry | null> {
     return this._run(async () => {
       const entry = this._forget(el);
@@ -219,7 +221,7 @@ export class NavigationStack {
     });
   }
 
-  /** Replace the whole stack without animation. Returns the removed entries. */
+  /** Replaces the whole stack without animation. Returns the removed entries. */
   reset(elements: HTMLElement[], { source = 'api' }: { source?: NavigationSource } = {}): Promise<StackEntry[]> {
     return this._run(async () => {
       const removed: StackEntry[] = [];
@@ -231,9 +233,7 @@ export class NavigationStack {
     });
   }
 
-  /**
-   * Start a finger-driven pop. Returns null if the stack can't pop right now.
-   */
+  /** Starts a pointer-driven pop. Returns null if the stack cannot pop right now. */
   beginInteractivePop(): InteractivePopHandle | null {
     if (!this.canPop()) return null;
     this._setBusy(true);
@@ -274,7 +274,7 @@ export class NavigationStack {
     this.container.classList.toggle('sn-busy', v);
   }
 
-  /** Serialize operations: while a transition runs, later calls wait their turn. */
+  /** Serializes operations: while a transition runs, later calls wait their turn. */
   private _run<R>(fn: () => Promise<R>): Promise<R> {
     return new Promise<R>((resolve, reject) => {
       const task = async () => {
@@ -297,9 +297,9 @@ export class NavigationStack {
   }
 
   private async _popRevealing(depth: number, animated: boolean, source: NavigationSource): Promise<StackEntry> {
-    const upper = this.entries.pop()!; // the page the user is looking at: it animates out
+    const upper = this.entries.pop()!; // the visible page: it animates out
     const removed: StackEntry[] = [];
-    while (this.entries.length > depth) removed.push(this._unmount(this.entries.pop()!)); // intermediates: gone silently
+    while (this.entries.length > depth) removed.push(this._unmount(this.entries.pop()!)); // intermediate pages: removed without animation
     const lower = this.top;
     await this._transition(lower, upper, 1, 0, animated, 'pop');
     removed.push(this._unmount(upper));
@@ -320,7 +320,7 @@ export class NavigationStack {
     entry.el.remove();
     return entry;
   }
-  /** Drop `el` from the entries if it is mounted; returns its old entry. */
+  /** Drops `el` from the entries if it is mounted. Returns its old entry. */
   private _forget(el: HTMLElement): StackEntry | null {
     const i = this.entries.findIndex((e) => e.el === el);
     if (i < 0) return null;
@@ -350,7 +350,7 @@ export class NavigationStack {
     this._end(lower, upper, kind);
   }
 
-  /** Only the top page is visible; every page's transform is reset; indexes are renumbered. */
+  /** Makes only the top page visible, resets every transform, renumbers the indexes. */
   private _settle(): void {
     const top = this.top;
     this.entries.forEach((e, i) => {

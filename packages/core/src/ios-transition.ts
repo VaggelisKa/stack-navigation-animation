@@ -10,7 +10,7 @@ export interface IOSTransitionOptions {
   /** fraction of the width the lower page travels */
   parallax: number;
   dimColor: string;
-  /** lower-page overlay opacity at p = 1 (≈0.35 reads well on dark UIs) */
+  /** lower-page overlay opacity at p = 1 (≈0.35 suits dark UIs) */
   dimMax: number;
   /** box-shadow on the incoming page */
   shadow: string;
@@ -19,9 +19,9 @@ export interface IOSTransitionOptions {
   settleMax: number;
   /** the curve the remaining distance of an interactive pop runs on */
   settleEase: Easing;
-  /** px/s assumed when the finger was slower than this */
+  /** px/s assumed when the pointer was slower than this */
   settleVelocityFloor: number;
-  /** multiplies every duration (slow motion / tests) */
+  /** multiplies every duration, for slow motion and tests */
   timeScale: number;
 }
 
@@ -41,13 +41,13 @@ export const IOS_TRANSITION_CSS_VARS: Readonly<Record<keyof IOSTransitionOptions
 });
 
 export interface IOSTransition extends Transition {
-  /** The JS options: the defaults with yours merged in. Mutable at runtime. */
+  /** The JS options: the defaults with the caller's merged in. Mutable at runtime. */
   readonly options: IOSTransitionOptions;
-  /** The values actually in force: `options` with the CSS variables applied over them. */
+  /** The values currently in force: `options` with the CSS variables applied over them. */
   readonly resolved: Readonly<IOSTransitionOptions>;
   /**
-   * Re-read the CSS variables, from `el` or from the container of the last
-   * transition. Called at the start of every transition; call it yourself
+   * Re-reads the CSS variables, from `el` or from the container of the last
+   * transition. Called at the start of every transition. Call it directly
    * after changing `options` or the variables mid-animation.
    */
   refresh(el?: Element | null): void;
@@ -57,9 +57,9 @@ const DIM = /*#__PURE__*/ Symbol('dim');
 type Dimmable = StackEntry & { [DIM]?: HTMLElement };
 
 /**
- * The iOS navigation look: the upper page slides in from the trailing edge
- * with a soft shadow on its leading edge; the lower page parallaxes toward
- * the leading edge and dims. Everything is a function of one number, p.
+ * The iOS navigation transition: the upper page slides in from the trailing
+ * edge with a shadow on its leading edge, while the lower page parallaxes
+ * toward the leading edge and dims. Every value is a function of one number, p.
  *
  * Every option is also a CSS custom property on the container (see
  * `IOS_TRANSITION_CSS_VARS`), read when a transition starts. A variable that

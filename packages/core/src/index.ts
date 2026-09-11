@@ -67,9 +67,9 @@ export interface IOSStack extends NavigationStack {
 }
 
 /**
- * One call that wires the three pieces together: a stack in `container`,
- * the iOS transition, and the edge-pan gesture. The gesture is exposed as
- * `stack.gesture`; destroying the stack detaches it.
+ * Wires the three pieces together in one call: a stack in `container`, the iOS
+ * transition, and the edge-pan gesture. The gesture is exposed as
+ * `stack.gesture`, and destroying the stack detaches it.
  */
 export function createIOSStack({ container, transition = {}, gesture = {} }: IOSStackOptions): IOSStack {
   const t = createIOSTransition(transition);

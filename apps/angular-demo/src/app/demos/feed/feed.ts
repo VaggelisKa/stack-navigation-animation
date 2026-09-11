@@ -3,7 +3,7 @@ import { Component, computed, inject, input, resource, signal } from '@angular/c
 import { FakeApi, type Post } from '../fake-api';
 import { BackButton, DEMO_UI } from '../shared';
 
-/** One post as a card; the list, the post page and the profile all use it. */
+/** One post rendered as a card. Used by the list, the post page and the profile. */
 @Component({
   selector: 'feed-card',
   imports: [...DEMO_UI],
@@ -108,7 +108,7 @@ export class FeedHome {
   }
 }
 
-/** A post with its comments arriving a beat later, and a reply box at the bottom. */
+/** A post whose comments load shortly after the page, with a reply box at the bottom. */
 @Component({
   selector: 'feed-post',
   imports: [FeedCard, BackButton, ...DEMO_UI],
@@ -170,7 +170,7 @@ export class FeedPost {
   }
 }
 
-/** A profile with a cover, stats and tabs; posts link back to post pages, always as a push. */
+/** A profile with a cover, stats and tabs. Posts link back to post pages, always as a push. */
 @Component({
   selector: 'feed-profile',
   imports: [FeedCard, BackButton, DecimalPipe, ...DEMO_UI],

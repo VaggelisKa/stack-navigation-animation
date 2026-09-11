@@ -1,5 +1,5 @@
 /* Demo host styling. Deliberately not iOS: a plain app with its own header
-   inside each page. The engine has no opinion about any of this. */
+   inside each page. None of this is prescribed by the engine. */
 :root {
   color-scheme: light dark;
   --bg: #f6f5f2;
@@ -56,8 +56,8 @@ body {
   user-select: none; -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
-/* The engine reads its knobs off the container, so a class is enough to
-   restyle the transition. Anything left unset keeps the default. */
+/* The engine reads its options off the container, so a class is enough to
+   restyle the transition. Anything left unset keeps its default. */
 #app.gentle {
   --sn-duration: 320ms;
   --sn-easing: ease-out;
@@ -79,7 +79,7 @@ body {
   }
 }
 
-/* ---- a page, as the host app draws it ---- */
+/* ---- a page, as the host app renders it ---- */
 .page { background: var(--bg); color: var(--ink); }
 .hdr {
   position: sticky; top: 0; z-index: 1;

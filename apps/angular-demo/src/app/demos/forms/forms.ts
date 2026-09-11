@@ -21,7 +21,7 @@ import { BackButton, DEMO_UI, DemoNav } from '../shared';
 })
 export class FormsHome {}
 
-/** A long form with a sticky save bar. Saving takes a while and the button says so. */
+/** A long form with a sticky save bar. Saving is slow, and the button shows a pending state. */
 @Component({
   selector: 'forms-profile',
   imports: [BackButton, ...DEMO_UI],
@@ -115,7 +115,7 @@ export class FormsProfile {
   }
 }
 
-/** Shared by the wizard's steps, so a step popped back to still has its answers. */
+/** Shared by the wizard's steps, so a step popped back to still holds its answers. */
 @Injectable({ providedIn: 'root' })
 export class Wizard {
   readonly plan = signal<'free' | 'pro' | 'team'>('pro');
@@ -133,8 +133,8 @@ export class Wizard {
 }
 
 /**
- * Three steps at `/forms/wizard/1..3`. Siblings in the route tree, but each
- * route carries `stackLevel`, so the numbering strategy pushes forward and
+ * Three steps at `/forms/wizard/1..3`. They are siblings in the route tree, but
+ * each route carries `stackLevel`, so the numbering strategy pushes forward and
  * pops back. The last step replaces itself with the confirmation.
  */
 @Component({
@@ -260,7 +260,7 @@ export class FormsDone {
   }
 }
 
-/** An iOS-style grouped settings list: plenty of toggles, all kept. */
+/** An iOS-style grouped settings list. Every toggle's state is kept. */
 @Component({
   selector: 'forms-preferences',
   imports: [BackButton],

@@ -48,7 +48,7 @@ import { StackNavActivatedRoute } from './activated-route-proxy';
 import { STACKNAV_CONFIG } from './config';
 import { StackNavHistory } from './history';
 
-/** What the outlet knows about a page, for direction strategies. */
+/** What the outlet knows about a page, passed to direction strategies. */
 export interface StackNavRouteRef extends RouteRef {
   snapshot: ActivatedRouteSnapshot;
 }
@@ -68,7 +68,7 @@ interface View extends StackNavView {
   routeRef: StackNavRouteRef;
   proxy: StackNavActivatedRoute | null;
   savedContexts: Map<string, OutletContext> | null;
-  /** popped by the swipe gesture; waiting for the router to catch up */
+  /** popped by the swipe gesture, waiting for the router to catch up */
   pendingRemoval: boolean;
   inputs: Subscription | null;
 }
@@ -81,18 +81,19 @@ export interface StackNavActivation {
 }
 
 /**
- * A router outlet (`RouterOutletContract`) that keeps a stack of pages and
- * moves between them with the iOS push/pop transition. Use it where you would
- * use `<router-outlet>`; the router drives it the same way:
+ * A router outlet (`RouterOutletContract`) that keeps a stack of pages and moves
+ * between them with the iOS push/pop transition. Use it where you would use
+ * `<router-outlet>`. The router drives it the same way:
  *
  * ```html
  * <sn-outlet />
  * ```
  *
- * Pages beneath the top stay alive (scroll position, form state, subscriptions),
- * a swipe from the leading edge pops interactively, and the direction of every
- * navigation is decided by the strategies configured in `provideStackNav()`.
- * The element needs a height; it is the pages' scroll container.
+ * Pages beneath the top stay alive, keeping scroll position, form state and
+ * subscriptions. A swipe from the leading edge pops interactively, and the
+ * direction of every navigation is decided by the strategies configured in
+ * `provideStackNav()`. The element needs a height; it is the pages' scroll
+ * container.
  */
 @Directive({
   selector: 'sn-outlet',
@@ -100,13 +101,13 @@ export interface StackNavActivation {
   host: { style: 'display: block' },
 })
 export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
-  /** Outlet name, like `router-outlet`'s. Static. */
+  /** Outlet name, as on `router-outlet`. Static. */
   @Input() name: string = PRIMARY_OUTLET;
   /** Per-outlet transition options, merged over `provideStackNav({ transition })`. */
   @Input() transition: Partial<IOSTransitionOptions> | undefined;
-  /** Per-outlet gesture options, merged over `provideStackNav({ gesture })`; `false` disables the swipe. */
+  /** Per-outlet gesture options, merged over `provideStackNav({ gesture })`. `false` disables the swipe. */
   @Input() gesture: Partial<EdgePanGestureOptions> | false | undefined;
-  /** Same as `router-outlet`'s: available to pages through `ROUTER_OUTLET_DATA`. */
+  /** Same as on `router-outlet`: available to pages through `ROUTER_OUTLET_DATA`. */
   readonly routerOutletData = input<unknown>(undefined);
 
   /** A page component was created. */
@@ -129,12 +130,12 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
   private readonly browserLocation = inject(Location);
   private readonly document = inject(DOCUMENT);
 
-  /** The underlying core stack; subscribe to `progress` to drive your own chrome. */
+  /** The underlying core stack. Subscribe to `progress` to drive your own chrome. */
   stack!: IOSStack;
   /** The direction of the last activation. */
   lastDirection: Direction | null = null;
 
-  /** Inputs are bound when the router was configured `withComponentInputBinding()`. */
+  /** Inputs are bound when the router was configured with `withComponentInputBinding()`. */
   readonly supportsBindingToComponentInputs?: true;
 
   private views: View[] = [];
@@ -247,8 +248,8 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
       this.destroyView(view);
       return;
     }
-    // The router deactivates before it activates, synchronously. If nothing
-    // follows, the outlet is genuinely empty.
+    // The router deactivates before it activates, synchronously. If no
+    // activation follows, the outlet is really empty.
     this.leaving = view;
     queueMicrotask(() => {
       if (this.leaving !== view) return;
@@ -295,11 +296,11 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
     return leaving;
   }
 
-  /** Decide the direction, place the page in the stack, make it the active one. */
+  /** Decides the direction, places the page in the stack, and makes it active. */
   private show(view: View, activatedRoute: ActivatedRoute, leaving: View | null, reused: boolean): void {
     const nav = this.history.current;
     const from = leaving ?? this.views[this.views.length - 1] ?? null;
-    // Resolvers may have rerun and a custom keyOf may group several snapshots: never trust the old one.
+    // Resolvers may have rerun, and a custom keyOf may group several snapshots, so the old snapshot cannot be trusted.
     view.routeRef = this.routeRefOf(activatedRoute.snapshot, view.key);
     const alreadyOnScreen = reused && !this.stack.busy && this.stack.top?.el === view.el;
     let direction = this.config.resolve({
@@ -311,7 +312,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
       stack: this.views.map((v) => v.key),
     });
     // After a swipe the page beneath is already showing and the one that left
-    // is gone. A pop onto anything else has nothing to pop; just show the page.
+    // is gone. A pop onto anything else has nothing to pop, so just show the page.
     if (!leaving && this.stack.top && direction === 'pop' && !reused) direction = 'replace';
     const animated = this.config.animated && (nav?.animated ?? true) && (this.views.length > 0 || !!leaving);
 
@@ -334,15 +335,15 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
     }
     this.changeDetector.markForCheck();
     this.bindInputs(view);
-    // An animated page renders during its first frames off screen. One that
-    // appears at once (no animation, or a replace, which the stack never
+    // An animated page renders off screen during its first frames. A page that
+    // appears immediately (no animation, or a replace, which the stack never
     // animates) would otherwise be blank until the next scheduled tick.
     if ((!animated || direction === 'replace') && !alreadyOnScreen) view.ref.changeDetectorRef.detectChanges();
     (reused ? this.attachEvents : this.activateEvents).emit(view.ref.instance);
     this.navigatedEvents.emit({ view, direction, animated, reused });
   }
 
-  /** Mirror what the stack will do, synchronously, so `pages` and the next direction are right. */
+  /** Mirrors what the stack will do, synchronously, so `pages` and the next direction stay correct. */
   private place(view: View, direction: Direction, leaving: View | null): void {
     const views = this.views;
     const drop = (v: View | null) => {
@@ -381,7 +382,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
     return { ref, el, key, routeRef: this.routeRefOf(route.snapshot, key), url: '', route, proxy, savedContexts: null, pendingRemoval: false, inputs: null };
   }
 
-  /** Hidden inside the container until the stack shows it; never a visible sibling of the outlet. */
+  /** Hidden inside the container until the stack shows it, never a visible sibling of the outlet. */
   private park(el: HTMLElement): void {
     el.classList.add(this.stack.pageClass);
     if (el.parentElement !== this.host) this.host.append(el);
@@ -405,7 +406,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
     }
   }
 
-  /** The swipe already revealed the page beneath; now make the router agree. */
+  /** The swipe already revealed the page beneath. Bring the router in line with it. */
   private navigateBackAfterGesture(): void {
     const lower = this.views[this.views.length - 1];
     if (!lower) return;
@@ -422,7 +423,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
     return norm(a) === norm(b);
   }
 
-  /** The router refused the navigation the swipe asked for: put the page back. */
+  /** The router refused the navigation the swipe asked for, so put the page back. */
   private restorePending(): void {
     for (const view of this.byEl.values()) {
       if (!view.pendingRemoval) continue;

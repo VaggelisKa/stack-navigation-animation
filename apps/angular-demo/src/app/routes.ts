@@ -8,13 +8,13 @@ import { DEMO_ROUTES } from './demos/routes';
 
 export const routes: Routes = [
   { path: '', component: Home },
-  // Feed, shop, messages, gallery, forms, search, dashboard, lab: each a lazy route tree.
+  // Feed, shop, messages, gallery, forms, search, dashboard and lab: one lazy route tree each.
   ...DEMO_ROUTES,
-  // The route tree decides these: /items/:id is beneath / (push), /items/:id/reviews beneath that.
+  // The route tree decides these: /items/:id is beneath / (push), and /items/:id/reviews beneath that.
   { path: 'items/:id', component: Item },
   { path: 'items/:id/reviews', component: Reviews, canDeactivate: [(page: Reviews) => !page.lock()] },
   // Numbered screens: /settings and /about sit at the same tree depth as /,
-  // but their numbers say settings is above home and about is above settings.
+  // but their numbers place settings above home and about above settings.
   { path: 'settings', component: Settings, data: { stackLevel: 2 } },
   { path: 'about', component: About, data: { stackLevel: 3 } },
   { path: '**', redirectTo: '' },

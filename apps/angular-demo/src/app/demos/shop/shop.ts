@@ -20,12 +20,12 @@ export class Cart {
   }
 }
 
-/** The product page's data is resolved before the route activates: the tap waits, the page never shows empty. */
+/** The product data is resolved before the route activates, so the push waits and the page never renders empty. */
 export const resolveProduct: ResolveFn<Product> = (route) => inject(FakeApi).product(Number(route.paramMap.get('id')));
 
 const swatch = (p: Product, dir = 160) => `linear-gradient(${dir}deg, hsl(${p.hue} 65% 62%), hsl(${(p.hue + 40) % 360} 60% 38%))`;
 
-/** A two-column product grid with category chips; the chosen chip survives a round trip. */
+/** A two-column product grid with category chips. The selected chip survives a round trip. */
 @Component({
   selector: 'shop-catalog',
   // The cart is a sibling of a product in the route tree, so its button pushes explicitly.
@@ -80,7 +80,7 @@ export class ShopCatalog {
   readonly swatch = swatch;
 }
 
-/** A full-bleed hero under a transparent header, a sticky buy bar, and related items arriving late. */
+/** A full-bleed hero under a transparent header, a sticky buy bar, and related items that load late. */
 @Component({
   selector: 'shop-product',
   imports: [BackButton, ...DEMO_UI],
@@ -195,7 +195,7 @@ export class ShopCart {
   readonly swatch = swatch;
 }
 
-/** A form that submits to the fake backend; success replaces this page so Back can't return to a paid form. */
+/** A form that submits to the fake backend. Success replaces this page, so Back cannot return to a submitted form. */
 @Component({
   selector: 'shop-checkout',
   imports: [BackButton, ...DEMO_UI],
@@ -248,7 +248,7 @@ export class ShopCheckout {
     try {
       const order = await this.api.placeOrder(this.cart.lines(), { fail: this.decline() });
       this.cart.clear();
-      // replaceUrl too, so the browser's history entry for the form is gone as well as its page
+      // replaceUrl as well, so the browser's history entry for the form is removed along with its page
       await this.router.navigate(['/shop/order', order.id], { replaceUrl: true, info: { stacknav: 'replace' } });
     } catch (err) {
       this.error.set(err instanceof Error ? new Error(this.decline() ? 'Your card was declined (simulated).' : err.message) : err);
@@ -276,7 +276,7 @@ export class ShopCheckout {
 export class ShopOrder {
   readonly id = input.required<string>();
   private readonly nav = inject(DemoNav);
-  /** The catalog is still kept beneath: one pop, straight through the cart and the product. */
+  /** The catalog is still kept beneath, so this is one pop straight past the cart and the product. */
   done(): void {
     this.nav.popTo('/shop');
   }

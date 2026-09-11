@@ -2,13 +2,13 @@ import { Injectable } from '@angular/core';
 import { BaseRouteReuseStrategy, type ActivatedRouteSnapshot } from '@angular/router';
 
 /**
- * The router's default strategy reuses a component when only the params
- * change (`/items/1` → `/items/2`), so no outlet activation happens and no
- * transition can run. This one asks for a fresh page whenever the URL of the
- * matched route differs, which is what a navigation stack expects. Routes can
- * opt out with `data: { reuseRoute: true }`.
+ * The router's default strategy reuses a component when only the params change
+ * (`/items/1` → `/items/2`), so no outlet activation happens and no transition
+ * can run. This strategy asks for a fresh page whenever the URL of the matched
+ * route differs, which is what a navigation stack expects. Routes opt out with
+ * `data: { reuseRoute: true }`.
  *
- * It is not installed for you. Provide it like any other strategy if you want
+ * It is not installed automatically. Provide it like any other strategy to get
  * this behaviour:
  *
  * ```ts

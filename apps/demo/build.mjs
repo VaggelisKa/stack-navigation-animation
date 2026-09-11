@@ -1,4 +1,4 @@
-// Builds dist/demo.html: the vanilla demo as one self-contained page.
+// Builds dist/demo.html: the vanilla demo as a single self-contained page.
 import { build } from 'esbuild';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';

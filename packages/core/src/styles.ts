@@ -1,9 +1,9 @@
 /**
- * The only styles the engine needs. Theme nothing here; it is layout — the
- * look lives in the transition, tunable through the `--sn-*` custom properties
- * (see `IOS_TRANSITION_CSS_VARS` and the README). They are documented, not
- * declared: leaving them unset is what makes the JS defaults apply, so set one
- * only where you mean to override.
+ * The only styles the engine needs. These cover layout, not appearance: the
+ * look lives in the transition and is tuned through the `--sn-*` custom
+ * properties (see `IOS_TRANSITION_CSS_VARS` and the README). Those properties
+ * are documented but deliberately not declared, because leaving one unset is
+ * what makes its JS default apply.
  *
  * The string is kept minified because it ships inside every consumer's JS
  * bundle (`injectStyles()` is the default path); `scripts/write-css.mjs`
@@ -27,9 +27,9 @@ export const STACKNAV_CSS =
 export const STACKNAV_STYLE_ID = 'stacknav-styles';
 
 /**
- * Inserts the engine's stylesheet into `doc` once. Framework ports call this
- * so apps need no stylesheet import; apps that ship `stacknav.css` themselves
- * can skip it.
+ * Inserts the engine's stylesheet into `doc` once. Framework ports call this so
+ * apps need no stylesheet import. Apps that ship `stacknav.css` themselves can
+ * skip it.
  */
 export function injectStyles(doc: Document | null = typeof document === 'undefined' ? null : document): void {
   if (!doc || doc.getElementById(STACKNAV_STYLE_ID)) return;

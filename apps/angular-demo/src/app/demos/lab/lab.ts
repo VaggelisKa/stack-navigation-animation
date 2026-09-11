@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { FakeApi } from '../fake-api';
 import { BackButton, DEMO_UI, DemoNav, DemoPrefs } from '../shared';
 
-/** Knobs for the engine and the fake backend, plus pages built to stress them. */
+/** Controls for the engine and the fake backend, plus pages that stress them. */
 @Component({
   selector: 'lab-home',
   imports: [RouterLink, BackButton],
@@ -58,7 +58,7 @@ export class LabStress {
   readonly rows = Array.from({ length: 600 }, (_, i) => i + 1);
 }
 
-/** `/lab/deep/1`, `/lab/deep/2`, … : siblings, pushed by hint; a pop to a kept page unwinds them all. */
+/** `/lab/deep/1`, `/lab/deep/2`, …: siblings pushed by hint. A pop to a kept page unwinds them all. */
 @Component({
   selector: 'lab-deep',
   imports: [BackButton, ...DEMO_UI],

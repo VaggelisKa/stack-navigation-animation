@@ -1,11 +1,11 @@
-// Reading the engine's knobs from CSS custom properties, so the look can be
-// tuned from a stylesheet — in a media query, under a theme class, per
-// container — instead of only from JS. Values are parsed the way CSS would
-// read them (`300ms`, `0.4s`, `30%`, `cubic-bezier(...)`).
+// Reads the engine's options from CSS custom properties, so the transition can
+// be tuned from a stylesheet (a media query, a theme class, a single container)
+// instead of only from JS. Values are parsed the way CSS reads them: `300ms`,
+// `0.4s`, `30%`, `cubic-bezier(...)`.
 //
 // Every parser returns undefined for anything it does not understand, never
-// NaN: a value the engine cannot read has to fall through to its JS option,
-// not poison a transform.
+// NaN, so an unreadable value falls through to its JS option instead of
+// producing an invalid transform.
 
 import { cubicBezier, easings, type Easing } from './animate.ts';
 
@@ -13,10 +13,10 @@ import { cubicBezier, easings, type Easing } from './animate.ts';
 export type CSSVarReader = (name: string) => string | undefined;
 
 /**
- * A reader over `el`'s computed custom properties. Custom properties inherit,
- * so a variable set on `:root` (or any ancestor) is visible here. Returns a
- * reader that finds nothing when there is no element or no `getComputedStyle`
- * (SSR, tests), which makes every caller fall back to its JS option.
+ * Returns a reader over `el`'s computed custom properties. Custom properties
+ * inherit, so a variable set on `:root` or any ancestor is visible here. When
+ * there is no element or no `getComputedStyle` (SSR, tests), the reader finds
+ * nothing and every caller falls back to its JS option.
  */
 export function cssVars(el: Element | null | undefined): CSSVarReader {
   const style = el && typeof getComputedStyle === 'function' ? getComputedStyle(el) : null;
@@ -41,7 +41,7 @@ export function parseNumber(v: string | undefined): number | undefined {
   return s !== undefined && NUMBER.test(s) ? Number(s) : undefined;
 }
 
-/** A fraction, written either way: `0.3` and `30%` are the same. */
+/** A fraction. `0.3` and `30%` are equivalent. */
 export function parseRatio(v: string | undefined): number | undefined {
   const s = v?.trim();
   if (s === undefined) return undefined;
@@ -52,8 +52,8 @@ export function parseRatio(v: string | undefined): number | undefined {
 
 /**
  * The CSS timing keywords that are cubic curves, plus the two this engine
- * ships. Null-prototype, so `__proto__` and `constructor` are misses like any
- * other unknown word rather than truthy junk that is not an easing function.
+ * ships. Null-prototype, so `__proto__` and `constructor` miss like any other
+ * unknown word instead of returning a truthy non-easing value.
  *
  * Built on first use rather than at module load: solving four curves here
  * would be work a bundler cannot prove pointless, which would keep this
@@ -72,9 +72,9 @@ const easingKeywordsOf = (): Record<string, Easing> =>
   }));
 
 /**
- * A timing keyword or `cubic-bezier(x1, y1, x2, y2)`. The x coordinates must
- * be within [0, 1], as CSS requires: outside it the curve is not a function of
- * time and the solver would not converge.
+ * A timing keyword or `cubic-bezier(x1, y1, x2, y2)`. The x coordinates must be
+ * within [0, 1], as CSS requires. Outside that range the curve is not a
+ * function of time and the solver would not converge.
  */
 export function parseEasing(v: string | undefined): Easing | undefined {
   if (v === undefined) return undefined;

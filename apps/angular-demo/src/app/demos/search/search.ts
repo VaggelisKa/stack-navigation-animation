@@ -6,10 +6,10 @@ import { BackButton, DEMO_UI } from '../shared';
 const ICONS: Record<SearchResult['kind'], string> = { person: '◉', product: '◱', post: '◌', photo: '▣' };
 
 /**
- * Type-ahead search: every keystroke waits 300 ms, then asks the backend and
- * aborts whatever was still in flight. The query lives in the URL (replaced,
- * not pushed), results link into the other demos, and a returning pop finds
- * the text, the results and the scroll position exactly as they were.
+ * Type-ahead search: every keystroke waits 300 ms, then queries the backend and
+ * aborts any request still in flight. The query lives in the URL, replaced
+ * rather than pushed. Results link into the other demos, and a pop back to this
+ * page finds the text, the results and the scroll position unchanged.
  */
 @Component({
   selector: 'search-home',
@@ -60,7 +60,7 @@ const ICONS: Record<SearchResult['kind'], string> = { person: '◉', product: '�
   `,
 })
 export class SearchHome {
-  /** From `?q=`; only read once so the router never fights the keyboard. */
+  /** Read once from `?q=`, so later URL updates do not overwrite what is being typed. */
   readonly q = input<string>();
   private readonly api = inject(FakeApi);
   private readonly router = inject(Router);
