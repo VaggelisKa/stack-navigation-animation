@@ -16,8 +16,10 @@ export type {
   TransitionEvent,
   ProgressEvent,
 } from './navigation-stack.ts';
-export { createIOSTransition } from './ios-transition.ts';
+export { createIOSTransition, IOS_TRANSITION_CSS_VARS } from './ios-transition.ts';
 export type { IOSTransition, IOSTransitionOptions } from './ios-transition.ts';
+export { cssVars, parseTime, parseNumber, parseRatio, parseEasing } from './css-vars.ts';
+export type { CSSVarReader } from './css-vars.ts';
 export { createEdgePanGesture } from './edge-pan-gesture.ts';
 export type { EdgePanGesture, EdgePanGestureOptions } from './edge-pan-gesture.ts';
 export { attachBrowserHistory, isIOSBrowser } from './history-adapter.ts';

@@ -50,6 +50,14 @@ import { fromHint, fromHistory, fromStack, fromLevel, fromTree } from '@stacknav
 
 Write your own as a plain function `(ctx) => 'push' | 'pop' | 'replace' | undefined` and put it anywhere in the list.
 
+**The look has good defaults and no lock-in.** Duration, curve, parallax, dim and shadow are CSS custom properties on the container, so an app that wants a snappier or flatter transition sets a variable rather than rebuilding the engine:
+
+```css
+:root { --sn-duration: 340ms; --sn-easing: cubic-bezier(0.4, 0, 0.2, 1); --sn-parallax: 20%; }
+```
+
+Every one is optional, and unset means the iOS default. The [core README](packages/core#tuning-from-css) has the full list, and they are also plain JS options if you prefer.
+
 ## Develop
 
 ```sh

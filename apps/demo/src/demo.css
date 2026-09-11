@@ -56,6 +56,15 @@ body {
   user-select: none; -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
+/* The engine reads its knobs off the container, so a class is enough to
+   restyle the transition. Anything left unset keeps the default. */
+#app.gentle {
+  --sn-duration: 320ms;
+  --sn-easing: ease-out;
+  --sn-parallax: 15%;
+  --sn-dim-max: 4%;
+  --sn-shadow: -1px 0 6px rgba(0, 0, 0, 0.1);
+}
 .desk-note { display: none; }
 @media (min-width: 560px) and (min-height: 700px) {
   #app {
