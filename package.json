@@ -15,6 +15,13 @@
     "size": "pnpm --filter @stacknav/core size && pnpm --filter @stacknav/angular size",
     "e2e": "pnpm build && pnpm --filter @stacknav/angular-demo build && pnpm --filter @stacknav/angular-demo e2e",
     "dev:demo": "pnpm --filter @stacknav/demo dev",
-    "dev:angular": "pnpm --filter @stacknav/angular-demo start"
+    "dev:angular": "pnpm --filter @stacknav/angular-demo start",
+    "changeset": "changeset",
+    "version-packages": "changeset version && pnpm install --lockfile-only",
+    "release": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^1.0.1",
+    "@changesets/cli": "^3.0.2"
   }
 }

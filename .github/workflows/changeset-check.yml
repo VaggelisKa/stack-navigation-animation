@@ -1,0 +1,28 @@
+name: Changeset
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  changeset:
+    name: Pull request declares a bump
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Fails when a published package changed without a changeset. For a change
+      # that needs no release, commit an empty one: pnpm changeset --empty
+      - run: pnpm exec changeset status --since=origin/main
