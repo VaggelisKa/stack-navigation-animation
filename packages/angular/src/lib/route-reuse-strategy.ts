@@ -7,6 +7,13 @@ import { BaseRouteReuseStrategy, type ActivatedRouteSnapshot } from '@angular/ro
  * transition can run. This one asks for a fresh page whenever the URL of the
  * matched route differs, which is what a navigation stack expects. Routes can
  * opt out with `data: { reuseRoute: true }`.
+ *
+ * It is not installed for you. Provide it like any other strategy if you want
+ * this behaviour:
+ *
+ * ```ts
+ * { provide: RouteReuseStrategy, useClass: StackNavRouteReuseStrategy }
+ * ```
  */
 @Injectable()
 export class StackNavRouteReuseStrategy extends BaseRouteReuseStrategy {

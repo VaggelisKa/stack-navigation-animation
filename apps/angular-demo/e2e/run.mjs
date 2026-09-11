@@ -57,6 +57,8 @@ const transitioned = async (act, name) => {
   await settled();
   return mid;
 };
+// Unanimated activations render on the next change-detection tick; wait for the top page's title.
+const rendered = () => page.waitForFunction(() => !!document.querySelector('sn-outlet > .sn-page:last-child h1')?.textContent?.trim());
 const scrollTop = () => page.evaluate(() => document.querySelector('sn-outlet > .sn-page-visible').scrollTop);
 
 // ---- 1. first load: one page, no animation ---------------------------------
@@ -103,7 +105,7 @@ mid = await transitioned(() => page.click('.sn-page-visible button:has-text("Ite
 check(mid.busy && mid.pages.length === 3, 'pop animates before the page is destroyed');
 s = await state();
 eq(s.pages.join(','), 'app-home,app-item', 'reviews destroyed after pop');
-eq(s.url, '/items/3', 'snBack went back through history');
+eq(s.url, '/items/3', 'back button went back through history');
 
 // ---- 4. browser back pops, with the kept home page intact ------------------
 mid = await transitioned(() => page.goBack(), '05-browser-back');
@@ -183,19 +185,21 @@ eq(s.url, '/', 'url after popping to a fresh page');
 // ---- 8. explicit push without animation ------------------------------------
 await page.click('.sn-page-visible button:has-text("Item 7, no animation")');
 await page.waitForSelector('app-item');
+await rendered();
 s = await state();
 eq(s.pages.join(','), 'app-home,app-item', 'hinted push mounted item 7');
 eq(s.title, 'Item 7', 'item 7 shown');
 
-// ---- 9. siblings: routerLink replaces (tree), StackNav.push pushes (hint) --
+// ---- 9. siblings: routerLink replaces (tree), info hint pushes --
 await page.click('.sn-page-visible a:has-text("via routerLink")');
 await settled();
+await rendered();
 s = await state();
 eq(s.pages.join(','), 'app-home,app-item', 'sibling via routerLink replaced');
 eq(s.title, 'Item 8', 'sibling replaced in place');
-await transitioned(() => page.click('.sn-page-visible button:has-text("via StackNav.push")'), '13-push-sibling');
+await transitioned(() => page.click('.sn-page-visible button:has-text("via info hint")'), '13-push-sibling');
 s = await state();
-eq(s.pages.join(','), 'app-home,app-item,app-item', 'sibling via StackNav.push pushed');
+eq(s.pages.join(','), 'app-home,app-item,app-item', 'sibling via info hint pushed');
 eq(s.title, 'Item 9', 'pushed sibling shown');
 await transitioned(() => page.goBack(), '14-back-sibling');
 s = await state();

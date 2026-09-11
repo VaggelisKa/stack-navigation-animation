@@ -81,8 +81,9 @@ export interface StackNavActivation {
 }
 
 /**
- * A router outlet that keeps a stack of pages and moves between them with
- * the iOS push/pop transition. Drop it in where `<router-outlet>` was:
+ * A router outlet (`RouterOutletContract`) that keeps a stack of pages and
+ * moves between them with the iOS push/pop transition. Use it where you would
+ * use `<router-outlet>`; the router drives it the same way:
  *
  * ```html
  * <sn-outlet />
@@ -133,6 +134,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
   /** The direction of the last activation. */
   lastDirection: Direction | null = null;
 
+  /** Inputs are bound when the router was configured `withComponentInputBinding()`. */
   readonly supportsBindingToComponentInputs?: true;
 
   private views: View[] = [];
@@ -145,7 +147,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
   private subs = new Subscription();
 
   constructor() {
-    if (this.config.bindToComponentInputs) this.supportsBindingToComponentInputs = true;
+    if (this.router.componentInputBindingEnabled) this.supportsBindingToComponentInputs = true;
   }
 
   // ------------------------------------------------------------- lifecycle
@@ -216,7 +218,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
   get pages(): readonly StackNavView[] {
     return this.views;
   }
-  /** Whether a swipe or `StackNav.pop()` has a kept page to reveal. */
+  /** Whether a swipe has a kept page to reveal. */
   get canPop(): boolean {
     return this.views.length > 1;
   }
@@ -407,7 +409,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
     if (previous != null && this.sameUrl(previous, lower.url)) {
       this.browserLocation.back();
     } else {
-      void this.router.navigateByUrl(lower.url, { state: { [this.config.stateKey]: { direction: 'pop', animated: false } } });
+      void this.router.navigateByUrl(lower.url, { info: { [this.config.infoKey]: { direction: 'pop', animated: false } } });
     }
   }
 
@@ -441,7 +443,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
   }
 
   private bindInputs(view: View): void {
-    if (!this.config.bindToComponentInputs) return;
+    if (!this.router.componentInputBindingEnabled) return;
     const mirror = reflectComponentType(view.ref.componentType);
     if (!mirror) return;
     const route = view.route;

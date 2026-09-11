@@ -1,8 +1,10 @@
 # @stacknav/angular
 
-`<sn-outlet />`: an Angular router outlet with the iOS push/pop transition, built on [`@stacknav/core`](../core).
+`<sn-outlet />`: a router outlet with the iOS push/pop transition, built on [`@stacknav/core`](../core).
 
-- **Drop-in.** Replace `<router-outlet>` with `<sn-outlet />`, add `provideStackNav()` next to `provideRouter()`. Routes, guards, resolvers, `routerLink`, lazy loading and component input binding work as before.
+It is an outlet, not a router. Angular Router keeps doing everything it does: routes, guards, resolvers, `routerLink`, `router.navigate`, lazy loading, component input binding, browser history. The outlet only changes what happens when the router activates a route: the page that was showing stays alive beneath the new one, the change is animated, and a swipe from the leading edge pops.
+
+- **Alongside the router.** There is no navigation API of its own. You navigate with the router, go back with `Location`, and read params the way you already do.
 - **Pages stay alive.** The page you came from is kept beneath the top, hidden. Its scroll position, form state, signals and subscriptions are intact when you pop back. Nothing to restore.
 - **Swipe back.** Drag from the leading edge and the page follows the finger; the router follows the gesture (through `history.back()` when that lands on the right page). A `canDeactivate` guard that says no puts the page back.
 - **Nothing prescribed.** Whether a navigation is a push, a pop or a replace comes from strategies you order: an explicit hint, the browser's back/forward, the kept stack, numbers on your routes, or the route tree.
@@ -13,7 +15,7 @@
 // main.ts
 bootstrapApplication(App, {
   providers: [
-    provideRouter(routes, withRouterConfig({ canceledNavigationResolution: 'computed' })),
+    provideRouter(routes, withComponentInputBinding(), withRouterConfig({ canceledNavigationResolution: 'computed' })),
     provideStackNav(),
   ],
 });
@@ -25,21 +27,49 @@ bootstrapApplication(App, {
 ```
 
 ```ts
-// a page
+// a page: nothing from this library in it
 @Component({
-  imports: [StackNavBack],
+  imports: [RouterLink],
   template: `
-    <button snBack="/items">‹ Back</button>
-    <h1>{{ id() }}</h1>`,
+    <button (click)="location.back()">‹ Back</button>
+    <h1>{{ id() }}</h1>
+    <a routerLink="reviews">Reviews</a>`,
 })
 export class Item {
-  readonly id = input.required<string>(); // with withComponentInputBinding() + provideStackNav({ bindToComponentInputs: true })
+  readonly id = input.required<string>(); // bound by withComponentInputBinding()
+  readonly location = inject(Location);
 }
 ```
 
 `canceledNavigationResolution: 'computed'` is optional but recommended: with the router's default, a back navigation refused by a guard rewrites the history entry the browser landed on.
 
 ## Deciding the direction
+
+### Implicit: number your routes
+
+Put a number on each route and the outlet does the rest. Going to a higher number pushes, a lower one pops, the same number replaces. No hints, no calls: `routerLink` and `router.navigate` as usual.
+
+```ts
+export const routes: Routes = [
+  { path: '',         component: Home,     data: { stackLevel: 1 } },
+  { path: 'settings', component: Settings, data: { stackLevel: 2 } },
+  { path: 'about',    component: About,    data: { stackLevel: 3 } },
+];
+```
+
+The property name is yours: `provideStackNav({ levelOf: (snapshot) => snapshot.data['depth'] })`. Routes without a number fall through to the route tree (descendant pushes, ancestor pops), so you can number only the screens the tree gets wrong.
+
+### Explicit: a hint on the navigation
+
+For the odd navigation that should go against the numbers, pass a hint through the router's own `NavigationExtras.info`, under the `stacknav` key:
+
+```ts
+router.navigate(['/items', 2], { info: { stacknav: 'push' } });                           // force a push
+router.navigate(['/login'], { info: { stacknav: 'replace' } });                            // swap the top page
+router.navigate(['/x'], { info: { stacknav: { direction: 'pop', animated: false } } });   // no animation
+```
+
+### The full order
 
 The defaults are `[fromHint(), fromHistory(), fromStack(), fromLevel(), fromTree()]`, so out of the box:
 
@@ -51,7 +81,7 @@ The defaults are `[fromHint(), fromHistory(), fromStack(), fromLevel(), fromTree
 | `routerLink` to a page still kept beneath | pop | the stack |
 | `/settings` (`data.stackLevel: 2`) → `/about` (`stackLevel: 3`) | push | numbering |
 | `/items/1` → `/items/2` via `routerLink` | replace | siblings |
-| `nav.push(['/items', 2])` | push | explicit hint |
+| `router.navigate(['/items', 2], { info: { stacknav: 'push' } })` | push | explicit hint |
 
 Change the order, drop a strategy, or add your own:
 
@@ -65,16 +95,19 @@ provideStackNav({
 
 A strategy sees `{ from, to, trigger, historyDelta, hint, stack }` where `from`/`to` carry `{ key, segments, level, data, snapshot }`.
 
-Per navigation:
+### Back buttons
+
+A back button is `Location.back()`. After a deep link there is nothing to go back to, so an app typically falls back to a route as a pop; that is a few lines of app code with `Router` and `Location` (see [`apps/angular-demo/src/app/back.ts`](../../apps/angular-demo/src/app/back.ts)).
+
+### Siblings
+
+The router's default `RouteReuseStrategy` reuses the component when only params change (`/items/1` → `/items/2`), so the outlet is never activated and nothing animates. If you want those to be separate pages, provide the strategy this package exports, like any other:
 
 ```ts
-const nav = inject(StackNav);
-nav.push(['/items', 2]);                        // force a push
-nav.replace(['/login']);                        // swap the top page, no animation
-nav.navigate(['/x'], { direction: 'pop', animated: false });
-nav.pop('/');                                   // history back, or navigate to '/' as a pop after a deep link
-router.navigate(['/x'], { state: { stacknav: 'pop' } }); // the same hint by hand
+{ provide: RouteReuseStrategy, useClass: StackNavRouteReuseStrategy }
 ```
+
+Routes opt out of it with `data: { reuseRoute: true }`.
 
 ## API
 
@@ -86,30 +119,22 @@ router.navigate(['/x'], { state: { stacknav: 'pop' } }); // the same hint by han
 | `fallbackDirection` | `'push'` | when no strategy has an opinion |
 | `levelOf(snapshot)` | `data.stackLevel` | the route's number |
 | `keyOf(snapshot)` | the route's URL path | identity of a page |
-| `stateKey` | `'stacknav'` | `history.state` key for hints |
+| `infoKey` | `'stacknav'` | key in `NavigationExtras.info` for hints |
 | `transition` | `{}` | `createIOSTransition` options for every outlet |
 | `gesture` | `{}` | `createEdgePanGesture` options; `false` disables swiping |
-| `bindToComponentInputs` | `false` | set inputs from params, query params and data, like `withComponentInputBinding()` |
 | `detachInactiveViews` | `false` | detach change detection from hidden pages |
 | `injectStyles` | `true` | insert the core stylesheet at runtime |
-| `reuseStrategy` | `true` | provide a `RouteReuseStrategy` under which `/items/1` → `/items/2` is a new page. Routes opt out with `data: { reuseRoute: true }` |
 | `animated` | `true` | animate at all |
 
 ### `<sn-outlet>` (`StackNavOutlet`)
 
 Inputs: `name`, `transition`, `gesture`, `routerOutletData`. Outputs: `activate`, `deactivate`, `attach`, `detach` (like `router-outlet`) and `navigated` with `{ view, direction, animated, reused }`. Properties: `stack` (the core `NavigationStack`, for `progress` events), `pages` (kept pages, bottom to top), `canPop`, `lastDirection`.
 
-### `StackNav`
+Component inputs are bound when the router is configured `withComponentInputBinding()`, as with `router-outlet`.
 
-`navigate`, `navigateByUrl`, `push`, `replace`, `pop(fallback?)`. Extras accept `direction` and `animated` on top of the router's.
+### `StackNavRouteReuseStrategy`
 
-### `[snBack]` (`StackNavBack`)
-
-A click goes back through history, or to the given fallback as a pop when there is no history.
-
-### `StackNavHistory`
-
-The model of browser history the outlet uses: `previousUrl`, `currentUrl`, `canGoBack`, and `current` (the navigation in flight, with `trigger`, `historyDelta`, `hint`).
+Opt-in, see above.
 
 ## How it works
 
