@@ -28,7 +28,10 @@
  * - `.sn-page-visible`: the top page, and both pages during a transition.
  * - `.sn-page-upper` / `.sn-page-lower`: the two pages taking part in the
  *   transition in flight. Only these transition, and only these are promoted,
- *   so a deep stack costs nothing at rest.
+ *   so a deep stack costs nothing at rest. Both `transform` and `opacity` are
+ *   listed, so a transition of your own can fade a page as well as move it and
+ *   still be run by the browser; the iOS look only ever changes `transform`,
+ *   and a property that does not change starts no transition.
  * - `.sn-dim`: the overlay the lower page dims behind. Its colour and its
  *   opacity are written by the transition; everything else is here.
  * - `.sn-edge`: the strip the swipe-back gesture listens on. `inset-inline-start`
@@ -43,7 +46,7 @@ export const STACKNAV_CSS =
   '.sn-container:dir(rtl){--sn-dir:-1}' +
   '.sn-page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;visibility:hidden;transform:translate3d(0,0,0)}' +
   '.sn-page-visible{visibility:visible}' +
-  '.sn-page-upper,.sn-page-lower{will-change:transform;transition:transform var(--sn-t,0s) var(--sn-e,linear)}' +
+  '.sn-page-upper,.sn-page-lower{will-change:transform;transition-property:transform,opacity;transition-duration:var(--sn-t,0s);transition-timing-function:var(--sn-e,linear)}' +
   '.sn-dim{position:fixed;inset:0;z-index:2147483647;pointer-events:none;opacity:0;transition:opacity var(--sn-t,0s) var(--sn-e,linear)}' +
   '.sn-edge{position:absolute;inset-block:0;inset-inline-start:0;z-index:10;touch-action:none}' +
   '.sn-container:not(.sn-can-pop) .sn-edge,.sn-container.sn-anywhere .sn-edge{display:none}' +

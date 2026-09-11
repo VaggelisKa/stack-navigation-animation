@@ -31,6 +31,11 @@ Three things to know if you had gone past the defaults:
   attach one. A bare `(t) => number` has none, so the pages would run `linear`
   while `progress` reported your curve — give it a `css` property.
 
+Right-to-left containers work now, as a side effect of the geometry moving into
+CSS: `--sn-dir` signs the travel, the swipe strip sits on the reading-leading
+edge, and the gesture takes its direction from the same place, so back is a drag
+to the left there.
+
 `progress` still fires with `(lower, upper, p)`, but reporting it now costs a
 frame loop, so one only runs while something is subscribed. Chrome that only has
 to move with the pages can transition off `--sn-t` / `--sn-e` and the

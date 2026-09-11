@@ -116,6 +116,60 @@ test('the click after a drag release is swallowed', async () => {
   assert.equal(prevented, false, 'only the immediate click is swallowed');
 });
 
+// The stylesheet puts the strip on the trailing edge for a right-to-left
+// container, so back is a drag to the left. The recognizer has to read the same
+// --sn-dir the transition does, or the default gesture stops working in RTL.
+test('right-to-left: back is a drag toward the leading edge', async () => {
+  container.vars['--sn-dir'] = '-1';
+  strip.dispatch('pointerdown', ptr(395));
+  now += 16;
+  strip.dispatch('pointermove', ptr(380));
+  assert.equal(stack.busy, true, 'a leftward drag begins the interactive pop');
+  now += 16;
+  strip.dispatch('pointermove', ptr(140));
+  strip.dispatch('pointerup', ptr(140));
+  await new Promise((r) => setTimeout(r, 5));
+  assert.equal(stack.depth, 1, 'and completes it');
+});
+
+test('right-to-left: a drag the other way is not a back gesture', async () => {
+  container.vars['--sn-dir'] = '-1';
+  strip.dispatch('pointerdown', ptr(20));
+  now += 16;
+  strip.dispatch('pointermove', ptr(300));
+  assert.equal(stack.busy, false);
+  strip.dispatch('pointerup', ptr(300));
+  await new Promise((r) => setTimeout(r, 5));
+  assert.equal(stack.depth, 2);
+});
+
+// Velocity is averaged over the whole gesture, so a cancelling flick is one
+// that ends up behind where it started. These two are mirror images: if the
+// sign of the velocity did not follow --sn-dir, the right-to-left one would
+// read as a fast flick forward and complete instead.
+test('a flick back past the start cancels', async () => {
+  strip.dispatch('pointerdown', ptr(5));
+  now += 10;
+  strip.dispatch('pointermove', ptr(200));
+  now += 10;
+  strip.dispatch('pointermove', ptr(-20)); // -1250 px/s, past cancelVelocity
+  strip.dispatch('pointerup', ptr(-20));
+  await new Promise((r) => setTimeout(r, 5));
+  assert.equal(stack.depth, 2);
+});
+
+test('right-to-left: a flick back past the start cancels too', async () => {
+  container.vars['--sn-dir'] = '-1';
+  strip.dispatch('pointerdown', ptr(395));
+  now += 10;
+  strip.dispatch('pointermove', ptr(200));
+  now += 10;
+  strip.dispatch('pointermove', ptr(420)); // the same flick, mirrored
+  strip.dispatch('pointerup', ptr(420));
+  await new Promise((r) => setTimeout(r, 5));
+  assert.equal(stack.depth, 2, 'the velocity sign follows the reading direction too');
+});
+
 test('detach removes the strip and listeners', () => {
   gesture.detach();
   assert.equal(container.children.includes(strip), false);

@@ -205,6 +205,12 @@ handling a value needs.
 
 Call `gesture.refresh()` after changing options at runtime.
 
+The leading edge is whichever edge the container reads from, so in a
+right-to-left container the strip sits on the right and back is a drag to the
+left. The recognizer and the transition both take that from `--sn-dir`, which
+the stylesheet sets under `:dir(rtl)`, falling back to the container's computed
+`direction`; set `--sn-dir: -1` yourself to flip both without an RTL document.
+
 ### `attachBrowserHistory(stack, { key = "snDepth", animateHistoryPop, onForward })`
 
 For apps without a router. Mirrors stack depth into `history.state`. Returns a

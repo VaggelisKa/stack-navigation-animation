@@ -215,6 +215,7 @@ const run = await page.evaluate(async () => {
       lower: x(lower),
       dim: +getComputedStyle(dim).opacity,
       shadowed: getComputedStyle(upper).boxShadow !== 'none',
+      transitions: getComputedStyle(upper).transitionProperty,
       owned: upper.getAnimations().map((a) => `${a.transitionProperty}@${a.effect.getTiming().duration}`),
     });
   }
@@ -240,6 +241,9 @@ check(f[0].owned.includes('transform@500'), `the browser owns the transform run 
 eq(f[0].duration, '500ms', 'the container tells CSS how long the phase is');
 eq(f[0].ease, 'cubic-bezier(0.32, 0.72, 0, 1)', 'and on what curve');
 check(f[0].shadowed, 'the incoming page carries the shadow');
+// A transition of your own may fade a page rather than move it, and the README
+// offers that; the role classes have to cover opacity for the browser to run it.
+check(/transform/.test(f[0].transitions) && /opacity/.test(f[0].transitions), `a moving page transitions transform and opacity (${f[0].transitions})`);
 check(f[0].upper > 50 && f.at(-1).upper < f[0].upper, `the upper page slides in (${f.map((r) => Math.round(r.upper)).join(' \u2192 ')}px)`);
 const parallax = Math.min(...f.map((r) => r.lower));
 check(parallax < -1 && parallax > -420 * 0.31, `the lower page parallaxes by --sn-parallax (${f.map((r) => Math.round(r.lower)).join(' \u2192 ')}px)`);
