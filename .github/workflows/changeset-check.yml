@@ -10,8 +10,12 @@ jobs:
     name: Pull request declares a bump
     runs-on: ubuntu-latest
     # The release pull request applies the pending changesets and deletes them,
-    # so by its own rule it declares nothing. Leave it alone.
-    if: github.head_ref != 'changeset-release/main'
+    # so by its own rule it declares nothing. Leave it alone -- but only when it
+    # really is ours: a branch name proves nothing about a fork, and a skipped
+    # job counts as a passing one.
+    if: >-
+      github.event.pull_request.head.repo.full_name != github.repository ||
+      github.head_ref != 'changeset-release/main'
     steps:
       - uses: actions/checkout@v7
         with:
