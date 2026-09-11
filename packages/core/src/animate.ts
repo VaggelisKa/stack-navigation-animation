@@ -1,12 +1,13 @@
-// Timing, not rendering. The browser interpolates the pages (see styles.ts);
-// what lives here is the arithmetic CSS cannot do for us: a curve the engine
-// can both hand to CSS *and* evaluate in JS, and a tween used only to report
-// progress to listeners.
+// A small animation toolkit. The pages themselves are moved by CSS (see
+// styles.ts), so what is here is the arithmetic CSS cannot do for the engine:
+// a curve it can both hand to CSS and sample in JS, the spellings CSS wants,
+// a cancellable tween used only to report progress, and the two helpers that
+// hand a run over to the browser.
 
 /**
- * An easing curve. Callable so JS can sample it; `css` is the same curve
- * spelled for `transition-timing-function`, which is what actually drives
- * the pixels. A plain `(t) => number` is still a valid easing — it just
+ * An easing curve. Callable, so the engine can sample it; `css` is the same
+ * curve spelled for `transition-timing-function`, which is what actually
+ * drives the pixels. A plain `(t) => number` is still a valid easing, it just
  * falls back to `linear` on the CSS side.
  */
 export interface Easing {
@@ -34,13 +35,16 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Eas
   return Object.assign(f, { css: `cubic-bezier(${x1}, ${y1}, ${x2}, ${y2})` });
 }
 
+// `#__PURE__` marks the module-load calls as droppable, so a bundler that does
+// not honour the package's `sideEffects` flag can still leave this module out
+// when nothing here is imported.
 export const easings: { linear: Easing; ios: Easing; easeOut: Easing } = {
-  linear: Object.assign((t: number) => t, { css: 'linear' }),
-  ios: cubicBezier(0.32, 0.72, 0, 1), // the usual approximation of UIKit's navigation curve
-  easeOut: cubicBezier(0.2, 0.8, 0.2, 1),
+  linear: /*#__PURE__*/ Object.assign((t: number) => t, { css: 'linear' }),
+  ios: /*#__PURE__*/ cubicBezier(0.32, 0.72, 0, 1), // the common approximation of UIKit's navigation curve
+  easeOut: /*#__PURE__*/ cubicBezier(0.2, 0.8, 0.2, 1),
 };
 
-/** How an easing should be spelled for CSS. Unknown curves animate linearly. */
+/** How an easing should be spelled for CSS. A curve with no spelling runs linearly. */
 export const cssEasing = (ease: Easing | undefined): string => ease?.css ?? 'linear';
 
 /** How a duration should be spelled for CSS. */
@@ -57,11 +61,12 @@ export interface TweenOptions {
 export type CancellableTween = Promise<void> & { cancel(): void };
 
 /**
- * Animate a number from `from` to `to` over `duration` ms, calling `onUpdate`
- * every frame. Returns a promise that resolves when done; `promise.cancel()`
- * stops it early. A duration of 0 (or less) jumps straight to `to`.
+ * Animates a number from `from` to `to` over `duration` ms, calling `onUpdate`
+ * every frame. Returns a promise that resolves when the tween is done;
+ * `promise.cancel()` stops it early. A duration of 0 or less jumps straight
+ * to `to`.
  *
- * The engine does not use this to move pages — CSS does that. It uses it to
+ * The engine does not use this to move pages, CSS does that. It uses it to
  * report `progress` to listeners, and only while someone is listening.
  */
 export function tween({ from, to, duration, ease = easings.linear, onUpdate }: TweenOptions): CancellableTween {
@@ -94,24 +99,23 @@ export function tween({ from, to, duration, ease = easings.linear, onUpdate }: T
 }
 
 /**
- * Commit the styles written so far, so that the *next* write is seen as a
- * change and starts a CSS transition from here rather than being collapsed
- * into it. One forced layout per transition; the alternative is a frame of JS
- * per frame of animation.
+ * Commits the styles written so far, so the *next* write is seen as a change
+ * and starts a CSS transition from here instead of being collapsed into it.
+ * One forced layout per transition, in place of a frame of JavaScript per
+ * frame of animation.
  */
 export function commitStyles(el: HTMLElement): void {
   void el.offsetWidth;
 }
 
 /**
- * Resolve once the CSS transitions of `properties` on these elements have
- * finished. Nothing running — no transition started, a zero duration,
- * `prefers-reduced-motion`, an element that is not being rendered — resolves
- * immediately, so a stack in a hidden tab still completes. Interrupted
- * animations reject, which counts as finished.
+ * Resolves once the CSS transitions of `properties` on these elements have
+ * finished. Nothing running resolves immediately: no transition started, a
+ * zero duration, `prefers-reduced-motion`, an element that is not being
+ * rendered. Interrupted animations reject, which counts as finished.
  *
- * Only transitions of the named properties are waited on: an app is free to
- * keep its own animation running on a page without stalling the stack.
+ * Only the named properties are waited on, so an app is free to keep its own
+ * animation running on a page without stalling the stack.
  */
 export function animationsFinished(els: Array<HTMLElement | null | undefined>, properties: readonly string[] = ['transform', 'opacity']): Promise<void> {
   const running: Array<Promise<unknown>> = [];

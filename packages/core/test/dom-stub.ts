@@ -1,20 +1,27 @@
-// The smallest DOM the engine needs: classList, style (including custom
-// properties), parent/child, clientWidth. No layout and no animations, so
+// The minimum DOM the engine needs: classList, style, parent/child, clientWidth,
+// and inherited custom properties for getComputedStyle().
+//
+// Custom properties set through `style.setProperty` land in the same store
+// `getComputedStyle` reads, as they would in a browser, so a test can set a
+// variable the way an author would (`el.vars[name] = value`) and still see
+// what the engine writes. There is no layout and no animation, so
 // `commitStyles` is a no-op and every CSS transition reads as already finished.
-const makeStyle = () => {
+const makeStyle = (vars: Record<string, string>) => {
   const style: any = {
-    setProperty: (k: string, v: string) => (style[k] = v),
-    removeProperty: (k: string) => delete style[k],
-    getPropertyValue: (k: string) => style[k] ?? '',
+    setProperty: (k: string, v: string) => ((k.startsWith('--') ? vars : style)[k] = v),
+    removeProperty: (k: string) => delete (k.startsWith('--') ? vars : style)[k],
+    getPropertyValue: (k: string) => (k.startsWith('--') ? vars[k] : style[k]) ?? '',
   };
   return style;
 };
 
 export function makeElement(tag = 'div'): any {
   const classes = new Set();
+  const vars: Record<string, string> = {};
   const el: any = {
     tagName: tag.toUpperCase(),
-    style: makeStyle(),
+    style: makeStyle(vars),
+    vars,
     parentElement: null,
     children: [],
     clientWidth: 400,
@@ -72,7 +79,21 @@ export function installGlobals() {
   globalThis.document = { createElement: makeElement };
   globalThis.performance ||= { now: () => Date.now() };
   globalThis.matchMedia = () => ({ matches: false });
-  // Instant rAF: every tween finishes within a microtask or two.
+  // Custom properties inherit, so walk up until one element declares the name.
+  // This stub differs from a real browser in two ways. It resolves on detached
+  // elements, where a browser returns an empty declaration, which lets the tests
+  // skip building a document. And it returns values verbatim, where a browser
+  // would already have substituted var(). Neither affects what is under test,
+  // which is how the engine reads and parses the values it is given, but a
+  // variable that only works here is possible, so new code reading variables
+  // should also be checked in a real browser.
+  globalThis.getComputedStyle = (el) => ({
+    getPropertyValue(name) {
+      for (let e = el; e; e = e.parentElement) if (e.vars?.[name] !== undefined) return e.vars[name];
+      return '';
+    },
+  });
+  // Instant rAF, so every tween finishes within a microtask or two.
   globalThis.requestAnimationFrame = (fn) => setTimeout(() => fn(performance.now() + 10_000), 0);
   globalThis.cancelAnimationFrame = (id) => clearTimeout(id);
 }

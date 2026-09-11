@@ -27,7 +27,7 @@ importers:
         version: 22.1.6(@angular/common@22.1.6(@angular/core@22.1.6(@angular/compiler@22.1.6)(rxjs@7.8.2)(zone.js@0.16.3))(rxjs@7.8.2))(@angular/core@22.1.6(@angular/compiler@22.1.6)(rxjs@7.8.2)(zone.js@0.16.3))(@angular/platform-browser@22.1.6(@angular/common@22.1.6(@angular/core@22.1.6(@angular/compiler@22.1.6)(rxjs@7.8.2)(zone.js@0.16.3))(rxjs@7.8.2))(@angular/core@22.1.6(@angular/compiler@22.1.6)(rxjs@7.8.2)(zone.js@0.16.3)))(rxjs@7.8.2)
       '@stacknav/angular':
         specifier: workspace:*
-        version: link:../../packages/angular
+        version: link:../../packages/angular/dist
       '@stacknav/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -103,12 +103,16 @@ importers:
       zone.js:
         specifier: ^0.16.0
         version: 0.16.3
+    publishDirectory: dist
 
   packages/core:
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.2
+      esbuild:
+        specifier: ^0.28.0
+        version: 0.28.2
       typescript:
         specifier: ~6.0.0
         version: 6.0.3

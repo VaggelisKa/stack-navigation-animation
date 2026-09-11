@@ -1,7 +1,7 @@
 {
   "name": "stacknav-workspace",
   "private": true,
-  "description": "iOS-style push/pop navigation transitions: a framework-agnostic core with Angular (and React) ports.",
+  "description": "iOS-style push/pop navigation for the web: a framework-agnostic core plus Angular (and React) ports.",
   "license": "MIT",
   "packageManager": "pnpm@10.33.0",
   "engines": {
@@ -12,7 +12,8 @@
     "build:all": "pnpm -r build",
     "test": "pnpm --filter @stacknav/core test",
     "typecheck": "pnpm --filter @stacknav/core typecheck",
-    "e2e": "pnpm --filter @stacknav/angular-demo build && pnpm --filter @stacknav/angular-demo e2e",
+    "size": "pnpm --filter @stacknav/core size && pnpm --filter @stacknav/angular size",
+    "e2e": "pnpm build && pnpm --filter @stacknav/angular-demo build && pnpm --filter @stacknav/angular-demo e2e",
     "dev:demo": "pnpm --filter @stacknav/demo dev",
     "dev:angular": "pnpm --filter @stacknav/angular-demo start"
   }

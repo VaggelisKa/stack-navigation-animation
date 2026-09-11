@@ -1,63 +1,17 @@
 // End-to-end check of @stacknav/angular against the built demo (dist/browser).
 // Run `ng build` first. Uses the preinstalled Chromium through playwright-core.
-import { chromium } from 'playwright-core';
-import { createServer } from 'node:http';
-import { readFile, mkdir } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { extname, join } from 'node:path';
+// This suite covers the router mechanics on the small pages; demos.mjs drives
+// the demo apps.
+import { join } from 'node:path';
+import { launch } from './harness.mjs';
 
-const ROOT = new URL('../dist/browser/', import.meta.url).pathname;
-const SHOTS = new URL('./shots/', import.meta.url).pathname;
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.map': 'application/json' };
+const { page, base, check, eq, section, state, settled, transitioned, swipeBack, scrollTop, shots, finish } = await launch();
 
-const server = createServer(async (req, res) => {
-  const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-  let file = join(ROOT, path);
-  if (!existsSync(file) || path === '/' || !extname(path)) file = join(ROOT, 'index.html');
-  res.setHeader('content-type', TYPES[extname(file)] || 'application/octet-stream');
-  res.end(await readFile(file));
-});
-await new Promise((r) => server.listen(0, r));
-const base = `http://127.0.0.1:${server.address().port}`;
-
-const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const browser = await chromium.launch({ executablePath });
-const page = await browser.newPage({ viewport: { width: 420, height: 800 } });
-const errors = [];
-page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-await mkdir(SHOTS, { recursive: true });
-
-let failures = 0;
-const check = (cond, msg) => {
-  console.log(`${cond ? 'ok  ' : 'FAIL'} ${msg}`);
-  if (!cond) failures++;
+// A deep link from elsewhere: about:blank first, so no same-origin entry sits behind it.
+const deepLink = async (path) => {
+  await page.goto('about:blank');
+  await page.goto(base + path);
 };
-const eq = (a, b, msg) => check(a === b, `${msg} (${JSON.stringify(a)}${a === b ? '' : ' ≠ ' + JSON.stringify(b)})`);
-
-// ---- helpers that read the outlet's DOM ------------------------------------
-const state = () =>
-  page.evaluate(() => {
-    const outlet = document.querySelector('sn-outlet');
-    const pages = [...outlet.querySelectorAll(':scope > .sn-page')];
-    return {
-      url: location.pathname,
-      busy: outlet.classList.contains('sn-busy'),
-      pages: pages.map((p) => p.tagName.toLowerCase()),
-      visible: pages.filter((p) => p.classList.contains('sn-page-visible')).map((p) => p.tagName.toLowerCase()),
-      title: pages.at(-1)?.querySelector('h1')?.textContent?.trim(),
-    };
-  });
-const settled = () => page.waitForFunction(() => !document.querySelector('sn-outlet').classList.contains('sn-busy'));
-const transitioned = async (act, name) => {
-  await act();
-  await page.waitForFunction(() => document.querySelector('sn-outlet').classList.contains('sn-busy'), null, { timeout: 2000 }).catch(() => {});
-  const mid = await state();
-  await page.screenshot({ path: join(SHOTS, `${name}.png`) });
-  await settled();
-  return mid;
-};
-const scrollTop = () => page.evaluate(() => document.querySelector('sn-outlet > .sn-page-visible').scrollTop);
 
 // ---- 1. first load: one page, no animation ---------------------------------
 await page.goto(base + '/');
@@ -85,7 +39,7 @@ mid = await transitioned(() => page.click('.sn-page-visible a:has-text("Reviews"
 s = await state();
 eq(s.pages.join(','), 'app-home,app-item,app-reviews', 'three pages kept');
 eq(s.url, '/items/3/reviews', 'url after second push');
-// a canDeactivate guard refuses the swipe: the page must come back
+// a canDeactivate guard refuses the swipe, so the page must come back
 await page.click('.sn-page-visible input[type=checkbox]');
 const box0 = await page.locator('sn-outlet').boundingBox();
 await page.mouse.move(box0.x + 6, box0.y + 300);
@@ -103,7 +57,7 @@ mid = await transitioned(() => page.click('.sn-page-visible button:has-text("Ite
 check(mid.busy && mid.pages.length === 3, 'pop animates before the page is destroyed');
 s = await state();
 eq(s.pages.join(','), 'app-home,app-item', 'reviews destroyed after pop');
-eq(s.url, '/items/3', 'snBack went back through history');
+eq(s.url, '/items/3', 'back button went back through history');
 
 // ---- 4. browser back pops, with the kept home page intact ------------------
 mid = await transitioned(() => page.goBack(), '05-browser-back');
@@ -120,7 +74,7 @@ const y = box.y + box.height / 2;
 await page.mouse.move(box.x + 6, y);
 await page.mouse.down();
 for (let x = 20; x <= 120; x += 20) await page.mouse.move(box.x + x, y);
-await page.screenshot({ path: join(SHOTS, '07-swipe-mid.png') });
+await page.screenshot({ path: join(shots, '07-swipe-mid.png') });
 s = await state();
 eq(s.visible.join(','), 'app-home,app-item', 'both pages visible mid-swipe');
 for (let x = 140; x <= 320; x += 30) await page.mouse.move(box.x + x, y);
@@ -187,22 +141,22 @@ s = await state();
 eq(s.pages.join(','), 'app-home,app-item', 'hinted push mounted item 7');
 eq(s.title, 'Item 7', 'item 7 shown');
 
-// ---- 9. siblings: routerLink replaces (tree), StackNav.push pushes (hint) --
+// ---- 9. siblings: routerLink replaces (tree), info hint pushes --
 await page.click('.sn-page-visible a:has-text("via routerLink")');
 await settled();
 s = await state();
 eq(s.pages.join(','), 'app-home,app-item', 'sibling via routerLink replaced');
 eq(s.title, 'Item 8', 'sibling replaced in place');
-await transitioned(() => page.click('.sn-page-visible button:has-text("via StackNav.push")'), '13-push-sibling');
+await transitioned(() => page.click('.sn-page-visible button:has-text("via info hint")'), '13-push-sibling');
 s = await state();
-eq(s.pages.join(','), 'app-home,app-item,app-item', 'sibling via StackNav.push pushed');
+eq(s.pages.join(','), 'app-home,app-item,app-item', 'sibling via info hint pushed');
 eq(s.title, 'Item 9', 'pushed sibling shown');
 await transitioned(() => page.goBack(), '14-back-sibling');
 s = await state();
 eq(s.title, 'Item 8', 'back returns to the kept sibling');
 
 // ---- 10. deep link, then back with a fallback -------------------------------
-await page.goto(base + '/items/5/reviews');
+await deepLink('/items/5/reviews');
 await page.waitForSelector('app-reviews');
 s = await state();
 eq(s.pages.join(','), 'app-reviews', 'deep link renders one page');
@@ -212,21 +166,39 @@ s = await state();
 eq(s.pages.join(','), 'app-item', 'fallback replaced the deep-linked page with its parent');
 eq(s.url, '/items/5', 'fallback url');
 eq(s.title, 'Item 5', 'fallback page got its input');
+await transitioned(() => page.click('.sn-page-visible button:has-text("Back")'), '16-fallback-again');
+s = await state();
+eq(s.pages.join(','), 'app-home', 'Back after the fallback fell back again instead of leaving the site');
+eq(s.url, '/', 'url after the second fallback');
 
-// ---- 11. the browser, not JavaScript, is running the transition -------------
-// Only a real engine can tell us this, so it is checked here rather than in the
-// core's unit tests: that the pages move on a CSS transition the browser owns,
-// that the numbers behind the look come from the stylesheet, and that a whole
-// push costs a handful of style writes instead of one per page per frame.
+// ---- 11. deep link, push, browser back: Back must stay in the app -----------
+await deepLink('/items/5');
+await page.waitForSelector('app-item');
+await transitioned(() => page.click('.sn-page-visible a:has-text("Reviews")'), '17-deeplink-push');
+await transitioned(() => page.goBack(), '18-deeplink-browser-back');
+s = await state();
+eq(s.pages.join(','), 'app-item', 'browser back returned to the deep-linked page');
+await transitioned(() => page.click('.sn-page-visible button:has-text("Back")'), '19-deeplink-back');
+s = await state();
+eq(s.pages.join(','), 'app-home', 'Back with no entry behind fell back to home');
+eq(s.url, '/', 'url after falling back');
+
+
+// ---- 12. the browser, not JavaScript, is running the transition -------------
+// Only a real engine can show this, so it is checked here rather than in the
+// core's unit tests: the pages move on a CSS transition the browser owns, the
+// numbers behind the look reach it from the stylesheet, and a whole push costs
+// a handful of style writes instead of one per page per frame.
+section('CSS runs the animation');
 await page.goto(base + '/');
 await page.waitForSelector('app-home');
 const run = await page.evaluate(async () => {
   const outlet = document.querySelector('sn-outlet');
+  const x = (el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m41;
   const frames = [];
   let writes = 0;
   const obs = new MutationObserver((records) => (writes += records.length));
   obs.observe(outlet, { attributeFilter: ['style'], subtree: true });
-  const x = (el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m41;
 
   [...outlet.querySelectorAll('.sn-page-visible a')].find((a) => a.textContent.includes('Item 3')).click();
   for (let i = 0; i < 6; i++) {
@@ -235,7 +207,7 @@ const run = await page.evaluate(async () => {
     const upper = outlet.querySelector('.sn-page-upper');
     const lower = outlet.querySelector('.sn-page-lower');
     const dim = outlet.querySelector('.sn-dim');
-    if (!upper || !lower) continue;
+    if (!upper || !lower || !dim) continue;
     frames.push({
       duration: getComputedStyle(outlet).getPropertyValue('--sn-t').trim(),
       ease: getComputedStyle(outlet).getPropertyValue('--sn-e').trim(),
@@ -267,10 +239,12 @@ check(f.length >= 3, `sampled the push mid-flight (${f.length} frames)`);
 check(f[0].owned.includes('transform@500'), `the browser owns the transform run (${f[0].owned.join() || 'none'})`);
 eq(f[0].duration, '500ms', 'the container tells CSS how long the phase is');
 eq(f[0].ease, 'cubic-bezier(0.32, 0.72, 0, 1)', 'and on what curve');
-check(f[0].shadowed, 'the incoming page takes its shadow from the stylesheet');
-check(f[0].upper > 50 && f.at(-1).upper < f[0].upper, `the upper page slides in (${f.map((s) => Math.round(s.upper)).join(' → ')}px)`);
-check(Math.min(...f.map((s) => s.lower)) < -1 && Math.min(...f.map((s) => s.lower)) > -420 * 0.31, `the lower page parallaxes by --sn-parallax (${f.map((s) => Math.round(s.lower)).join(' → ')}px)`);
-check(Math.max(...f.map((s) => s.dim)) > 0.02 && Math.max(...f.map((s) => s.dim)) <= 0.1, `the dim rises to --sn-dim (${f.map((s) => s.dim.toFixed(3)).join(' → ')})`);
+check(f[0].shadowed, 'the incoming page carries the shadow');
+check(f[0].upper > 50 && f.at(-1).upper < f[0].upper, `the upper page slides in (${f.map((r) => Math.round(r.upper)).join(' \u2192 ')}px)`);
+const parallax = Math.min(...f.map((r) => r.lower));
+check(parallax < -1 && parallax > -420 * 0.31, `the lower page parallaxes by --sn-parallax (${f.map((r) => Math.round(r.lower)).join(' \u2192 ')}px)`);
+const dimmed = Math.max(...f.map((r) => r.dim));
+check(dimmed > 0.02 && dimmed <= 0.1, `the dim rises to --sn-dim-max (${f.map((r) => r.dim.toFixed(3)).join(' \u2192 ')})`);
 check(run.writes <= 20, `a whole 500ms push costs ${run.writes} style writes`);
 eq(run.rest.duration, '0s', 'nothing is animating once it is over');
 eq(run.rest.roles, 0, 'the transition roles are dropped');
@@ -279,53 +253,22 @@ eq(run.rest.inline, '|', 'no inline transform survives');
 eq(run.rest.promoted, 0, 'no page is left promoted at rest');
 eq(run.rest.top, 0, 'the resting page sits at the origin, from CSS');
 
-// The finger sets p directly; only the release is a run CSS owns.
-const swipe = await page.evaluate(async () => {
-  const outlet = document.querySelector('sn-outlet');
-  const box = outlet.getBoundingClientRect();
-  const send = (type, x) =>
-    outlet.querySelector('.sn-edge').dispatchEvent(
-      new PointerEvent(type, { pointerId: 1, pointerType: 'touch', clientX: box.left + x, clientY: box.top + 400, bubbles: true }),
-    );
-  const read = () => ({
-    duration: getComputedStyle(outlet).getPropertyValue('--sn-t').trim(),
-    x: new DOMMatrixReadOnly(getComputedStyle(outlet.querySelector('.sn-page-upper')).transform).m41,
+// The pointer sets p directly; only the release is a run CSS owns.
+const dragged = [];
+const readDrag = () =>
+  page.evaluate(() => {
+    const outlet = document.querySelector('sn-outlet');
+    const upper = outlet.querySelector('.sn-page-upper');
+    return {
+      duration: getComputedStyle(outlet).getPropertyValue('--sn-t').trim(),
+      x: upper ? new DOMMatrixReadOnly(getComputedStyle(upper).transform).m41 : null,
+    };
   });
-  send('pointerdown', 2);
-  const dragging = [];
-  for (const x of [20, 80, 140]) {
-    send('pointermove', x);
-    await new Promise((r) => requestAnimationFrame(r));
-    dragging.push(read());
-  }
-  send('pointerup', 140);
-  await new Promise((r) => requestAnimationFrame(r));
-  const released = read();
-  await new Promise((r) => setTimeout(r, 700));
-  return { dragging, released, depth: outlet.querySelectorAll(':scope > .sn-page').length };
-});
-check(swipe.dragging.every((d) => d.duration === '0s'), `while the finger is down nothing animates (${swipe.dragging.map((d) => d.duration).join()})`);
-check(swipe.dragging[0].x < swipe.dragging[2].x, `the page tracks the finger (${swipe.dragging.map((d) => Math.round(d.x)).join(' → ')}px)`);
-check(/^[\d.]+ms$/.test(swipe.released.duration), `the release hands a settle duration to CSS (${swipe.released.duration})`);
-eq(swipe.depth, 1, 'the settle ran and the page was popped');
+await swipeBack({ until: 0.8, mid: async () => dragged.push(await readDrag()) });
+eq(dragged[0]?.duration, '0s', 'while the pointer is down nothing animates');
+check(dragged[0]?.x > 20, `the page tracks the pointer (${Math.round(dragged[0]?.x)}px)`);
+s = await state();
+eq(s.pages.join(','), 'app-home', 'the settle ran and the page was popped');
 
-// prefers-reduced-motion is the stylesheet's call, and it overrules the engine.
-await page.emulateMedia({ reducedMotion: 'reduce' });
-const reduced = await page.evaluate(() => {
-  const outlet = document.querySelector('sn-outlet');
-  outlet.style.setProperty('--sn-t', '500ms');
-  const value = getComputedStyle(outlet).getPropertyValue('--sn-t').trim();
-  outlet.style.setProperty('--sn-t', '0s');
-  return value;
-});
-eq(reduced, '0s', 'reduced motion overrules an engine-written duration');
-await page.emulateMedia({ reducedMotion: null });
 
-await browser.close();
-server.close();
-if (errors.length) {
-  failures++;
-  console.log('browser errors:\n' + errors.join('\n'));
-}
-console.log(failures ? `\n${failures} failure(s)` : '\nall checks passed');
-process.exit(failures ? 1 : 0);
+await finish();

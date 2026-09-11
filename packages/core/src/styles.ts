@@ -1,101 +1,61 @@
 /**
- * The engine's stylesheet. It is layout *and* motion: the browser, not
- * JavaScript, interpolates every page.
+ * The only styles the engine needs. These cover layout and the motion itself,
+ * not appearance: the look lives in the transition and is tuned through the
+ * `--sn-*` custom properties (see `IOS_TRANSITION_CSS_VARS` and the README).
+ * Those properties are documented but deliberately not declared, because
+ * leaving one unset is what makes its JS default apply.
  *
- * The engine writes two custom properties on the container — `--sn-t` and
- * `--sn-e`, the duration and curve of the phase in flight — and the two
- * endpoint transforms. While a finger is down `--sn-t` is `0s`, so the page
- * sits exactly where the finger puts it; for a timed push, pop or settle it
- * is the phase's duration, and `transition` does the rest on the compositor.
+ * The engine does not animate the pages; the browser does. Each phase it
+ * writes `--sn-t` and `--sn-e` on the container — the duration and curve in
+ * force right now — and then writes where the pages should end up. While a
+ * pointer is down `--sn-t` is `0s`, so the page lands exactly where the
+ * pointer puts it; for a push, a pop or the settle after a release it is that
+ * phase's length and `transition` runs it out, on the compositor.
  *
- * Everything else below is yours to override. Theme nothing here.
+ * The string is kept minified because it ships inside every consumer's JS
+ * bundle (`injectStyles()` is the default path); `scripts/write-css.mjs`
+ * expands it into the readable `dist/stacknav.css`. What each rule is for:
+ *
+ * - `.sn-container`: the stack's scroll-clipping frame.
+ * - `.sn-container:dir(rtl)`: reading direction is a CSS question, so the
+ *   transform the engine writes is signed by `--sn-dir` rather than by JS.
+ * - `.sn-page`: absolutely fills the container and is its own scroll container.
+ *   `touch-action: pan-y` keeps vertical scrolling native while horizontal
+ *   drags reach the gesture; `visibility: hidden` keeps pages beneath the top
+ *   mounted (scroll position, form state) but out of sight and out of the
+ *   accessibility tree. The identity transform is the resting state, and the
+ *   containing block the dim overlay is positioned against.
+ * - `.sn-page-visible`: the top page, and both pages during a transition.
+ * - `.sn-page-upper` / `.sn-page-lower`: the two pages taking part in the
+ *   transition in flight. Only these transition, and only these are promoted,
+ *   so a deep stack costs nothing at rest.
+ * - `.sn-dim`: the overlay the lower page dims behind. Its colour and its
+ *   opacity are written by the transition; everything else is here.
+ * - `.sn-edge`: the strip the swipe-back gesture listens on. `inset-inline-start`
+ *   puts it on the leading edge in either reading direction; its width is the
+ *   gesture's `edgeWidth` option, and whether it is shown at all follows from
+ *   the container's classes.
+ * - `.sn-busy`: no clicks land on a page that is mid-transition, and a drag
+ *   does not select the text under it.
  */
-export const STACKNAV_CSS = `
-.sn-container {
-  position: relative;
-  overflow: hidden;
-
-  /* geometry */
-  --sn-parallax: 0.3;            /* how far the lower page travels, as a fraction of the width */
-  --sn-dir: 1;                   /* which way is forward; flipped for right-to-left */
-
-  /* paint */
-  --sn-dim: 0.1;                 /* the lower page's overlay at full open (0.35 reads well on dark UIs) */
-  --sn-dim-color: #000;
-  --sn-shadow: -3px 0 14px rgba(0, 0, 0, 0.16);
-
-  /* gesture */
-  --sn-edge-width: 28px;         /* the leading-edge strip that starts a swipe back */
-
-  /* written by the engine, per phase */
-  --sn-t: 0s;
-  --sn-e: linear;
-}
-
-.sn-container:dir(rtl) {
-  --sn-dir: -1;
-  --sn-shadow: 3px 0 14px rgba(0, 0, 0, 0.16);
-}
-
-.sn-page {
-  position: absolute;
-  inset: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  touch-action: pan-y;         /* vertical scroll stays native; horizontal drags reach the gesture */
-  visibility: hidden;          /* pages beneath the top stay mounted (keeping scroll etc.) but hidden */
-  transform: translate3d(0, 0, 0); /* the resting state, and the containing block the dim sits in */
-}
-.sn-page-visible { visibility: visible; }
-
-/* The two pages taking part in the transition in flight. Only these are
-   promoted and only these transition, so a deep stack costs nothing at rest. */
-.sn-page-upper,
-.sn-page-lower {
-  will-change: transform;
-  transition: transform var(--sn-t) var(--sn-e);
-}
-.sn-page-upper { box-shadow: var(--sn-shadow); }
-
-.sn-dim {
-  position: fixed;             /* the page's transform is its containing block: this covers the page */
-  inset: 0;
-  z-index: 2147483647;
-  pointer-events: none;
-  background: var(--sn-dim-color);
-  opacity: 0;
-  transition: opacity var(--sn-t) var(--sn-e);
-}
-
-.sn-edge {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  width: var(--sn-edge-width);
-  z-index: 10;
-  touch-action: none;
-}
-/* Nothing to go back to, or the whole page is the target: no strip. */
-.sn-container:not(.sn-can-pop) .sn-edge,
-.sn-container.sn-anywhere .sn-edge { display: none; }
-
-/* While a transition or a drag is in flight. */
-.sn-busy { user-select: none; -webkit-user-select: none; }
-.sn-busy .sn-page { pointer-events: none; }
-
-@media (prefers-reduced-motion: reduce) {
-  .sn-container { --sn-t: 0s !important; }
-}
-`;
+export const STACKNAV_CSS =
+  '.sn-container{position:relative;overflow:hidden}' +
+  '.sn-container:dir(rtl){--sn-dir:-1}' +
+  '.sn-page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;visibility:hidden;transform:translate3d(0,0,0)}' +
+  '.sn-page-visible{visibility:visible}' +
+  '.sn-page-upper,.sn-page-lower{will-change:transform;transition:transform var(--sn-t,0s) var(--sn-e,linear)}' +
+  '.sn-dim{position:fixed;inset:0;z-index:2147483647;pointer-events:none;opacity:0;transition:opacity var(--sn-t,0s) var(--sn-e,linear)}' +
+  '.sn-edge{position:absolute;inset-block:0;inset-inline-start:0;z-index:10;touch-action:none}' +
+  '.sn-container:not(.sn-can-pop) .sn-edge,.sn-container.sn-anywhere .sn-edge{display:none}' +
+  '.sn-busy{user-select:none;-webkit-user-select:none}' +
+  '.sn-busy .sn-page{pointer-events:none}';
 
 export const STACKNAV_STYLE_ID = 'stacknav-styles';
 
 /**
- * Inserts the engine's stylesheet into `doc` once. Framework ports call this
- * so apps need no stylesheet import; apps that ship `stacknav.css` themselves
- * can skip it.
+ * Inserts the engine's stylesheet into `doc` once. Framework ports call this so
+ * apps need no stylesheet import. Apps that ship `stacknav.css` themselves can
+ * skip it.
  */
 export function injectStyles(doc: Document | null = typeof document === 'undefined' ? null : document): void {
   if (!doc || doc.getElementById(STACKNAV_STYLE_ID)) return;

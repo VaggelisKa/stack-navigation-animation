@@ -3,16 +3,16 @@ import type { NavigationStack } from './navigation-stack.ts';
 export interface BrowserHistoryOptions {
   /** the `history.state` property that carries the depth */
   key?: string;
-  /** animate pops that come from the back button; off on iOS browsers, which animate their own snapshot */
+  /** animate pops triggered by the back button. Off on iOS browsers, which animate their own snapshot */
   animateHistoryPop?: boolean;
-  /** forward navigation has no page to show; re-push something here instead of bouncing back */
+  /** forward navigation has no page to show. Re-push something here instead of bouncing back */
   onForward?: ((targetDepth: number) => void) | null;
 }
 
 /**
- * Mirrors the stack depth into `history.state` so the browser (or hardware)
- * back button pops the stack, and stack pops walk history back. Returns a
- * function that detaches everything. For apps without a router.
+ * For apps without a router. Mirrors the stack depth into `history.state`, so
+ * the browser or hardware back button pops the stack and stack pops walk
+ * history back. Returns a function that detaches everything.
  */
 export function attachBrowserHistory(stack: NavigationStack, { key = 'snDepth', animateHistoryPop = !isIOSBrowser(), onForward = null }: BrowserHistoryOptions = {}): () => void {
   const depthOf = (state: unknown): number => {

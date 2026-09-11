@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeElement, installGlobals } from './dom-stub.ts';
 import { createIOSTransition } from '../src/ios-transition.ts';
+import { easings } from '../src/animate.ts';
 
 installGlobals();
 
@@ -31,23 +32,38 @@ test('settle derives duration from distance / velocity, clamped', () => {
   assert.equal(t.settle({ remainingPx: 180, velocity: -2000 }).duration, 120, 'uses |velocity|');
 });
 
-test('apply states the travel as a fraction of the page, leaving the geometry to CSS', () => {
-  const t = createIOSTransition();
+// The travel is a share of the page, not a pixel count, so the engine never
+// measures the container and CSS keeps the reading direction.
+const shift = (percent: string) => `translate3d(calc(${percent}% * var(--sn-dir,1)),0,0)`;
+
+test('apply moves upper by (1-p) and lower by -p·parallax, with dim', () => {
+  const t = createIOSTransition({ parallax: 0.3, dimMax: 0.1 });
   const { lower, upper } = entries();
   t.begin(lower, upper);
+  assert.equal(upper.el.style.boxShadow, t.options.shadow);
   t.apply(lower, upper, 0.5);
-  assert.equal(upper.el.style.transform, 'translate3d(calc(50% * var(--sn-dir)),0,0)');
-  assert.equal(lower.el.style.transform, 'translate3d(calc(-50% * var(--sn-parallax) * var(--sn-dir)),0,0)');
+  assert.equal(upper.el.style.transform, shift('50'));
+  assert.equal(lower.el.style.transform, shift('-15'));
   const dim = lower.el.children[0];
-  assert.equal(dim.classes.has('sn-dim'), true);
+  assert.equal(dim.classes.has('sn-dim'), true, 'the overlay is styled by the stylesheet');
   assert.equal(dim.attrs['aria-hidden'], 'true');
-  assert.equal(dim.style.opacity, 'calc(0.5 * var(--sn-dim))');
+  assert.equal(dim.style.opacity, '0.05');
   t.apply(lower, upper, 1);
-  assert.equal(upper.el.style.transform, 'translate3d(calc(0% * var(--sn-dir)),0,0)');
-  assert.equal(dim.style.opacity, 'calc(1 * var(--sn-dim))');
+  assert.equal(upper.el.style.transform, shift('0'));
+  assert.equal(dim.style.opacity, '0.1');
   t.end(lower, upper);
+  assert.equal(upper.el.style.boxShadow, '');
   assert.equal(upper.el.style.transform, '');
   assert.equal(lower.el.children.length, 0, 'dim overlay removed');
+});
+
+test('apply works with no lower page (first push)', () => {
+  const t = createIOSTransition();
+  const { upper } = entries();
+  t.begin(null, upper);
+  t.apply(null, upper, 0);
+  assert.equal(upper.el.style.transform, shift('100'));
+  t.end(null, upper);
 });
 
 test('apply reads no layout, so the width never enters JavaScript', () => {
@@ -63,37 +79,106 @@ test('apply reads no layout, so the width never enters JavaScript', () => {
   t.end(lower, upper);
 });
 
-test('the look stays in the stylesheet unless an option overrides it', () => {
+test('the curve is handed to CSS, not evaluated for it', () => {
+  const t = createIOSTransition();
   const { container, lower, upper } = entries();
-  container.style.setProperty('--sn-parallax', '0.8'); // the app's own theming
-  createIOSTransition().begin(lower, upper);
-  assert.equal(container.style.getPropertyValue('--sn-parallax'), '0.8', 'an unset option leaves the app alone');
-  container.style.removeProperty('--sn-parallax');
-
-  createIOSTransition({ parallax: 0.5, dimMax: 0.35, dimColor: '#123', shadow: 'none' }).begin(lower, upper);
-  assert.equal(container.style.getPropertyValue('--sn-parallax'), '0.5');
-  assert.equal(container.style.getPropertyValue('--sn-dim'), '0.35');
-  assert.equal(container.style.getPropertyValue('--sn-dim-color'), '#123');
-  assert.equal(container.style.getPropertyValue('--sn-shadow'), 'none');
-
-  const t = createIOSTransition({ parallax: 0.5 });
   t.begin(lower, upper);
-  t.options.parallax = undefined;
-  t.begin(lower, upper);
-  assert.equal(container.style.getPropertyValue('--sn-parallax'), '', 'clearing the option hands it back to CSS');
+  assert.equal(t.ease.css, 'cubic-bezier(0.32, 0.72, 0, 1)');
+  assert.equal(t.settle({ remainingPx: 100, velocity: 900 }).ease.css, 'cubic-bezier(0.2, 0.8, 0.2, 1)');
+  container.vars['--sn-easing'] = 'ease-in';
+  t.refresh();
+  assert.equal(t.ease.css, 'cubic-bezier(0.42, 0, 1, 1)', 'a curve parsed from CSS can be spelled back for CSS');
+  t.end(lower, upper);
 });
 
-test('apply works with no lower page (first push)', () => {
+test('CSS variables on the container override the JS options', () => {
+  const t = createIOSTransition({ duration: 500, parallax: 0.3, dimMax: 0.1 });
+  const { container, lower, upper } = entries();
+  Object.assign(container.vars, {
+    '--sn-duration': '0.2s',
+    '--sn-parallax': '50%',
+    '--sn-dim-max': '0.4',
+    '--sn-dim-color': '#123456',
+    '--sn-shadow': 'none',
+    '--sn-easing': 'linear',
+    '--sn-time-scale': '2',
+  });
+  t.begin(lower, upper);
+  assert.equal(t.duration, 400, '200ms × timeScale 2');
+  assert.equal(t.ease(0.25), 0.25, 'linear');
+  assert.equal(upper.el.style.boxShadow, 'none');
+  t.apply(lower, upper, 0.5);
+  assert.equal(lower.el.style.transform, shift('-25'), 'parallax 50% of a half-open page');
+  assert.equal(lower.el.children[0].style.opacity, '0.2');
+  assert.equal(lower.el.children[0].style.background, '#123456');
+  assert.equal(t.options.duration, 500, 'the JS options are left alone');
+  assert.equal(t.resolved.duration, 200, 'resolved reports what is in force');
+  t.end(lower, upper);
+});
+
+test('unset variables fall through to the JS options', () => {
+  const t = createIOSTransition({ duration: 300, parallax: 0.5 });
+  const { container, lower, upper } = entries();
+  container.vars['--sn-duration'] = 'not-a-time';
+  t.begin(lower, upper);
+  assert.equal(t.duration, 300, 'an unparseable value is ignored');
+  t.apply(lower, upper, 1);
+  assert.equal(lower.el.style.transform, shift('-50'));
+  t.end(lower, upper);
+});
+
+test('settle timing and curve come from the variables too', () => {
   const t = createIOSTransition();
+  const { container, lower, upper } = entries();
+  Object.assign(container.vars, { '--sn-settle-min': '50ms', '--sn-settle-max': '80ms', '--sn-settle-easing': 'linear' });
+  t.begin(lower, upper);
+  assert.equal(t.settle({ remainingPx: 10, velocity: 5000 }).duration, 50);
+  assert.equal(t.settle({ remainingPx: 5000, velocity: 100 }).duration, 80);
+  assert.equal(t.settle({ remainingPx: 10, velocity: 5000 }).ease(0.5), 0.5);
+  t.end(lower, upper);
+});
+
+test('refresh re-reads variables changed mid-stack', () => {
+  const t = createIOSTransition();
+  const { container, lower, upper } = entries();
+  t.begin(lower, upper);
+  assert.equal(t.duration, 500);
+  container.vars['--sn-duration'] = '120ms';
+  t.refresh();
+  assert.equal(t.duration, 120);
+  t.end(lower, upper);
+});
+
+test('zero is a value, not an absence', () => {
+  const t = createIOSTransition({ parallax: 0.3, dimMax: 0.1, duration: 500 });
+  const { container, lower, upper } = entries();
+  Object.assign(container.vars, { '--sn-parallax': '0', '--sn-dim-max': '0', '--sn-duration': '0ms', '--sn-time-scale': '0' });
+  t.begin(lower, upper);
+  t.apply(lower, upper, 1);
+  assert.equal(t.resolved.parallax, 0, 'a flat transition is a legitimate thing to ask for');
+  assert.equal(t.resolved.dimMax, 0);
+  assert.equal(t.duration, 0);
+  assert.equal(lower.el.children[0].style.opacity, '0');
+  t.end(lower, upper);
+});
+
+test('ease and settleEase are settable from JS as well', () => {
+  const ease = (x: number) => x * x;
+  const settleEase = (x: number) => 1 - x;
+  const t = createIOSTransition({ ease, settleEase });
   const { upper } = entries();
   t.begin(null, upper);
-  t.apply(null, upper, 0);
-  assert.equal(upper.el.style.transform, 'translate3d(calc(100% * var(--sn-dir)),0,0)');
+  assert.equal(t.ease, ease);
+  assert.equal(t.settle({ remainingPx: 100, velocity: 1000 }).ease, settleEase);
   t.end(null, upper);
 });
 
-test('the curve is handed to CSS, not evaluated for it', () => {
+test('an easing the engine cannot read never reaches the tween', () => {
   const t = createIOSTransition();
-  assert.equal(t.ease.css, 'cubic-bezier(0.32, 0.72, 0, 1)');
-  assert.equal(t.settle({ remainingPx: 100, velocity: 900 }).ease.css, 'cubic-bezier(0.2, 0.8, 0.2, 1)');
+  const { container, lower, upper } = entries();
+  container.vars['--sn-easing'] = '__proto__';
+  t.begin(lower, upper);
+  assert.equal(typeof t.ease, 'function', 'falls back to the default curve');
+  assert.equal(t.ease, easings.ios);
+  t.end(lower, upper);
 });

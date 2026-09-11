@@ -1,12 +1,8 @@
 import type { InteractivePopHandle, NavigationStack } from './navigation-stack.ts';
 
 export interface EdgePanGestureOptions {
-  /**
-   * px strip on the leading edge that starts the gesture. `null` leaves it to
-   * the stylesheet's `--sn-edge-width`, which is where it belongs: the strip
-   * knows about reading direction and the safe area, and JavaScript does not.
-   */
-  edgeWidth: number | null;
+  /** px strip on the leading edge that starts the gesture */
+  edgeWidth: number;
   /** recognize the drag from anywhere on the page */
   anywhere: boolean;
   /** px of horizontal movement before the drag begins */
@@ -15,16 +11,16 @@ export interface EdgePanGestureOptions {
   verticalCancelSlop: number;
   /** fraction of the width dragged that completes without velocity */
   completeThreshold: number;
-  /** px/s toward the trailing edge: completes regardless of distance */
+  /** px/s toward the trailing edge that completes the pop regardless of distance */
   completeVelocity: number;
-  /** px/s back toward the leading edge: cancels regardless of distance */
+  /** px/s back toward the leading edge that cancels the pop regardless of distance */
   cancelVelocity: number;
   velocitySamples: number;
 }
 
 export interface EdgePanGesture {
   readonly options: EdgePanGestureOptions;
-  /** Re-read options at runtime (edge width, `anywhere`). */
+  /** Re-reads options changed at runtime, such as `edgeWidth` and `anywhere`. */
   refresh(): void;
   attach(stack: NavigationStack): EdgePanGesture;
   detach(): void;
@@ -41,14 +37,14 @@ interface Drag {
 }
 
 /**
- * Recognizes a leading-edge horizontal drag and drives the stack's
- * interactive pop from it. Works with pointer events, so mouse and touch
- * both count. Vertical movement early in the touch hands it back to
+ * Recognizes a horizontal drag from the leading edge and drives the stack's
+ * interactive pop from it. Built on pointer events, so it handles both mouse
+ * and touch. Vertical movement early in the gesture hands the touch back to
  * native scrolling.
  */
 export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {}): EdgePanGesture {
   const o: EdgePanGestureOptions = {
-    edgeWidth: null,
+    edgeWidth: 28,
     anywhere: false,
     startSlop: 6,
     verticalCancelSlop: 10,
@@ -111,7 +107,7 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
     const velocity = t2 > t1 ? ((x2 - x1) / (t2 - t1)) * 1000 : 0;
     const cancelled = ev.type === 'pointercancel';
     const complete = !cancelled && (velocity > o.completeVelocity || (d.p < 1 - o.completeThreshold && velocity > o.cancelVelocity));
-    // The click that follows a drag release must not activate whatever is under the finger.
+    // The click that follows a drag release must not activate whatever is under the pointer.
     suppressClick = true;
     setTimeout(() => {
       suppressClick = false;
@@ -131,15 +127,13 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
   const unlisten = (el: HTMLElement) => Object.entries(EVENTS).forEach(([k, f]) => el.removeEventListener(k, f as EventListener));
 
   /**
-   * Whether the strip is there at all is a CSS question — the stylesheet hides
-   * it when there is nothing to pop or when the whole page is the target — so
-   * all this does is tell CSS what is true.
+   * Whether the strip is shown at all is a CSS question — the stylesheet hides
+   * it when there is nothing to go back to, or when the whole page is the
+   * target — so this only has to say what is true.
    */
   const refresh = () => {
     if (!strip) return;
-    const style = stack.container.style;
-    if (o.edgeWidth == null) style.removeProperty('--sn-edge-width');
-    else style.setProperty('--sn-edge-width', `${o.edgeWidth}px`);
+    strip.style.width = o.edgeWidth + 'px';
     stack.container.classList.toggle('sn-anywhere', o.anywhere);
     stack.container.classList.toggle('sn-can-pop', stack.entries.length > 1);
   };
@@ -167,7 +161,6 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
       unlisten(stack.container);
       stack.container.removeEventListener('click', onClick, true);
       stack.container.classList.remove('sn-anywhere', 'sn-can-pop');
-      stack.container.style.removeProperty('--sn-edge-width');
       strip.remove();
       strip = null;
     },

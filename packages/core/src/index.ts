@@ -16,8 +16,10 @@ export type {
   TransitionEvent,
   ProgressEvent,
 } from './navigation-stack.ts';
-export { createIOSTransition } from './ios-transition.ts';
+export { createIOSTransition, IOS_TRANSITION_CSS_VARS } from './ios-transition.ts';
 export type { IOSTransition, IOSTransitionOptions } from './ios-transition.ts';
+export { cssVars, parseTime, parseNumber, parseRatio, parseEasing } from './css-vars.ts';
+export type { CSSVarReader } from './css-vars.ts';
 export { createEdgePanGesture } from './edge-pan-gesture.ts';
 export type { EdgePanGesture, EdgePanGestureOptions } from './edge-pan-gesture.ts';
 export { attachBrowserHistory, isIOSBrowser } from './history-adapter.ts';
@@ -65,9 +67,9 @@ export interface IOSStack extends NavigationStack {
 }
 
 /**
- * One call that wires the three pieces together: a stack in `container`,
- * the iOS transition, and the edge-pan gesture. The gesture is exposed as
- * `stack.gesture`; destroying the stack detaches it.
+ * Wires the three pieces together in one call: a stack in `container`, the iOS
+ * transition, and the edge-pan gesture. The gesture is exposed as
+ * `stack.gesture`, and destroying the stack detaches it.
  */
 export function createIOSStack({ container, transition = {}, gesture = {} }: IOSStackOptions): IOSStack {
   const t = createIOSTransition(transition);

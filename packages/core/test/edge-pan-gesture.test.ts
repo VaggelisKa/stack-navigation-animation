@@ -23,9 +23,9 @@ beforeEach(async () => {
 });
 
 test('the strip states what is true and lets CSS decide whether to show it', async () => {
-  assert.equal(strip.classList.contains('sn-edge'), true);
+  assert.equal(strip.classList.contains('sn-edge'), true, 'positioned by the stylesheet');
+  assert.equal(strip.style.width, '28px');
   assert.equal(container.classList.contains('sn-can-pop'), true);
-  assert.equal(container.style.getPropertyValue('--sn-edge-width'), '', 'width comes from the stylesheet');
 
   await stack.pop();
   assert.equal(container.classList.contains('sn-can-pop'), false, 'nothing to go back to');
@@ -33,8 +33,8 @@ test('the strip states what is true and lets CSS decide whether to show it', asy
   gesture.options.anywhere = true;
   gesture.options.edgeWidth = 44;
   gesture.refresh();
-  assert.equal(container.classList.contains('sn-anywhere'), true);
-  assert.equal(container.style.getPropertyValue('--sn-edge-width'), '44px', 'an explicit option overrides it');
+  assert.equal(container.classList.contains('sn-anywhere'), true, 'the whole page is the target');
+  assert.equal(strip.style.width, '44px');
 });
 
 test('a drag past the threshold completes the pop', async () => {
