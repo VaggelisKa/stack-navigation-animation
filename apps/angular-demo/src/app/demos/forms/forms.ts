@@ -1,12 +1,11 @@
 import { Component, DestroyRef, Injectable, computed, inject, input, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { StackNav, StackNavBack } from '@stacknav/angular';
+import { Router, RouterLink } from '@angular/router';
 import { FakeApi } from '../fake-api';
-import { DEMO_UI, DemoNav } from '../shared';
+import { BackButton, DEMO_UI, DemoNav } from '../shared';
 
 @Component({
   selector: 'forms-home',
-  imports: [RouterLink, StackNavBack],
+  imports: [RouterLink, BackButton],
   template: `
     <div class="page frm">
       <header class="hdr"><button type="button" class="back" snBack="/">‹ Demos</button><h1>Forms</h1><span class="spacer"></span></header>
@@ -25,7 +24,7 @@ export class FormsHome {}
 /** A long form with a sticky save bar. Saving is slow, and the button shows a pending state. */
 @Component({
   selector: 'forms-profile',
-  imports: [StackNavBack, ...DEMO_UI],
+  imports: [BackButton, ...DEMO_UI],
   template: `
     <div class="page frm">
       <header class="hdr"><button type="button" class="back" snBack="/forms">‹ Forms</button><h1>Edit profile</h1><span class="spacer"></span></header>
@@ -140,7 +139,7 @@ export class Wizard {
  */
 @Component({
   selector: 'forms-wizard',
-  imports: [RouterLink, StackNavBack, ...DEMO_UI],
+  imports: [RouterLink, BackButton, ...DEMO_UI],
   template: `
     <div class="page frm">
       <header class="hdr">
@@ -208,7 +207,7 @@ export class FormsWizard {
   readonly stepNo = computed(() => Math.min(3, Math.max(1, Number(this.step()) || 1)));
   readonly wizard = inject(Wizard);
   private readonly api = inject(FakeApi);
-  private readonly nav = inject(StackNav);
+  private readonly router = inject(Router);
   readonly busy = signal(false);
   readonly error = signal<unknown>(null);
   readonly max = Math.max;
@@ -225,7 +224,7 @@ export class FormsWizard {
     try {
       const order = await this.api.placeOrder([]);
       this.wizard.submitted.set(order.id);
-      await this.nav.replace(['/forms/wizard/done'], { replaceUrl: true });
+      await this.router.navigate(['/forms/wizard/done'], { replaceUrl: true, info: { stacknav: 'replace' } });
     } catch (e) {
       this.error.set(e);
     } finally {
@@ -264,7 +263,7 @@ export class FormsDone {
 /** An iOS-style grouped settings list. Every toggle's state is kept. */
 @Component({
   selector: 'forms-preferences',
-  imports: [StackNavBack],
+  imports: [BackButton],
   template: `
     <div class="page frm">
       <header class="hdr"><button type="button" class="back" snBack="/forms">‹ Forms</button><h1>Preferences</h1><span class="spacer"></span></header>

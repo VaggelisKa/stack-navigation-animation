@@ -1,8 +1,7 @@
 import { Component, Injectable, computed, inject, input, resource, signal } from '@angular/core';
-import { RouterLink, type ResolveFn } from '@angular/router';
-import { StackNav, StackNavBack } from '@stacknav/angular';
+import { Router, RouterLink, type ResolveFn } from '@angular/router';
 import { FakeApi, type Product } from '../fake-api';
-import { DEMO_UI, DemoNav } from '../shared';
+import { BackButton, DEMO_UI, DemoNav } from '../shared';
 
 @Injectable({ providedIn: 'root' })
 export class Cart {
@@ -30,7 +29,7 @@ const swatch = (p: Product, dir = 160) => `linear-gradient(${dir}deg, hsl(${p.hu
 @Component({
   selector: 'shop-catalog',
   // The cart is a sibling of a product in the route tree, so its button pushes explicitly.
-  imports: [RouterLink, StackNavBack, ...DEMO_UI],
+  imports: [RouterLink, BackButton, ...DEMO_UI],
   template: `
     <div class="page shop">
       <header class="hdr shop-hdr">
@@ -84,7 +83,7 @@ export class ShopCatalog {
 /** A full-bleed hero under a transparent header, a sticky buy bar, and related items that load late. */
 @Component({
   selector: 'shop-product',
-  imports: [StackNavBack, ...DEMO_UI],
+  imports: [BackButton, ...DEMO_UI],
   template: `
     <div class="page shop shop-detail">
       <header class="hdr shop-hdr-float">
@@ -150,7 +149,7 @@ export class ShopProduct {
 
 @Component({
   selector: 'shop-cart',
-  imports: [RouterLink, StackNavBack],
+  imports: [RouterLink, BackButton],
   template: `
     <div class="page shop">
       <header class="hdr shop-hdr">
@@ -199,7 +198,7 @@ export class ShopCart {
 /** A form that submits to the fake backend. Success replaces this page, so Back cannot return to a submitted form. */
 @Component({
   selector: 'shop-checkout',
-  imports: [StackNavBack, ...DEMO_UI],
+  imports: [BackButton, ...DEMO_UI],
   template: `
     <div class="page shop">
       <header class="hdr shop-hdr">
@@ -236,7 +235,7 @@ export class ShopCart {
 export class ShopCheckout {
   readonly cart = inject(Cart);
   private readonly api = inject(FakeApi);
-  private readonly nav = inject(StackNav);
+  private readonly router = inject(Router);
   readonly busy = signal(false);
   readonly error = signal<unknown>(null);
   readonly decline = signal(false);
@@ -250,7 +249,7 @@ export class ShopCheckout {
       const order = await this.api.placeOrder(this.cart.lines(), { fail: this.decline() });
       this.cart.clear();
       // replaceUrl as well, so the browser's history entry for the form is removed along with its page
-      await this.nav.replace(['/shop/order', order.id], { replaceUrl: true });
+      await this.router.navigate(['/shop/order', order.id], { replaceUrl: true, info: { stacknav: 'replace' } });
     } catch (err) {
       this.error.set(err instanceof Error ? new Error(this.decline() ? 'Your card was declined (simulated).' : err.message) : err);
     } finally {

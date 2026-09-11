@@ -1,8 +1,7 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject, input, resource, signal } from '@angular/core';
-import { StackNavBack } from '@stacknav/angular';
 import { FakeApi, type Post } from '../fake-api';
-import { DEMO_UI } from '../shared';
+import { BackButton, DEMO_UI } from '../shared';
 
 /** One post rendered as a card. Used by the list, the post page and the profile. */
 @Component({
@@ -43,7 +42,7 @@ export class FeedCard {
  */
 @Component({
   selector: 'feed-home',
-  imports: [FeedCard, StackNavBack, ...DEMO_UI],
+  imports: [FeedCard, BackButton, ...DEMO_UI],
   template: `
     <div class="page feed">
       <header class="hdr feed-hdr">
@@ -112,7 +111,7 @@ export class FeedHome {
 /** A post whose comments load shortly after the page, with a reply box at the bottom. */
 @Component({
   selector: 'feed-post',
-  imports: [FeedCard, StackNavBack, ...DEMO_UI],
+  imports: [FeedCard, BackButton, ...DEMO_UI],
   template: `
     <div class="page feed">
       <header class="hdr feed-hdr">
@@ -174,7 +173,7 @@ export class FeedPost {
 /** A profile with a cover, stats and tabs. Posts link back to post pages, always as a push. */
 @Component({
   selector: 'feed-profile',
-  imports: [FeedCard, StackNavBack, DecimalPipe, ...DEMO_UI],
+  imports: [FeedCard, BackButton, DecimalPipe, ...DEMO_UI],
   template: `
     <div class="page feed">
       <header class="hdr feed-hdr feed-hdr-over">

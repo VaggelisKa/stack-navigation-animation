@@ -1,14 +1,13 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, ElementRef, afterRenderEffect, computed, inject, input, resource, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { StackNavBack } from '@stacknav/angular';
 import { AUTHORS, FakeApi, type Message } from '../fake-api';
-import { DEMO_UI } from '../shared';
+import { BackButton, DEMO_UI } from '../shared';
 
 /** An inbox: rows with unread badges, loaded once and kept. Refresh re-queries the backend. */
 @Component({
   selector: 'chat-inbox',
-  imports: [RouterLink, StackNavBack, DecimalPipe, ...DEMO_UI],
+  imports: [RouterLink, BackButton, DecimalPipe, ...DEMO_UI],
   template: `
     <div class="page chat">
       <header class="hdr chat-hdr">
@@ -59,7 +58,7 @@ export class ChatInbox {
  */
 @Component({
   selector: 'chat-thread',
-  imports: [StackNavBack, ...DEMO_UI],
+  imports: [BackButton, ...DEMO_UI],
   template: `
     <div class="page chat chat-thread">
       <header class="hdr chat-hdr">

@@ -1,13 +1,12 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { StackNavBack } from '@stacknav/angular';
 import { FakeApi } from '../fake-api';
-import { DEMO_UI, DemoNav, DemoPrefs } from '../shared';
+import { BackButton, DEMO_UI, DemoNav, DemoPrefs } from '../shared';
 
 /** Controls for the engine and the fake backend, plus pages that stress them. */
 @Component({
   selector: 'lab-home',
-  imports: [RouterLink, StackNavBack],
+  imports: [RouterLink, BackButton],
   template: `
     <div class="page lab">
       <header class="hdr"><button type="button" class="back" snBack="/">‹ Demos</button><h1>Lab</h1><span class="spacer"></span></header>
@@ -39,7 +38,7 @@ export class LabHome {
 
 @Component({
   selector: 'lab-stress',
-  imports: [StackNavBack],
+  imports: [BackButton],
   template: `
     <div class="page lab">
       <header class="hdr"><button type="button" class="back" snBack="/lab">‹ Lab</button><h1>Heavy page</h1><span class="spacer"></span></header>
@@ -62,7 +61,7 @@ export class LabStress {
 /** `/lab/deep/1`, `/lab/deep/2`, …: siblings pushed by hint. A pop to a kept page unwinds them all. */
 @Component({
   selector: 'lab-deep',
-  imports: [StackNavBack, ...DEMO_UI],
+  imports: [BackButton, ...DEMO_UI],
   template: `
     <div class="page lab" [style.background]="'hsl(' + ((depth() * 37) % 360) + ' 40% 96%)'">
       <header class="hdr"><button type="button" class="back" [snBack]="depth() === 1 ? '/lab' : ['/lab/deep', depth() - 1]">‹ Back</button><h1>Depth {{ depth() }}</h1><span class="spacer"></span></header>
@@ -89,7 +88,7 @@ export class LabDeep {
 
 @Component({
   selector: 'lab-slow',
-  imports: [StackNavBack],
+  imports: [BackButton],
   template: `
     <div class="page lab">
       <header class="hdr"><button type="button" class="back" snBack="/lab">‹ Lab</button><h1>Slow page</h1><span class="spacer"></span></header>
@@ -107,7 +106,7 @@ export class LabSlow {
 
 @Component({
   selector: 'lab-wide',
-  imports: [StackNavBack],
+  imports: [BackButton],
   template: `
     <div class="page lab">
       <header class="hdr"><button type="button" class="back" snBack="/lab">‹ Lab</button><h1>Wide content</h1><span class="spacer"></span></header>

@@ -1,15 +1,14 @@
 import { Component, computed, inject, input, resource, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { StackNavBack } from '@stacknav/angular';
 import { FakeApi, type Photo } from '../fake-api';
-import { DEMO_UI } from '../shared';
+import { BackButton, DEMO_UI } from '../shared';
 
 const paint = (p: Photo) => `linear-gradient(${p.angle}deg, hsl(${p.hues[0]} 70% 55%), hsl(${p.hues[1]} 65% 35%))`;
 
 /** A dense three-column grid of tiles on a light page. */
 @Component({
   selector: 'gallery-grid',
-  imports: [RouterLink, StackNavBack, ...DEMO_UI],
+  imports: [RouterLink, BackButton, ...DEMO_UI],
   template: `
     <div class="page gal">
       <header class="hdr gal-hdr">
@@ -51,7 +50,7 @@ export class GalleryGrid {
  */
 @Component({
   selector: 'gallery-photo',
-  imports: [RouterLink, StackNavBack, ...DEMO_UI],
+  imports: [RouterLink, BackButton, ...DEMO_UI],
   template: `
     <div class="page gal gal-dark">
       <header class="hdr gal-hdr-dark">

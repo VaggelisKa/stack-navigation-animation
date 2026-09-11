@@ -1,8 +1,7 @@
 import { Component, DestroyRef, ElementRef, afterNextRender, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
-import { StackNavBack } from '@stacknav/angular';
 import { FakeApi, type SearchResult } from '../fake-api';
-import { DEMO_UI } from '../shared';
+import { BackButton, DEMO_UI } from '../shared';
 
 const ICONS: Record<SearchResult['kind'], string> = { person: '◉', product: '◱', post: '◌', photo: '▣' };
 
@@ -14,7 +13,7 @@ const ICONS: Record<SearchResult['kind'], string> = { person: '◉', product: '�
  */
 @Component({
   selector: 'search-home',
-  imports: [StackNavBack, ...DEMO_UI],
+  imports: [BackButton, ...DEMO_UI],
   template: `
     <div class="page srch">
       <header class="hdr srch-hdr">

@@ -70,7 +70,7 @@ export function createDirectionResolver(strategies: readonly DirectionStrategy[]
 
 // ------------------------------------------------------------------ strategies
 
-/** Honors an explicit per-navigation hint, e.g. `{ state: { stacknav: 'pop' } }` in a router. */
+/** Honors an explicit per-navigation hint, e.g. `{ info: { stacknav: 'pop' } }` in Angular's router. */
 export const fromHint = (): DirectionStrategy => (ctx) => ctx.hint;
 
 /** Browser back is a pop, browser forward is a push. No answer for imperative navigations. */

@@ -7,6 +7,13 @@ import { BaseRouteReuseStrategy, type ActivatedRouteSnapshot } from '@angular/ro
  * can run. This strategy asks for a fresh page whenever the URL of the matched
  * route differs, which is what a navigation stack expects. Routes opt out with
  * `data: { reuseRoute: true }`.
+ *
+ * It is not installed automatically. Provide it like any other strategy to get
+ * this behaviour:
+ *
+ * ```ts
+ * { provide: RouteReuseStrategy, useClass: StackNavRouteReuseStrategy }
+ * ```
  */
 @Injectable()
 export class StackNavRouteReuseStrategy extends BaseRouteReuseStrategy {

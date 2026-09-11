@@ -1,30 +1,50 @@
-:root { color-scheme: light dark; font: 15px/1.45 -apple-system, system-ui, sans-serif; }
+/* Page colours live in custom properties on `:root`, so the dark-scheme block
+   below is the only place that flips them. A page with its own look, as every
+   demo app has, re-declares the tokens on its own root, and the globals below
+   then follow that page instead of the system scheme. */
+:root {
+  color-scheme: light dark;
+  font: 15px/1.45 -apple-system, system-ui, sans-serif;
+  --page-bg: #f7f7f9;
+  --page-fg: #111;
+  --card-bg: #fff;
+  --hdr-bg: rgba(247,247,249,.92);
+  --hdr-border: rgba(0,0,0,.08);
+  --lede-fg: #3a3a3c;
+  --control-border: #c7c7cc;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page-bg: #1c1c1e;
+    --page-fg: #f2f2f7;
+    --card-bg: #2c2c2e;
+    --hdr-bg: rgba(28,28,30,.92);
+    --hdr-border: rgba(255,255,255,.1);
+    --lede-fg: #c7c7cc;
+    --control-border: #48484a;
+  }
+}
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: #e9e9ee; }
 @media (prefers-color-scheme: dark) { html, body { background: #111; } }
 body { display: grid; place-items: center; padding: 16px; }
 app-root { display: block; width: min(400px, 100%); height: min(760px, 100%); }
-.phone { width: 100%; height: 100%; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.25); background: #fff; }
-@media (prefers-color-scheme: dark) { .phone { background: #000; } }
+.phone { width: 100%; height: 100%; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.25); background: var(--page-bg); }
 sn-outlet { height: 100%; }
 
-.page { background: #f7f7f9; color: #111; min-height: 100%; }
-@media (prefers-color-scheme: dark) { .page { background: #1c1c1e; color: #f2f2f7; } }
-.hdr { position: sticky; top: 0; display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 12px; background: rgba(247,247,249,.92); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,.08); z-index: 1; }
-@media (prefers-color-scheme: dark) { .hdr { background: rgba(28,28,30,.92); border-color: rgba(255,255,255,.1); } }
+.page { background: var(--page-bg); color: var(--page-fg); min-height: 100%; }
+.hdr { position: sticky; top: 0; display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 12px; background: var(--hdr-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--hdr-border); z-index: 1; }
 .hdr h1 { font-size: 17px; margin: 0; flex: 1; text-align: center; }
 .hdr .back, .hdr .spacer { width: 64px; }
 .hdr .back { background: none; border: 0; color: #0a84ff; font: inherit; padding: 0; text-align: left; cursor: pointer; }
 .body { padding: 12px 16px 24px; }
 .body h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #6e6e73; margin: 18px 0 6px; }
-.item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 14px; margin: 0 0 1px; background: #fff; border: 0; border-radius: 0; color: inherit; font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
-@media (prefers-color-scheme: dark) { .item { background: #2c2c2e; } }
+.item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 14px; margin: 0 0 1px; background: var(--card-bg); border: 0; border-radius: 0; color: inherit; font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
 .item:first-of-type { border-radius: 10px 10px 0 0; }
 .item:last-of-type { border-radius: 0 0 10px 10px; }
 .item span { flex: 1; }
 .item small { color: #8e8e93; }
 .item i { color: #c7c7cc; font-style: normal; }
-.lede { color: #3a3a3c; margin: 0 0 8px; }
-@media (prefers-color-scheme: dark) { .lede { color: #c7c7cc; } }
+.lede { color: var(--lede-fg); margin: 0 0 8px; }
 .counter { display: flex; gap: 8px; align-items: center; }
-.counter button { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid #c7c7cc; background: #fff; }
+.counter button { font: inherit; color: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--control-border); background: var(--card-bg); }

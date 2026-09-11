@@ -7,6 +7,6 @@ export const SHOP_ROUTES: Routes = [
   { path: 'p/:id', component: ShopProduct, resolve: { product: resolveProduct } },
   { path: 'cart', component: ShopCart },
   { path: 'cart/checkout', component: ShopCheckout },
-  // Reached only through StackNav.replace() from the checkout.
+  // Reached only by replacing the checkout page (router.navigate with a 'replace' hint).
   { path: 'order/:id', component: ShopOrder },
 ];

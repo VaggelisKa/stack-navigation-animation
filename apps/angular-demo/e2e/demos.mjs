@@ -162,9 +162,15 @@ for (const url of ['/messages/foo', '/feed/post/999', '/gallery/0']) {
   await page.waitForSelector('.err', { timeout: 5000 });
 }
 check(true, 'unknown ids on deep links render an error box instead of throwing');
+// the loop above left the browser on the last deep link, so go home before clicking one of its links
+await page.goto(base + '/');
+await page.waitForSelector('app-home');
 
 // ============================================================ lab + gallery
 section('gallery in slow motion: dark page, data arriving mid-transition, sibling replace, filmstrip, swipe');
+// A deep link renders that page alone, so come back to the demos list first.
+await page.goto(base + '/');
+await page.waitForSelector('app-home');
 await openDemo('Lab');
 await page.click('.sn-page-visible label:has-text("Slow motion")');
 await transitioned(() => page.goBack(), 'lab-back');
@@ -370,5 +376,34 @@ await transitioned(() => page.goBack(), 'lab-home-3');
 await openDemo('Feed');
 await waitCount('feed-card', 10);
 check(true, 'backend healthy again: the fresh feed loads');
+
+// ============================================================ colour scheme
+// Each demo page has its own look, so the dark system scheme must reach the
+// app's own pages and stop at a demo's root, including its header and cards.
+section('dark system scheme: the app follows it, a demo keeps its own colours');
+const colours = (sel) =>
+  page.evaluate((sel) => {
+    const page_ = document.querySelector(sel);
+    const read = (el, inkEl = el) =>
+      el ? getComputedStyle(el).backgroundColor + ' / ' + getComputedStyle(inkEl).color : 'missing';
+    const hdr = page_.querySelector('.hdr');
+    return { page: read(page_), hdr: read(hdr, hdr.querySelector('h1')), item: read(page_.querySelector('.item')) };
+  }, sel);
+
+await page.goto(base + '/');
+await page.waitForSelector('app-home');
+const homeLight = await colours('.sn-page-visible .page');
+await openDemo('Lab');
+const labLight = await colours('.sn-page-visible .page.lab');
+
+await page.emulateMedia({ colorScheme: 'dark' });
+await flush();
+const labDark = await colours('.sn-page-visible .page.lab');
+for (const part of ['page', 'hdr', 'item']) eq(labDark[part], labLight[part], `the lab's ${part} ignores the dark scheme`);
+await page.screenshot({ path: new URL('./shots/lab-dark-scheme.png', import.meta.url).pathname });
+await transitioned(() => page.goBack(), 'demos-dark-scheme');
+const homeDark = await colours('.sn-page-visible .page');
+for (const part of ['page', 'hdr', 'item']) check(homeDark[part] !== homeLight[part], `the demos list follows the dark scheme (${part}: ${homeDark[part]})`);
+await page.emulateMedia({ colorScheme: 'light' });
 
 await finish();

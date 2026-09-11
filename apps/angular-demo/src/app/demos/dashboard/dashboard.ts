@@ -1,9 +1,8 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject, input, resource, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { StackNavBack } from '@stacknav/angular';
 import { FakeApi } from '../fake-api';
-import { DEMO_UI } from '../shared';
+import { BackButton, DEMO_UI } from '../shared';
 
 /**
  * A kept page with a nested `<router-outlet>`. The segmented control swaps
@@ -13,7 +12,7 @@ import { DEMO_UI } from '../shared';
  */
 @Component({
   selector: 'dash-shell',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, StackNavBack],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, BackButton],
   template: `
     <div class="page dash">
       <header class="hdr dash-hdr">
@@ -153,7 +152,7 @@ export class DashTeam {
 /** Pushed over the whole dashboard as a descendant in the route tree, with links out to other demos. */
 @Component({
   selector: 'dash-member',
-  imports: [StackNavBack, DecimalPipe, ...DEMO_UI],
+  imports: [BackButton, DecimalPipe, ...DEMO_UI],
   template: `
     <div class="page dash">
       <header class="hdr dash-hdr">
