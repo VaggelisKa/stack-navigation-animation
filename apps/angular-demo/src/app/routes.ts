@@ -4,9 +4,12 @@ import { Item } from './pages/item';
 import { Reviews } from './pages/reviews';
 import { Settings } from './pages/settings';
 import { About } from './pages/about';
+import { DEMO_ROUTES } from './demos/routes';
 
 export const routes: Routes = [
   { path: '', component: Home },
+  // Feed, shop, messages, gallery, forms, search, dashboard, lab: each a lazy route tree.
+  ...DEMO_ROUTES,
   // The route tree decides these: /items/:id is beneath / (push), /items/:id/reviews beneath that.
   { path: 'items/:id', component: Item },
   { path: 'items/:id/reviews', component: Reviews, canDeactivate: [(page: Reviews) => !page.lock()] },
