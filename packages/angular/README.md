@@ -26,6 +26,13 @@ bootstrapApplication(App, {
 <sn-outlet style="height: 100dvh" />
 ```
 
+```css
+/* styles.css: the transition's knobs are custom properties, all optional */
+:root { --sn-duration: 340ms; --sn-parallax: 20%; }
+```
+
+A variable that is set wins over the matching `provideStackNav({ transition })` option, so the stylesheet is the last word on how the animation feels.
+
 ```ts
 // a page: nothing from this library in it
 @Component({
@@ -120,7 +127,7 @@ Routes opt out of it with `data: { reuseRoute: true }`.
 | `levelOf(snapshot)` | `data.stackLevel` | the route's number |
 | `keyOf(snapshot)` | the route's URL path | identity of a page |
 | `infoKey` | `'stacknav'` | key in `NavigationExtras.info` for hints |
-| `transition` | `{}` | `createIOSTransition` options for every outlet |
+| `transition` | `{}` | `createIOSTransition` options for every outlet. The same knobs are CSS variables (`--sn-duration`, `--sn-easing`, `--sn-parallax`, `--sn-dim-max`, `--sn-shadow`, …) read off the outlet, so a stylesheet can retune them — see the [core README](../core#tuning-from-css) |
 | `gesture` | `{}` | `createEdgePanGesture` options; `false` disables swiping |
 | `detachInactiveViews` | `false` | detach change detection from hidden pages |
 | `injectStyles` | `true` | insert the core stylesheet at runtime |

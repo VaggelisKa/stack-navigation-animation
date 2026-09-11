@@ -287,3 +287,39 @@ test('remove drops a page beneath the top silently', async () => {
   assert.equal(stack.entryOf(c).index, 1);
   assert.equal(stack.entryOf('nope'), null);
 });
+
+test('the stack reads a transition\'s timing only after begin() has run', async () => {
+  // The iOS transition resolves its CSS variables in begin(), so a stack that
+  // read duration or ease first would apply every variable one transition late.
+  const { createIOSTransition } = await import('../src/ios-transition.ts');
+  const inner = createIOSTransition({ duration: 500 });
+  const reads = [];
+  const spy = {
+    begin: (l, u) => (reads.push('begin'), inner.begin(l, u)),
+    apply: (l, u, p) => inner.apply(l, u, p),
+    end: (l, u) => (reads.push('end'), inner.end(l, u)),
+    settle: (i) => (reads.push(`settle:${inner.settle(i).duration}`), inner.settle(i)),
+    get duration() {
+      reads.push(`duration:${inner.duration}`);
+      return inner.duration;
+    },
+    get ease() {
+      reads.push('ease');
+      return inner.ease;
+    },
+  };
+  container.vars['--sn-duration'] = '250ms';
+  container.vars['--sn-settle-max'] = '80ms';
+  const s = new NavigationStack({ container, transition: spy });
+
+  await s.push(el('a'), { animated: false });
+  reads.length = 0;
+  await s.push(el('b'));
+  assert.deepEqual(reads.slice(0, 2), ['begin', 'duration:250'], 'the very first animated push already sees 250ms');
+
+  reads.length = 0;
+  const h = s.beginInteractivePop();
+  h.update(0.4);
+  await h.finish({ complete: true, velocity: 100 });
+  assert.deepEqual(reads.slice(0, 2), ['begin', 'settle:80'], 'and so does the settle after a swipe');
+});
