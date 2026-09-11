@@ -3,9 +3,10 @@ import type { UrlTree } from '@angular/router';
 import { StackNav } from './stacknav.service';
 
 /**
- * A back button: `<button snBack>` goes back through history, and
- * `<button snBack="/items">` (or `[snBack]="['/']"`) navigates there with a
- * pop when there is no history to go back to (after a deep link, say).
+ * A back button. `<button snBack>` goes back through history.
+ * `<button snBack="/items">` (or `[snBack]="['/']"`) navigates to that route
+ * with a pop when there is no history to go back to, for example after a deep
+ * link.
  */
 @Directive({
   selector: '[snBack]',

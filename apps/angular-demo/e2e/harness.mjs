@@ -1,4 +1,4 @@
-// Shared plumbing for the e2e suites: serves dist/browser, launches the
+// Shared setup for the e2e suites: serves dist/browser, launches the
 // preinstalled Chromium through playwright-core, and reads the outlet's DOM.
 import { chromium } from 'playwright-core';
 import { createServer } from 'node:http';
@@ -38,7 +38,7 @@ export async function launch({ width = 420, height = 800 } = {}) {
   const section = (title) => console.log(`\n# ${title}`);
 
   // ---- helpers that read the outlet's DOM ----------------------------------
-  /** The app is zoneless: a click's view update lands on the next frame, so wait one before reading. */
+  /** The app is zoneless, so a click's view update lands on the next frame. Wait one frame before reading. */
   const flush = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))));
   const state = async () =>
     (await flush(),
@@ -67,7 +67,7 @@ export async function launch({ width = 420, height = 800 } = {}) {
   const top = () => page.locator('sn-outlet > .sn-page-visible').last();
   const scrollTop = () => page.evaluate(() => document.querySelector('sn-outlet > .sn-page-visible').scrollTop);
   const setScroll = (y) => page.evaluate((y) => (document.querySelector('sn-outlet > .sn-page-visible').scrollTop = y), y);
-  /** Drags from the leading edge; `until` is how far across (0–1) before letting go. `mid` runs at the halfway point. */
+  /** Drags from the leading edge. `until` is how far across (0–1) to drag before releasing; `mid` runs at the halfway point. */
   const swipeBack = async ({ until = 0.8, y: yFrac = 0.5, mid } = {}) => {
     const box = await page.locator('sn-outlet').boundingBox();
     const y = box.y + box.height * yFrac;

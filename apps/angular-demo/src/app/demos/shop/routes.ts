@@ -3,7 +3,7 @@ import { ShopCart, ShopCatalog, ShopCheckout, ShopOrder, ShopProduct, resolvePro
 
 export const SHOP_ROUTES: Routes = [
   { path: '', component: ShopCatalog },
-  // The product is resolved before activation: the push starts when the data is there.
+  // The product is resolved before activation, so the push starts once the data is available.
   { path: 'p/:id', component: ShopProduct, resolve: { product: resolveProduct } },
   { path: 'cart', component: ShopCart },
   { path: 'cart/checkout', component: ShopCheckout },

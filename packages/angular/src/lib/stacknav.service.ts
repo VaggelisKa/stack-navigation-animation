@@ -7,15 +7,15 @@ import { STACKNAV_CONFIG } from './config';
 import { StackNavHistory } from './history';
 
 export interface StackNavExtras extends NavigationExtras {
-  /** Force the transition for this navigation instead of resolving it. */
+  /** Sets the direction for this navigation instead of resolving it. */
   direction?: Direction | 'auto';
   /** Skip the animation for this navigation. */
   animated?: boolean;
 }
 
 /**
- * Router calls with a direction attached. Plain `router.navigate()` works
- * too; this only adds the per-navigation hint that `fromHint()` reads.
+ * Router calls with a direction attached. Plain `router.navigate()` works too;
+ * this only adds the per-navigation hint that `fromHint()` reads.
  */
 @Injectable({ providedIn: 'root' })
 export class StackNav {
@@ -41,8 +41,8 @@ export class StackNav {
   }
 
   /**
-   * Go back: through browser history when there is somewhere to go, else to
-   * `fallback` (replacing the history entry, so the user doesn't get stuck).
+   * Goes back through browser history when there is somewhere to go, otherwise
+   * to `fallback`, replacing the history entry so the user does not get stuck.
    * Resolves `false` when neither is possible.
    */
   async pop(fallback?: readonly unknown[] | string | UrlTree, extras: StackNavExtras = {}): Promise<boolean> {

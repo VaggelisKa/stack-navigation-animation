@@ -17,7 +17,7 @@ test('fromHint honours an explicit direction and ignores auto', () => {
   assert.equal(resolveDirection([fromHint()], ctx('/a', '/b', { hint: 'auto' }), 'replace'), 'replace');
 });
 
-test('fromHistory: back pops, forward pushes, unknown delta has no opinion', () => {
+test('fromHistory: back pops, forward pushes, unknown delta gives no answer', () => {
   const s = fromHistory();
   assert.equal(s(ctx('/a', '/b', { trigger: 'history', historyDelta: -1 })), 'pop');
   assert.equal(s(ctx('/a', '/b', { trigger: 'history', historyDelta: 2 })), 'push');
@@ -57,7 +57,7 @@ test('fromTree reads the route tree', () => {
   assert.equal(s({ from: { key: 'x' }, to: ref('/a') }), undefined, 'no segments');
 });
 
-test('resolveDirection takes the first opinion and falls back', () => {
+test('resolveDirection takes the first answer and falls back', () => {
   const strategies = [() => undefined, () => null, () => 'auto', () => 'pop', () => 'push'];
   assert.equal(resolveDirection(strategies, ctx('/a', '/b')), 'pop');
   assert.equal(resolveDirection([() => undefined], ctx('/a', '/b')), 'push');

@@ -1,5 +1,5 @@
-/* Styles for the demo apps. Each demo commits to its own look, light or dark,
-   so every page sets its background and text colour explicitly. */
+/* Styles for the demo apps. Each demo has its own look, light or dark, so every
+   page sets its background and text colour explicitly. */
 
 /* ---------------------------------------------------------------- shared */
 .progress { position: absolute; top: 0; left: 0; right: 0; height: 3px; z-index: 10; pointer-events: none; opacity: 0; transition: opacity .2s; overflow: hidden; }

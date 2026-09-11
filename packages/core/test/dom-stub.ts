@@ -1,4 +1,4 @@
-// The smallest DOM the engine needs: classList, style, parent/child, clientWidth,
+// The minimum DOM the engine needs: classList, style, parent/child, clientWidth,
 // and inherited custom properties for getComputedStyle().
 export function makeElement(tag = 'div'): any {
   const classes = new Set();
@@ -56,19 +56,20 @@ export function installGlobals() {
   globalThis.performance ||= { now: () => Date.now() };
   globalThis.matchMedia = () => ({ matches: false });
   // Custom properties inherit, so walk up until one element declares the name.
-  // Two deliberate fictions: this resolves on detached elements, where a real
-  // browser returns an empty declaration, which lets the tests skip building a
-  // document; and it hands back values verbatim, where a browser would have
-  // substituted var() already. Neither changes what is under test — how the
-  // engine reads and parses what it is given — but a variable that only works
-  // here is possible, so new plumbing wants a look in a real browser too.
+  // This stub differs from a real browser in two ways. It resolves on detached
+  // elements, where a browser returns an empty declaration, which lets the tests
+  // skip building a document. And it returns values verbatim, where a browser
+  // would already have substituted var(). Neither affects what is under test,
+  // which is how the engine reads and parses the values it is given, but a
+  // variable that only works here is possible, so new code reading variables
+  // should also be checked in a real browser.
   globalThis.getComputedStyle = (el) => ({
     getPropertyValue(name) {
       for (let e = el; e; e = e.parentElement) if (e.vars?.[name] !== undefined) return e.vars[name];
       return '';
     },
   });
-  // Instant rAF: every tween finishes within a microtask or two.
+  // Instant rAF, so every tween finishes within a microtask or two.
   globalThis.requestAnimationFrame = (fn) => setTimeout(() => fn(performance.now() + 10_000), 0);
   globalThis.cancelAnimationFrame = (id) => clearTimeout(id);
 }

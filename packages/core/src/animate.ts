@@ -1,5 +1,5 @@
-// Tiny animation toolkit: a cubic-bezier solver, a cancellable tween and the
-// two easing curves the iOS transition uses.
+// A small animation toolkit: a cubic-bezier solver, a cancellable tween, and
+// the easing curves the iOS transition uses.
 
 export type Easing = (t: number) => number;
 
@@ -24,7 +24,7 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Eas
 
 export const easings: { linear: Easing; ios: Easing; easeOut: Easing } = {
   linear: (t) => t,
-  ios: cubicBezier(0.32, 0.72, 0, 1), // the usual approximation of UIKit's navigation curve
+  ios: cubicBezier(0.32, 0.72, 0, 1), // the common approximation of UIKit's navigation curve
   easeOut: cubicBezier(0.2, 0.8, 0.2, 1),
 };
 
@@ -39,9 +39,10 @@ export interface TweenOptions {
 export type CancellableTween = Promise<void> & { cancel(): void };
 
 /**
- * Animate a number from `from` to `to` over `duration` ms, calling `onUpdate`
- * every frame. Returns a promise that resolves when done; `promise.cancel()`
- * stops it early. A duration of 0 (or less) jumps straight to `to`.
+ * Animates a number from `from` to `to` over `duration` ms, calling `onUpdate`
+ * every frame. Returns a promise that resolves when the tween is done;
+ * `promise.cancel()` stops it early. A duration of 0 or less jumps straight
+ * to `to`.
  */
 export function tween({ from, to, duration, ease = easings.linear, onUpdate }: TweenOptions): CancellableTween {
   let raf = 0;

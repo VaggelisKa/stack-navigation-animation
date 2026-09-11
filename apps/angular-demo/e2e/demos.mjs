@@ -1,7 +1,7 @@
 // Drives the demo apps (feed, shop, messages, gallery, forms, search,
-// dashboard, lab) through the outlet: pushes and pops across different
-// layouts, content that arrives before, during and after a transition,
-// resolvers, replaced pages, a nested outlet, and the swipe on all of them.
+// dashboard, lab) through the outlet: pushes and pops across different layouts,
+// content arriving before, during and after a transition, resolvers, replaced
+// pages, a nested outlet, and the swipe gesture on all of them.
 // Run `ng build` first.
 import { launch } from './harness.mjs';
 

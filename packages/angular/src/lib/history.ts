@@ -27,11 +27,11 @@ interface Entry {
 }
 
 /**
- * A model of the browser's history as the router walks it: which entry we
- * are on, and which came before. It answers two questions for the outlet:
- * "is this navigation going back or forward?" and "is the previous history
- * entry the page beneath the top?". Everything comes from public router
- * events, so it needs no router configuration.
+ * A model of the browser's history as the router walks it: which entry is
+ * current, and which came before. It answers two questions for the outlet: is
+ * this navigation going back or forward, and is the previous history entry the
+ * page beneath the top? Everything comes from public router events, so it needs
+ * no router configuration.
  */
 @Injectable({ providedIn: 'root' })
 export class StackNavHistory {
@@ -123,10 +123,11 @@ export class StackNavHistory {
   }
 
   /**
-   * A history navigation the router refused. With `canceledNavigationResolution:
-   * 'computed'` the router walks the browser back to where it was, so nothing
-   * changes here. With the default `'replace'` it overwrites the entry the
-   * browser landed on with the current URL and the last successful id.
+   * Handles a history navigation the router refused. With
+   * `canceledNavigationResolution: 'computed'` the router walks the browser back
+   * to where it was, so nothing changes here. With the default `'replace'` it
+   * overwrites the entry the browser landed on with the current URL and the last
+   * successful id.
    */
   private onAbort(): void {
     const p = this.pending;
@@ -138,7 +139,7 @@ export class StackNavHistory {
     this.cursor = idx;
   }
 
-  /** The entry carrying `id`, preferring one other than the current entry, nearest to it. */
+  /** The entry carrying `id`, preferring the nearest one that is not the current entry. */
   private indexOf(id: number | null): number {
     if (id == null) return -1;
     let best = -1;

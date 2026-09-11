@@ -2,10 +2,10 @@ import type { ActivatedRoute, ActivatedRouteSnapshot, Data, ParamMap, Params, Ro
 import { BehaviorSubject, type Observable, switchMap } from 'rxjs';
 
 /**
- * The `ActivatedRoute` a page component injects. A page that is kept alive
- * beneath the stack and later reached again is handed a *new* route object by
- * the router; this proxy keeps the component's subscriptions valid by
- * switching them to whatever route is current.
+ * The `ActivatedRoute` a page component injects. When a page kept alive beneath
+ * the stack is reached again, the router hands it a new route object. This
+ * proxy keeps the component's subscriptions valid by switching them to whichever
+ * route is current.
  */
 export class StackNavActivatedRoute {
   private readonly current$: BehaviorSubject<ActivatedRoute>;

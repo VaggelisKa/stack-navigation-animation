@@ -4,20 +4,20 @@ import { ChildrenOutletContexts, PRIMARY_OUTLET, Router } from '@angular/router'
 import { StackNav, type StackNavOutlet } from '@stacknav/angular';
 import { initials } from './fake-api';
 
-/** Knobs the Lab page turns; the App applies them to the outlet. */
+/** Settings the Lab page changes. The App applies them to the outlet. */
 @Injectable({ providedIn: 'root' })
 export class DemoPrefs {
-  /** 4× slower transitions, to watch what happens mid-flight. */
+  /** 4x slower transitions, for inspecting a transition mid-flight. */
   readonly slow = signal(false);
   /** Start the back gesture from anywhere on the page, not only the leading edge. */
   readonly anywhere = signal(false);
 }
 
 /**
- * "Pop to root": go back to a page that is still kept beneath, unwinding
- * history by as many entries as there are pages above it. The demos push one
- * history entry per page (replaced pages use `replaceUrl` too), so the count
- * matches; a browser back afterwards then lands where a user expects.
+ * "Pop to root": goes back to a page still kept beneath, unwinding history by
+ * as many entries as there are pages above it. The demos push one history entry
+ * per page, and replaced pages use `replaceUrl`, so the counts match and a
+ * browser back afterwards lands on the expected page.
  */
 @Injectable({ providedIn: 'root' })
 export class DemoNav {
@@ -35,9 +35,10 @@ export class DemoNav {
 }
 
 /**
- * `<a [pushTo]="['/feed/post', 3]">`: a link that always pushes, whatever the
- * route tree says. For flows that can grow without bound (post → author →
- * post → author …) where the tree would call the cross-links siblings.
+ * `<a [pushTo]="['/feed/post', 3]">`: a link that always pushes, regardless of
+ * what the route tree says. Useful for flows that can grow without bound
+ * (post → author → post → author …), where the tree would treat the cross-links
+ * as siblings.
  */
 @Directive({
   selector: 'a[pushTo]',
@@ -74,7 +75,7 @@ export class Avatar {
   readonly text = computed(() => initials(this.name()));
 }
 
-/** Grey shimmering placeholders, `[lines]` of them. */
+/** A loading placeholder: `[lines]` shimmering grey bars. */
 @Component({
   selector: 'demo-skeleton',
   template: `

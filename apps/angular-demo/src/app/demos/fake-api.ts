@@ -16,7 +16,7 @@ export interface Post {
   likes: number;
   comments: number;
   minutesAgo: number;
-  /** gradient hues when the post carries an image */
+  /** gradient hues used when the post carries an image */
   image: [number, number] | null;
 }
 export interface Comment {
@@ -88,7 +88,7 @@ export interface TeamMember {
 }
 
 // ---------------------------------------------------------------- data
-/** Deterministic pseudo-random numbers, so every load looks the same. */
+/** Deterministic pseudo-random numbers, so every load produces the same data. */
 function rng(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
@@ -213,17 +213,17 @@ const TEAM = buildTeam();
 const ACTIVITY = buildActivity();
 
 /**
- * A pretend backend. Every call resolves after `latency()` milliseconds and
- * rejects while `failing()` is on, so pages can be watched loading, failing
+ * A fake backend. Every call resolves after `latency()` milliseconds, and
+ * rejects while `failing()` is on, so pages can be observed loading, failing
  * and retrying while the outlet animates around them.
  */
 @Injectable({ providedIn: 'root' })
 export class FakeApi {
-  /** Base delay per request, ms. The Lab page changes it. */
+  /** Base delay per request, in ms. The Lab page changes it. */
   readonly latency = signal(700);
-  /** Reject every request. */
+  /** When true, every request rejects. */
   readonly failing = signal(false);
-  /** Requests in flight right now. */
+  /** Number of requests currently in flight. */
   readonly inflight = signal(0);
   private readonly messages = new Map<number, Message[]>();
   private nextId = 1000;
@@ -234,7 +234,7 @@ export class FakeApi {
       setTimeout(() => {
         this.inflight.update((n) => n - 1);
         if (fail) return reject(new Error('The network is unreachable (simulated).'));
-        // `make()` runs inside the timer, not the executor: a throw here (an unknown id, say) must reject, not escape.
+        // `make()` runs inside the timer, not the executor, so a throw here (an unknown id, for example) must reject rather than escape.
         try {
           resolve(make());
         } catch (e) {
@@ -321,7 +321,7 @@ export class FakeApi {
       return [...m];
     });
   }
-  /** Records `text` at once; the reply arrives a while later. */
+  /** Records `text` immediately. The reply arrives after a delay. */
   send(id: number, text: string): { sent: Message; reply: Promise<Message> } {
     const m = this.messages.get(id) ?? [];
     const sent: Message = { id: ++this.nextId, mine: true, text, at: now() };

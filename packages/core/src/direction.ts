@@ -1,19 +1,19 @@
 /**
  * Direction resolution: given where the app is and where it is going, decide
- * whether the new page should *push* over the current one, *pop* back to it,
- * or *replace* it. The engine never decides this on its own; a host wires a
- * list of strategies in the order it trusts them, and the first opinion wins.
+ * whether the new page should push over the current one, pop back to it, or
+ * replace it. The engine does not decide this on its own. A host supplies an
+ * ordered list of strategies, and the first one with an answer wins.
  *
  * Strategies are plain functions, so a host can add its own (a numbering
- * scheme, a route-tree walk, a per-navigation hint) without touching the rest.
+ * scheme, a route-tree walk, a per-navigation hint) without changing the rest.
  */
 
 export type Direction = 'push' | 'pop' | 'replace';
 
-/** What a strategy may answer: a direction, or no opinion (`'auto'`, `undefined`, `null`). */
+/** What a strategy may return: a direction, or no answer (`'auto'`, `undefined`, `null`). */
 export type DirectionOpinion = Direction | 'auto' | undefined | null | void;
 
-/** The little a strategy needs to know about a page. Hosts may attach more. */
+/** The minimum a strategy needs to know about a page. Hosts may attach more. */
 export interface RouteRef {
   /** stable identity of the page: its URL, a route id, anything unique */
   key: string;
@@ -31,11 +31,11 @@ export interface NavigationContext {
   /** the page on screen, or null when the stack is empty */
   from: RouteRef | null;
   to: RouteRef;
-  /** `imperative`: the app asked. `history`: the browser's back/forward. */
+  /** `imperative`: the app navigated. `history`: the browser's back/forward. */
   trigger?: NavigationTrigger;
   /** for history triggers, when known: negative = back, positive = forward */
   historyDelta?: number;
-  /** what the caller asked for explicitly, if anything */
+  /** an explicit direction from the caller, if any */
   hint?: DirectionOpinion;
   /** keys of the pages currently kept alive, bottom to top */
   stack?: readonly string[];
@@ -51,7 +51,7 @@ export interface DirectionResolver {
 
 const isDirection = (v: DirectionOpinion): v is Direction => v === 'push' || v === 'pop' || v === 'replace';
 
-/** Ask each strategy in turn; the first real answer wins, else `fallback`. */
+/** Calls each strategy in turn. The first direction returned wins, else `fallback`. */
 export function resolveDirection(strategies: readonly DirectionStrategy[], ctx: NavigationContext, fallback: Direction = 'push'): Direction {
   for (const s of strategies) {
     const d = s(ctx);
@@ -60,7 +60,7 @@ export function resolveDirection(strategies: readonly DirectionStrategy[], ctx: 
   return fallback;
 }
 
-/** Bundle strategies and a fallback into one function. */
+/** Bundles strategies and a fallback into a single resolver function. */
 export function createDirectionResolver(strategies: readonly DirectionStrategy[] = defaultStrategies(), fallback: Direction = 'push'): DirectionResolver {
   const resolver = ((ctx: NavigationContext) => resolveDirection(strategies, ctx, fallback)) as DirectionResolver;
   Object.defineProperty(resolver, 'strategies', { value: strategies.slice(), enumerable: true });
@@ -70,16 +70,16 @@ export function createDirectionResolver(strategies: readonly DirectionStrategy[]
 
 // ------------------------------------------------------------------ strategies
 
-/** Honors an explicit per-navigation hint (`{ state: { stacknav: 'pop' } }` in a router, say). */
+/** Honors an explicit per-navigation hint, e.g. `{ state: { stacknav: 'pop' } }` in a router. */
 export const fromHint = (): DirectionStrategy => (ctx) => ctx.hint;
 
-/** Browser back is a pop, browser forward is a push. No opinion on imperative navigations. */
+/** Browser back is a pop, browser forward is a push. No answer for imperative navigations. */
 export const fromHistory = (): DirectionStrategy => (ctx) => {
   if (ctx.trigger !== 'history' || !ctx.historyDelta) return undefined;
   return ctx.historyDelta < 0 ? 'pop' : 'push';
 };
 
-/** Going to a page that is still kept beneath the current one is a pop back to it. */
+/** Navigating to a page still kept beneath the current one is a pop back to it. */
 export const fromStack = (): DirectionStrategy => (ctx) => {
   const stack = ctx.stack;
   if (!stack || stack.length < 2) return undefined;
@@ -89,13 +89,13 @@ export const fromStack = (): DirectionStrategy => (ctx) => {
 };
 
 export interface LevelOptions {
-  /** what to answer when both pages carry the same number (default `replace`) */
+  /** the direction when both pages carry the same number (default `replace`) */
   sameLevel?: DirectionOpinion;
 }
 
 /**
  * For apps that number their screens (`level: 1`, `level: 2`, …): a higher
- * number pushes, a lower one pops. No opinion unless both pages carry a number.
+ * number pushes, a lower one pops. No answer unless both pages carry a number.
  */
 export const fromLevel = ({ sameLevel = 'replace' }: LevelOptions = {}): DirectionStrategy => (ctx) => {
   const a = ctx.from?.level;
@@ -107,13 +107,13 @@ export const fromLevel = ({ sameLevel = 'replace' }: LevelOptions = {}): Directi
 };
 
 export interface TreeOptions {
-  /** two unrelated pages at the same depth (siblings, say) (default `replace`) */
+  /** the direction for two unrelated pages at the same depth, e.g. siblings (default `replace`) */
   sameDepth?: DirectionOpinion;
 }
 
 /**
  * Reads the route tree: a descendant of the current page pushes, an ancestor
- * pops; otherwise a deeper page pushes and a shallower one pops. Needs
+ * pops. Otherwise a deeper page pushes and a shallower one pops. Requires
  * `segments` on both pages.
  */
 export const fromTree = ({ sameDepth = 'replace' }: TreeOptions = {}): DirectionStrategy => (ctx) => {
@@ -127,7 +127,7 @@ export const fromTree = ({ sameDepth = 'replace' }: TreeOptions = {}): Direction
   return sameDepth;
 };
 
-/** Always the same answer; useful as a final fallback in a list. */
+/** Always returns the same direction. Useful as the last entry in a list. */
 export const always = (direction: Direction): DirectionStrategy => () => direction;
 
 /** The default order: an explicit hint, then browser history, then the kept stack, then numbering, then the tree. */

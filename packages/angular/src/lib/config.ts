@@ -14,14 +14,14 @@ import { StackNavRouteReuseStrategy } from './route-reuse-strategy';
 /** Everything `provideStackNav()` accepts. All optional. */
 export interface StackNavConfig {
   /**
-   * How to decide push / pop / replace for a navigation, in the order you
-   * trust them. Defaults to the core's `defaultStrategies()`: an explicit
-   * hint, then browser history, then the kept stack, then route numbering
+   * Strategies that decide push / pop / replace for a navigation, in priority
+   * order. Defaults to the core's `defaultStrategies()`: an explicit hint, then
+   * browser history, then the kept stack, then route numbering
    * (`data.stackLevel`), then the route tree. Pass a resolver function to
-   * take over completely.
+   * replace the whole mechanism.
    */
   direction?: readonly DirectionStrategy[] | DirectionResolver;
-  /** What to do when no strategy has an opinion. Default `push`. */
+  /** The direction to use when no strategy has an answer. Default `push`. */
   fallbackDirection?: Direction;
   /**
    * Where a route's number comes from, for the numbering strategy.
@@ -29,35 +29,36 @@ export interface StackNavConfig {
    */
   levelOf?: (snapshot: ActivatedRouteSnapshot) => number | null | undefined;
   /**
-   * What identifies a page, so a later navigation to the same key pops back
-   * to the kept page. Default: the route's full URL path (with matrix params).
+   * What identifies a page, so that a later navigation to the same key pops
+   * back to the kept page. Default: the route's full URL path, including matrix
+   * params.
    */
   keyOf?: (snapshot: ActivatedRouteSnapshot) => string;
-  /** `history.state` key carrying a per-navigation hint. Default `stacknav`. */
+  /** The `history.state` key carrying a per-navigation hint. Default `stacknav`. */
   stateKey?: string;
-  /** Defaults for every outlet's transition; an outlet's `transition` input overrides per key. */
+  /** Defaults for every outlet's transition. An outlet's `transition` input overrides these per key. */
   transition?: Partial<IOSTransitionOptions>;
-  /** Defaults for every outlet's swipe-back gesture; `false` disables it. */
+  /** Defaults for every outlet's swipe-back gesture. `false` disables it. */
   gesture?: Partial<EdgePanGestureOptions> | false;
   /**
-   * Set component inputs from route params, query params and data, like
-   * `withComponentInputBinding()`. Off by default, like the router.
+   * Sets component inputs from route params, query params and data, like
+   * `withComponentInputBinding()`. Off by default, matching the router.
    */
   bindToComponentInputs?: boolean;
   /**
-   * Detach change detection from pages hidden beneath the top and reattach
-   * when they show again. Saves work on deep stacks. Off by default.
+   * Detaches change detection from pages hidden beneath the top and reattaches
+   * it when they are shown again. Saves work on deep stacks. Off by default.
    */
   detachInactiveViews?: boolean;
-  /** Insert the engine's stylesheet at runtime. Default true; turn off if you import `stacknav.css`. */
+  /** Inserts the engine's stylesheet at runtime. Default true. Turn it off if you import `stacknav.css`. */
   injectStyles?: boolean;
   /**
-   * Provide a `RouteReuseStrategy` that treats `/items/1` → `/items/2` as a
-   * new page (so it gets a transition) instead of reusing the component.
+   * Provides a `RouteReuseStrategy` that treats `/items/1` → `/items/2` as a
+   * new page, so it gets a transition, instead of reusing the component.
    * Default true.
    */
   reuseStrategy?: boolean;
-  /** Animate at all. Default true. `prefers-reduced-motion` is honoured regardless. */
+  /** Whether to animate at all. Default true. `prefers-reduced-motion` is honoured either way. */
   animated?: boolean;
 }
 
@@ -84,7 +85,7 @@ export function defaultLevelOf(snapshot: ActivatedRouteSnapshot): number | null 
   return typeof v === 'number' ? v : undefined;
 }
 
-/** The route's URL path from the root down to (and including) this route, e.g. `items/42;view=full`. */
+/** The route's URL path from the root down to and including this route, e.g. `items/42;view=full`. */
 export function defaultKeyOf(snapshot: ActivatedRouteSnapshot): string {
   return snapshot.pathFromRoot
     .flatMap((s) => s.url.map((u) => u.toString()))

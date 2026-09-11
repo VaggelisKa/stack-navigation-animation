@@ -11,16 +11,16 @@ export interface EdgePanGestureOptions {
   verticalCancelSlop: number;
   /** fraction of the width dragged that completes without velocity */
   completeThreshold: number;
-  /** px/s toward the trailing edge: completes regardless of distance */
+  /** px/s toward the trailing edge that completes the pop regardless of distance */
   completeVelocity: number;
-  /** px/s back toward the leading edge: cancels regardless of distance */
+  /** px/s back toward the leading edge that cancels the pop regardless of distance */
   cancelVelocity: number;
   velocitySamples: number;
 }
 
 export interface EdgePanGesture {
   readonly options: EdgePanGestureOptions;
-  /** Re-read options at runtime (edge width, `anywhere`). */
+  /** Re-reads options changed at runtime, such as `edgeWidth` and `anywhere`. */
   refresh(): void;
   attach(stack: NavigationStack): EdgePanGesture;
   detach(): void;
@@ -37,9 +37,9 @@ interface Drag {
 }
 
 /**
- * Recognizes a leading-edge horizontal drag and drives the stack's
- * interactive pop from it. Works with pointer events, so mouse and touch
- * both count. Vertical movement early in the touch hands it back to
+ * Recognizes a horizontal drag from the leading edge and drives the stack's
+ * interactive pop from it. Built on pointer events, so it handles both mouse
+ * and touch. Vertical movement early in the gesture hands the touch back to
  * native scrolling.
  */
 export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {}): EdgePanGesture {
@@ -107,7 +107,7 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
     const velocity = t2 > t1 ? ((x2 - x1) / (t2 - t1)) * 1000 : 0;
     const cancelled = ev.type === 'pointercancel';
     const complete = !cancelled && (velocity > o.completeVelocity || (d.p < 1 - o.completeThreshold && velocity > o.cancelVelocity));
-    // The click that follows a drag release must not activate whatever is under the finger.
+    // The click that follows a drag release must not activate whatever is under the pointer.
     suppressClick = true;
     setTimeout(() => {
       suppressClick = false;
