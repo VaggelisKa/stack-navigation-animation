@@ -57,8 +57,11 @@ const transitioned = async (act, name) => {
   await settled();
   return mid;
 };
-// Unanimated activations render on the next change-detection tick; wait for the top page's title.
-const rendered = () => page.waitForFunction(() => !!document.querySelector('sn-outlet > .sn-page:last-child h1')?.textContent?.trim());
+// A deep link from elsewhere: about:blank first, so no same-origin entry sits behind it.
+const deepLink = async (path) => {
+  await page.goto('about:blank');
+  await page.goto(base + path);
+};
 const scrollTop = () => page.evaluate(() => document.querySelector('sn-outlet > .sn-page-visible').scrollTop);
 
 // ---- 1. first load: one page, no animation ---------------------------------
@@ -185,7 +188,6 @@ eq(s.url, '/', 'url after popping to a fresh page');
 // ---- 8. explicit push without animation ------------------------------------
 await page.click('.sn-page-visible button:has-text("Item 7, no animation")');
 await page.waitForSelector('app-item');
-await rendered();
 s = await state();
 eq(s.pages.join(','), 'app-home,app-item', 'hinted push mounted item 7');
 eq(s.title, 'Item 7', 'item 7 shown');
@@ -193,7 +195,6 @@ eq(s.title, 'Item 7', 'item 7 shown');
 // ---- 9. siblings: routerLink replaces (tree), info hint pushes --
 await page.click('.sn-page-visible a:has-text("via routerLink")');
 await settled();
-await rendered();
 s = await state();
 eq(s.pages.join(','), 'app-home,app-item', 'sibling via routerLink replaced');
 eq(s.title, 'Item 8', 'sibling replaced in place');
@@ -206,7 +207,7 @@ s = await state();
 eq(s.title, 'Item 8', 'back returns to the kept sibling');
 
 // ---- 10. deep link, then back with a fallback -------------------------------
-await page.goto(base + '/items/5/reviews');
+await deepLink('/items/5/reviews');
 await page.waitForSelector('app-reviews');
 s = await state();
 eq(s.pages.join(','), 'app-reviews', 'deep link renders one page');
@@ -216,6 +217,22 @@ s = await state();
 eq(s.pages.join(','), 'app-item', 'fallback replaced the deep-linked page with its parent');
 eq(s.url, '/items/5', 'fallback url');
 eq(s.title, 'Item 5', 'fallback page got its input');
+await transitioned(() => page.click('.sn-page-visible button:has-text("Back")'), '16-fallback-again');
+s = await state();
+eq(s.pages.join(','), 'app-home', 'Back after the fallback fell back again instead of leaving the site');
+eq(s.url, '/', 'url after the second fallback');
+
+// ---- 11. deep link, push, browser back: Back must stay in the app -----------
+await deepLink('/items/5');
+await page.waitForSelector('app-item');
+await transitioned(() => page.click('.sn-page-visible a:has-text("Reviews")'), '17-deeplink-push');
+await transitioned(() => page.goBack(), '18-deeplink-browser-back');
+s = await state();
+eq(s.pages.join(','), 'app-item', 'browser back returned to the deep-linked page');
+await transitioned(() => page.click('.sn-page-visible button:has-text("Back")'), '19-deeplink-back');
+s = await state();
+eq(s.pages.join(','), 'app-home', 'Back with no entry behind fell back to home');
+eq(s.url, '/', 'url after falling back');
 
 await browser.close();
 server.close();

@@ -80,7 +80,7 @@ The defaults are `[fromHint(), fromHistory(), fromStack(), fromLevel(), fromTree
 | browser back / forward | pop / push | history |
 | `routerLink` to a page still kept beneath | pop | the stack |
 | `/settings` (`data.stackLevel: 2`) → `/about` (`stackLevel: 3`) | push | numbering |
-| `/items/1` → `/items/2` via `routerLink` | replace | siblings |
+| `/items/1` → `/items/2` via `routerLink` | replace | siblings (once `StackNavRouteReuseStrategy` is provided, see below) |
 | `router.navigate(['/items', 2], { info: { stacknav: 'push' } })` | push | explicit hint |
 
 Change the order, drop a strategy, or add your own:
@@ -97,7 +97,7 @@ A strategy sees `{ from, to, trigger, historyDelta, hint, stack }` where `from`/
 
 ### Back buttons
 
-A back button is `Location.back()`. After a deep link there is nothing to go back to, so an app typically falls back to a route as a pop; that is a few lines of app code with `Router` and `Location` (see [`apps/angular-demo/src/app/back.ts`](../../apps/angular-demo/src/app/back.ts)).
+A back button is `Location.back()`. After a deep link there is nothing to go back to, so an app typically falls back to a route as a pop; that is a few lines of app code with `Router`, `Location` and the browser's `navigation.canGoBack` (see [`apps/angular-demo/src/app/back.ts`](../../apps/angular-demo/src/app/back.ts)).
 
 ### Siblings
 
@@ -130,7 +130,7 @@ Routes opt out of it with `data: { reuseRoute: true }`.
 
 Inputs: `name`, `transition`, `gesture`, `routerOutletData`. Outputs: `activate`, `deactivate`, `attach`, `detach` (like `router-outlet`) and `navigated` with `{ view, direction, animated, reused }`. Properties: `stack` (the core `NavigationStack`, for `progress` events), `pages` (kept pages, bottom to top), `canPop`, `lastDirection`.
 
-Component inputs are bound when the router is configured `withComponentInputBinding()`, as with `router-outlet`.
+Component inputs are bound when the router is configured `withComponentInputBinding()`: query params, params and data, in that order of precedence, with unmatched inputs set to `undefined`. The router only binds inputs for its own outlet, so this one does it itself and cannot see the options you pass to `withComponentInputBinding()`; those, and route `resources`, are not honoured.
 
 ### `StackNavRouteReuseStrategy`
 

@@ -3,15 +3,26 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 /**
- * App-level back button: history back when this app navigated here, else
- * (after a deep link) go to `fallback` as a pop, replacing the entry so the
- * user is not stuck. Nothing here is library API; it is Router and Location.
+ * App-level back button: history back when there is a same-origin entry
+ * behind this one, else (after a deep link) go to `fallback` as a pop,
+ * replacing the entry so the user is not stuck. Nothing here is library API;
+ * it is Router, Location and the browser.
  */
 export function useBack(): (fallback: readonly unknown[]) => void {
   const router = inject(Router);
   const location = inject(Location);
   return (fallback) => {
-    if (router.lastSuccessfulNavigation()?.previousNavigation) location.back();
+    if (canGoBack()) location.back();
     else void router.navigate([...fallback], { replaceUrl: true, info: { stacknav: 'pop' } });
   };
+}
+
+/**
+ * The Navigation API lists only the same-origin entries contiguous with the
+ * current one, so `canGoBack` is false right after a deep link from elsewhere.
+ * Browsers without it can only guess from `history.length`.
+ */
+function canGoBack(): boolean {
+  const nav = (globalThis as { navigation?: { canGoBack: boolean } }).navigation;
+  return nav ? nav.canGoBack : history.length > 1;
 }

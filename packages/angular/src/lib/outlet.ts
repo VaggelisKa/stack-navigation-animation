@@ -334,6 +334,10 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
     }
     this.changeDetector.markForCheck();
     this.bindInputs(view);
+    // An animated page renders during its first frames off screen. One that
+    // appears at once (no animation, or a replace, which the stack never
+    // animates) would otherwise be blank until the next scheduled tick.
+    if ((!animated || direction === 'replace') && !alreadyOnScreen) view.ref.changeDetectorRef.detectChanges();
     (reused ? this.attachEvents : this.activateEvents).emit(view.ref.instance);
     this.navigatedEvents.emit({ view, direction, animated, reused });
   }
