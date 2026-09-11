@@ -1,5 +1,21 @@
 /* Styles for the demo apps. Each demo commits to its own look, light or dark,
-   so every page sets its background and text colour explicitly. */
+   so every page declares the page colour tokens from styles.css on its own
+   root. Declaring them here rather than letting `:root` supply them is what
+   keeps the global dark-scheme block out of a light demo's header, cards and
+   lede -- and the other way round for the dark gallery viewer. */
+
+.feed, .shop, .chat, .gal, .frm, .srch, .dash, .lab {
+  /* `color-scheme` as well as the tokens: it is what native controls -- the
+     lab's range sliders, the form's selects -- paint themselves from. */
+  color-scheme: light;
+  --page-bg: #f7f7f9;
+  --page-fg: #111;
+  --card-bg: #fff;
+  --hdr-bg: rgba(247,247,249,.92);
+  --hdr-border: rgba(0,0,0,.08);
+  --lede-fg: #3a3a3c;
+  --control-border: #c7c7cc;
+}
 
 /* ---------------------------------------------------------------- shared */
 .progress { position: absolute; top: 0; left: 0; right: 0; height: 3px; z-index: 10; pointer-events: none; opacity: 0; transition: opacity .2s; overflow: hidden; }
@@ -31,8 +47,7 @@
 .item small { text-align: right; }
 
 /* ---------------------------------------------------------------- feed */
-.feed { background: #fff; color: #0f1419; }
-.feed-hdr { background: rgba(255,255,255,.88); border-color: #eff3f4; }
+.feed { --page-bg: #fff; --page-fg: #0f1419; --hdr-bg: rgba(255,255,255,.88); --hdr-border: #eff3f4; --lede-fg: #536471; --control-border: #cfd9de; }
 .feed-refresh, .chat-refresh, .gal-toggle, .gal-like { width: 64px; text-align: right; background: none; border: 0; color: #1d9bf0; font: inherit; font-size: 20px; padding: 0; cursor: pointer; }
 .feed-refresh:disabled { opacity: .4; }
 .feed-card { display: block; padding: 12px 16px 6px; border-bottom: 1px solid #eff3f4; }
@@ -73,8 +88,7 @@
 .feed-empty { padding: 32px; text-align: center; color: #536471; }
 
 /* ---------------------------------------------------------------- shop */
-.shop { background: #faf7f2; color: #1f1a17; }
-.shop-hdr { background: rgba(250,247,242,.9); border-color: #ece6dc; }
+.shop { --page-bg: #faf7f2; --page-fg: #1f1a17; --hdr-bg: rgba(250,247,242,.9); --hdr-border: #ece6dc; --lede-fg: #8a8178; --control-border: #e3dcd0; }
 .shop-hdr .back, .shop-hdr-float .back { color: #e0533d; }
 .shop-cart-btn { position: relative; width: 64px; text-align: right; font-size: 22px; color: #e0533d; text-decoration: none; }
 .shop-cart-btn b { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #e0533d; color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
@@ -135,8 +149,7 @@
 .shop-done-body button { margin-top: 16px; font: inherit; font-weight: 700; padding: 13px 24px; border-radius: 14px; border: 0; background: #1f1a17; color: #fff; }
 
 /* ---------------------------------------------------------------- chat */
-.chat { background: #fff; color: #000; }
-.chat-hdr { background: rgba(249,249,249,.92); border-color: #d9d9dd; }
+.chat { --page-bg: #fff; --page-fg: #000; --hdr-bg: rgba(249,249,249,.92); --hdr-border: #d9d9dd; --control-border: #d9d9dd; }
 .chat-hdr .back { color: #0b84ff; }
 .chat-hdr .chat-refresh { color: #0b84ff; }
 .chat-search { padding: 8px 16px; }
@@ -169,12 +182,11 @@
 .chat-composer button:disabled { background: #c7c7cc; }
 
 /* ---------------------------------------------------------------- gallery */
-.gal { background: #fff; color: #111; }
-.gal-hdr { background: rgba(255,255,255,.92); }
+.gal { --page-bg: #fff; --hdr-bg: rgba(255,255,255,.92); }
 .gal-grid { display: grid; grid-template-columns: repeat(var(--cols, 3), 1fr); gap: 2px; padding: 2px; }
 .gal-tile { aspect-ratio: 1; display: block; }
-.gal-dark { background: #000; color: #f2f2f7; min-height: 100%; display: flex; flex-direction: column; }
-.gal-hdr-dark { background: rgba(0,0,0,.6); border-color: rgba(255,255,255,.12); color: #fff; }
+.gal-dark { color-scheme: dark; --page-bg: #000; --page-fg: #f2f2f7; --card-bg: #1c1c1e; --hdr-bg: rgba(0,0,0,.6); --hdr-border: rgba(255,255,255,.12); --lede-fg: #c7c7cc; --control-border: #3a3a3c; min-height: 100%; display: flex; flex-direction: column; }
+.gal-hdr-dark { color: #fff; }
 .gal-hdr-dark .back { color: #fff; }
 .gal-like { color: #fff; }
 .gal-like.on { color: #ff375f; }
@@ -195,7 +207,7 @@
 .gal-dark .err { background: #2c1512; color: #ffb4a8; border-color: #5a2a24; }
 
 /* ---------------------------------------------------------------- forms */
-.frm { background: #f2f2f7; color: #000; }
+.frm { --page-bg: #f2f2f7; --page-fg: #000; --hdr-bg: rgba(242,242,247,.92); --control-border: #d1d1d6; }
 .frm-form { padding: 0 16px 24px; }
 .frm-form h2, .frm .body h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #6e6e73; margin: 22px 16px 6px; }
 .frm-form h2 { margin-left: 0; }
@@ -240,8 +252,8 @@
 .frm-done-body .btn { margin-top: 16px; }
 
 /* ---------------------------------------------------------------- search */
-.srch { background: #fff; color: #111; }
-.srch-hdr { background: rgba(255,255,255,.92); gap: 6px; }
+.srch { --page-bg: #fff; --hdr-bg: rgba(255,255,255,.92); --lede-fg: #6e6e73; --control-border: #d1d1d6; }
+.srch-hdr { gap: 6px; }
 .srch-hdr .back { width: auto; }
 .srch-box { flex: 1; display: flex; align-items: center; gap: 6px; padding: 0 10px; height: 36px; border-radius: 10px; background: #eeeef0; }
 .srch-box span { color: #8e8e93; font-size: 18px; }
@@ -265,8 +277,7 @@
 .srch-empty { padding: 40px 16px; text-align: center; color: #8e8e93; }
 
 /* ---------------------------------------------------------------- dashboard */
-.dash { background: #f4f5f7; color: #111827; }
-.dash-hdr { background: rgba(244,245,247,.92); border-color: #e5e7eb; }
+.dash { --page-bg: #f4f5f7; --page-fg: #111827; --hdr-bg: rgba(244,245,247,.92); --hdr-border: #e5e7eb; --lede-fg: #4b5563; --control-border: #e5e7eb; }
 .dash-hdr .back { color: #4f46e5; }
 .dash-tabs { position: sticky; top: 52px; z-index: 1; display: flex; gap: 4px; margin: 0; padding: 8px 16px; background: rgba(244,245,247,.92); backdrop-filter: blur(12px); }
 .dash-tabs a { flex: 1; text-align: center; padding: 7px 0; border-radius: 8px; color: #4b5563; font-weight: 500; text-decoration: none; background: #e5e7eb; }
@@ -311,7 +322,7 @@
 .dash-profile .btn.ghost { background: transparent; color: #4f46e5; }
 
 /* ---------------------------------------------------------------- lab */
-.lab { background: #f7f7f9; color: #111; }
+/* The lab keeps the shared tokens above; nothing to override. */
 .lab .frm-group { margin: 0 16px; }
 .lab .body .frm-group { margin: 0; }
 .lab-range { flex-direction: column; align-items: stretch !important; gap: 4px !important; padding: 10px 16px !important; }
