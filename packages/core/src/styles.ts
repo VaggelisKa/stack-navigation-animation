@@ -1,5 +1,22 @@
-/** The only styles the engine needs. Theme nothing here; it is layout. */
+/**
+ * The only styles the engine needs. Theme nothing here; it is layout — the
+ * look lives in the transition, tunable through the custom properties listed
+ * below. They are documented, not declared: leaving them unset is what makes
+ * the JS defaults apply, so set one only where you mean to override.
+ */
 export const STACKNAV_CSS = `
+/* Tune the iOS transition by setting these on .sn-container (or any ancestor):
+     --sn-duration: 500ms;                        push/pop length
+     --sn-easing: cubic-bezier(0.32, 0.72, 0, 1); its curve, or a keyword, or ios
+     --sn-parallax: 30%;                          how far the page beneath travels
+     --sn-dim-color: #000;                        overlay on the page beneath
+     --sn-dim-max: 10%;                           its opacity at full open
+     --sn-shadow: -3px 0 14px rgba(0,0,0,0.16);   on the incoming page, none to drop it
+     --sn-settle-min: 120ms;                      bounds for finishing a swipe
+     --sn-settle-max: 400ms;
+     --sn-settle-easing: ios-settle;              the curve a released swipe finishes on
+     --sn-settle-velocity-floor: 900;             px/s assumed when the finger was slower
+     --sn-time-scale: 1;                          multiplies every duration */
 .sn-container {
   position: relative;
   overflow: hidden;

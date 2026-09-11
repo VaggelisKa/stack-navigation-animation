@@ -1,9 +1,11 @@
-// The smallest DOM the engine needs: classList, style, parent/child, clientWidth.
+// The smallest DOM the engine needs: classList, style, parent/child, clientWidth,
+// and inherited custom properties for getComputedStyle().
 export function makeElement(tag = 'div'): any {
   const classes = new Set();
   const el: any = {
     tagName: tag.toUpperCase(),
     style: {},
+    vars: {},
     parentElement: null,
     children: [],
     clientWidth: 400,
@@ -53,6 +55,13 @@ export function installGlobals() {
   globalThis.document = { createElement: makeElement };
   globalThis.performance ||= { now: () => Date.now() };
   globalThis.matchMedia = () => ({ matches: false });
+  // Custom properties inherit, so walk up until one element declares the name.
+  globalThis.getComputedStyle = (el) => ({
+    getPropertyValue(name) {
+      for (let e = el; e; e = e.parentElement) if (e.vars?.[name] !== undefined) return e.vars[name];
+      return '';
+    },
+  });
   // Instant rAF: every tween finishes within a microtask or two.
   globalThis.requestAnimationFrame = (fn) => setTimeout(() => fn(performance.now() + 10_000), 0);
   globalThis.cancelAnimationFrame = (id) => clearTimeout(id);

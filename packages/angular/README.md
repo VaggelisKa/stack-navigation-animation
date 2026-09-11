@@ -24,6 +24,11 @@ bootstrapApplication(App, {
 <sn-outlet style="height: 100dvh" />
 ```
 
+```css
+/* styles.css: the transition's knobs are custom properties, all optional */
+:root { --sn-duration: 340ms; --sn-parallax: 20%; }
+```
+
 ```ts
 // a page
 @Component({
@@ -87,7 +92,7 @@ router.navigate(['/x'], { state: { stacknav: 'pop' } }); // the same hint by han
 | `levelOf(snapshot)` | `data.stackLevel` | the route's number |
 | `keyOf(snapshot)` | the route's URL path | identity of a page |
 | `stateKey` | `'stacknav'` | `history.state` key for hints |
-| `transition` | `{}` | `createIOSTransition` options for every outlet |
+| `transition` | `{}` | `createIOSTransition` options for every outlet. The same knobs are CSS variables (`--sn-duration`, `--sn-easing`, `--sn-parallax`, `--sn-dim-max`, `--sn-shadow`, …) read off the outlet, so a stylesheet can retune them — see the [core README](../core#tuning-from-css) |
 | `gesture` | `{}` | `createEdgePanGesture` options; `false` disables swiping |
 | `bindToComponentInputs` | `false` | set inputs from params, query params and data, like `withComponentInputBinding()` |
 | `detachInactiveViews` | `false` | detach change detection from hidden pages |

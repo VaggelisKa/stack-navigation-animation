@@ -7,6 +7,7 @@ A drop-in iOS push/pop navigation transition for any web app. Pages, headers and
 - **Scroll and state survive.** Pages beneath the top stay mounted and hidden. Only `transform` is written, so scroll offsets, form state and focus are untouched when you return.
 - **Direction resolution** for router-driven apps: composable strategies decide push / pop / replace; the engine prescribes nothing.
 - **Browser back** for router-less apps through an optional history adapter. On iOS browsers the pop is instant, because Safari already animated its own snapshot.
+- **Tunable from CSS.** Duration, curve, parallax, dim and shadow are custom properties on the container, so a media query or a theme class can retune the animation without touching the app's JS.
 - **Your chrome.** Subscribe to `progress` events and drive a fixed header or tab bar from the same `p`.
 - No dependencies. Plain ES modules with type declarations.
 
@@ -78,19 +79,44 @@ A strategy is `(ctx: NavigationContext) => 'push' | 'pop' | 'replace' | 'auto' |
 
 ### `createIOSTransition(options)`
 
-| Option | Default | |
-| --- | --- | --- |
-| `duration` | `500` | ms for programmatic push/pop |
-| `parallax` | `0.3` | fraction of the width the lower page travels |
-| `dimColor`, `dimMax` | `"#000"`, `0.1` | overlay on the lower page at full open (`0.35` reads well on dark UIs) |
-| `shadow` | `-3px 0 14px rgba(0,0,0,0.16)` | box-shadow on the incoming page |
-| `settleMin`, `settleMax` | `120`, `400` | ms bounds when finishing an interactive pop |
-| `settleVelocityFloor` | `900` | px/s assumed when the finger was slower |
-| `timeScale` | `1` | multiplies every duration (slow motion, tests) |
+| Option | CSS variable | Default | |
+| --- | --- | --- | --- |
+| `duration` | `--sn-duration` | `500` | ms for programmatic push/pop |
+| `ease` | `--sn-easing` | `cubic-bezier(0.32, 0.72, 0, 1)` | the curve push/pop runs on |
+| `parallax` | `--sn-parallax` | `0.3` | fraction of the width the lower page travels |
+| `dimColor`, `dimMax` | `--sn-dim-color`, `--sn-dim-max` | `"#000"`, `0.1` | overlay on the lower page at full open (`0.35` reads well on dark UIs) |
+| `shadow` | `--sn-shadow` | `-3px 0 14px rgba(0,0,0,0.16)` | box-shadow on the incoming page |
+| `settleMin`, `settleMax` | `--sn-settle-min`, `--sn-settle-max` | `120`, `400` | ms bounds when finishing an interactive pop |
+| `settleEase` | `--sn-settle-easing` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | the curve a released swipe finishes on |
+| `settleVelocityFloor` | `--sn-settle-velocity-floor` | `900` | px/s assumed when the finger was slower |
+| `timeScale` | `--sn-time-scale` | `1` | multiplies every duration (slow motion, tests) |
 
 `prefers-reduced-motion` makes every duration 0.
 
-A transition is just `{ duration, ease, settle(), begin?(), apply(lower, upper, p), end?() }`, so you can write a different one (a fade, a vertical sheet) and pass it to `new NavigationStack({ container, transition })`.
+#### Tuning from CSS
+
+Every option is also a custom property, read off the container when a transition starts. Custom properties inherit, so set them wherever you like — on `:root`, on the container, under a theme class, inside a media query:
+
+```css
+:root {
+  --sn-duration: 340ms;              /* snappier than iOS */
+  --sn-easing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+.theme-flat {
+  --sn-parallax: 0;                  /* no parallax on the page beneath */
+  --sn-dim-max: 0;
+  --sn-shadow: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --sn-dim-max: 35%; }       /* dimming reads stronger on dark UIs */
+}
+```
+
+Durations take `ms`, `s` or a bare number of milliseconds; fractions take `0.3` or `30%`; easings take a CSS timing keyword, `cubic-bezier(…)`, or `ios` / `ios-settle` for the two defaults. A variable that is set wins over the JS option, so a stylesheet can retune a transition the app configured in code. One that is unset — or unparseable — falls through to the JS option, so there is nothing to declare to get the defaults.
+
+Values are re-read at the start of every transition, which is enough for media queries and class changes. `transition.refresh()` re-reads them on demand (after changing `transition.options` mid-animation, say); `transition.resolved` is what is currently in force, and `IOS_TRANSITION_CSS_VARS` maps each option to its variable name.
+
+A transition is just `{ duration, ease, settle(), begin?(), apply(lower, upper, p), end?() }`, so you can write a different one (a fade, a vertical sheet) and pass it to `new NavigationStack({ container, transition })`. `cssVars()` and the `parseTime` / `parseRatio` / `parseEasing` helpers are exported if you want your own to read variables the same way.
 
 ### `createEdgePanGesture(options)`
 
@@ -112,7 +138,7 @@ For apps without a router. Mirrors depth into `history.state`. Returns a detach 
 
 ### Styles
 
-`injectStyles()` inserts the engine's four rules once; `STACKNAV_CSS` is the string; `@stacknav/core/stacknav.css` is the same as a file.
+`injectStyles()` inserts the engine's four rules once; `STACKNAV_CSS` is the string; `@stacknav/core/stacknav.css` is the same as a file. It is layout only, and declares no custom properties — the tuning variables above are documented in a comment there, not set, so that leaving one out means "use the default".
 
 ## Develop
 
@@ -124,6 +150,7 @@ pnpm build        # tsc → dist/, plus dist/stacknav.css
 ```
 src/
   animate.ts            cubic-bezier solver, cancellable tween, easings
+  css-vars.ts           reading and parsing the engine's custom properties
   navigation-stack.ts   the stack: mounting, ordering, transition lifecycle, queueing
   ios-transition.ts     the look: slide, parallax, dim, shadow, settle timing
   edge-pan-gesture.ts   pointer-event recognizer that drives the interactive pop
