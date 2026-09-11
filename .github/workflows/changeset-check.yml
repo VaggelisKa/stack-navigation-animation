@@ -10,18 +10,22 @@ jobs:
     name: Pull request declares a bump
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      # checkout fetches the pull request's own ref, so name the base branch
+      # explicitly rather than assume origin/main is already there
+      - run: git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
 
       # Fails when a published package changed without a changeset. For a change
       # that needs no release, commit an empty one: pnpm changeset --empty
