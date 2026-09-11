@@ -100,6 +100,58 @@ The Angular tooling requires Node 22.22.3+ or 24.
 The demo runs without zone.js, so a click's view update lands on the next
 animation frame. The e2e helpers wait for one frame before reading the DOM.
 
+## Releasing
+
+Releases run on [changesets](https://github.com/changesets/changesets). Every
+change that should reach npm ships with a changeset: a small markdown file
+saying which packages moved and how far.
+
+```sh
+pnpm changeset            # describe a change and pick its bump
+pnpm changeset --empty    # a change that needs no release (docs, CI, tests)
+```
+
+Commit the generated file with your code. A pull request that touches a
+published package without one fails the `Changeset` check.
+
+The rest is automatic. On a push to `main` the `Release` workflow collects the
+pending changesets into a "chore: version packages" pull request that applies
+the bumps and writes the changelogs. Merging that pull request publishes the
+packages to npm and tags them. Pending changesets accumulate into the same pull
+request, so it always reflects the next release.
+
+### Bumping a package when its dependency changes
+
+`@stacknav/angular` depends on `@stacknav/core`, so any core release also
+releases the Angular package:
+
+| core                | angular         | published range |
+| ------------------- | --------------- | --------------- |
+| `0.2.0` -> `0.2.1`  | patch           | `^0.2.1`        |
+| `0.2.0` -> `0.3.0`  | patch           | `^0.3.0`        |
+| `0.2.0` -> `1.0.0`  | patch           | `^1.0.0`        |
+
+The Angular package's own version reflects its own changes; you write those
+changesets yourself. What it inherits from core is the dependency range, which
+pnpm resolves from `workspace:^` at publish time so a consumer always gets a
+core that matches.
+
+Two settings drive this. `updateInternalDependents: "always"` releases the
+Angular package on every core release, not only when core leaves the declared
+range. `updateInternalDependencies: "patch"` rewrites the range for any bump
+down to a patch.
+
+### First-time setup
+
+The `Release` workflow needs an npm automation token with publish rights on the
+`@stacknav` scope, stored as the `NPM_TOKEN` repository secret. It also needs
+"Allow GitHub Actions to create and approve pull requests" enabled under
+Settings -> Actions, so it can open the release pull request.
+
+Running `pnpm changeset version` locally needs a `GITHUB_TOKEN` in the
+environment, because changelog entries link back to the pull request that
+introduced them. In CI the workflow supplies it.
+
 ## Layout
 
 ```
@@ -107,4 +159,6 @@ packages/core/          @stacknav/core     TypeScript, built with tsc to dist/
 packages/angular/       @stacknav/angular  built with ng-packagr to dist/
 apps/demo/              vanilla demo (esbuild → dist/demo.html)
 apps/angular-demo/      Angular CLI app + Playwright e2e (e2e/run.mjs)
+.changeset/             pending release notes and the changesets config
+.github/workflows/      the Release and Changeset workflows
 ```
