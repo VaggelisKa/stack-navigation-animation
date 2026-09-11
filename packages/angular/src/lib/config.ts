@@ -65,7 +65,7 @@ export interface ResolvedStackNavConfig {
   animated: boolean;
 }
 
-export const STACKNAV_CONFIG = new InjectionToken<ResolvedStackNavConfig>('STACKNAV_CONFIG', {
+export const STACKNAV_CONFIG = /*#__PURE__*/ new InjectionToken<ResolvedStackNavConfig>('STACKNAV_CONFIG', {
   providedIn: 'root',
   factory: () => resolveConfig({}),
 });

@@ -22,10 +22,13 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Eas
   };
 }
 
+// `#__PURE__` marks the module-load calls as droppable, so a bundler that does
+// not honour the package's `sideEffects` flag can still leave this module out
+// when nothing here is imported.
 export const easings: { linear: Easing; ios: Easing; easeOut: Easing } = {
   linear: (t) => t,
-  ios: cubicBezier(0.32, 0.72, 0, 1), // the common approximation of UIKit's navigation curve
-  easeOut: cubicBezier(0.2, 0.8, 0.2, 1),
+  ios: /*#__PURE__*/ cubicBezier(0.32, 0.72, 0, 1), // the common approximation of UIKit's navigation curve
+  easeOut: /*#__PURE__*/ cubicBezier(0.2, 0.8, 0.2, 1),
 };
 
 export interface TweenOptions {

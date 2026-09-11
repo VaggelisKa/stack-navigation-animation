@@ -194,16 +194,31 @@ bounces back; pass `onForward(targetDepth)` to re-push something instead.
 ### Styles
 
 `injectStyles()` inserts the engine's four rules once. `STACKNAV_CSS` is the same
-CSS as a string, and `@stacknav/core/stacknav.css` is the same CSS as a file. It
-covers layout only and declares no custom properties: the tuning variables above
-are listed in a comment there rather than set, so that leaving one out means "use
-the default".
+CSS as a string, minified because it rides along in your JS bundle, and
+`@stacknav/core/stacknav.css` is the same CSS as a readable file. It covers
+layout only and declares no custom properties: the tuning variables above are
+listed in a comment in the file rather than set, so that leaving one out means
+"use the default".
+
+## Footprint
+
+Plain ES modules, no dependencies, no work at module load: a bundler keeps only what you import, whether or not it honours the package's `sideEffects` flag (the tests bundle each entry point with that flag switched off and check what survives). Minified and gzipped, as measured by `pnpm size`:
+
+| You import | Costs |
+| --- | --- |
+| `createIOSStack` (stack, iOS look, swipe back) | ~4.1 kB |
+| `NavigationStack` with your own transition | ~2.0 kB |
+| the direction strategies | ~0.6 kB |
+| `attachBrowserHistory` | ~0.4 kB |
+| `injectStyles` | ~0.3 kB |
+| everything | ~5.4 kB |
 
 ## Develop
 
 ```sh
-pnpm test         # node:test with a 68-line DOM stub, no browser
+pnpm test         # node:test with a 68-line DOM stub, no browser; includes the tree-shaking checks
 pnpm build        # tsc → dist/, plus dist/stacknav.css
+pnpm size         # what each entry point costs, minified + gzipped (after a build)
 ```
 
 ```

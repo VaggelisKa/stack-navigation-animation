@@ -17,10 +17,12 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/write-css.mjs",
     "test": "node --test \"test/**/*.test.ts\"",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "size": "node scripts/size.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "esbuild": "^0.28.0",
     "typescript": "~6.0.0"
   }
 }
