@@ -25,11 +25,13 @@ function applyPrefs() {
 
 const TOPICS = [
   ['Push', 'The incoming page slides in from the trailing edge over 500 ms on cubic-bezier(0.32, 0.72, 0, 1). The page beneath slides 30 % of the width toward the leading edge and dims to 10 % black. A soft shadow rides the incoming page\'s leading edge so the two read as stacked.'],
+  ['Who animates', 'Not this script. The engine writes where each page should end up and puts the duration and the curve in --sn-t and --sn-e on the container; the frames in between belong to CSS, and to the compositor. A whole 500 ms push costs about a dozen style writes, so a busy main thread cannot stutter it. The travel is a percentage of the page, so nothing measures layout and a mid-transition resize stays honest.'],
+  ['The look is a stylesheet', 'How far the lower page travels (--sn-parallax), how dark it goes (--sn-dim, --sn-dim-color), the shadow (--sn-shadow), the edge strip (--sn-edge-width) and which way forward is (--sn-dir, flipped under :dir(rtl)) are all custom properties. Retheme the transition in a stylesheet without touching a line of JavaScript, and prefers-reduced-motion overrules the engine from the same place.'],
   ['Pop', 'The exact reverse. Because both movements are expressed as one number, p, how much of the upper page is showing, pop is push run backwards and nothing is duplicated.'],
-  ['Interactive pop', 'A drag from the leading edge sets p directly from the finger: p = 1 − dx / width. Nothing is animated while the finger is down; the page is simply where the finger says it is.'],
-  ['Release', 'Past half the width, or a flick faster than 500 px/s toward the trailing edge, completes. A flick back faster than 500 px/s cancels. Otherwise it snaps back. The remaining distance runs an ease-out whose duration comes from distance ÷ velocity, clamped to 120–400 ms, so a fast flick finishes fast and a slow release finishes slow.'],
+  ['Interactive pop', 'A drag from the leading edge sets p directly from the finger: p = 1 − dx / width. While the finger is down --sn-t is 0s, so nothing is animated; the page is simply where the finger says it is.'],
+  ['Release', 'Past half the width, or a flick faster than 500 px/s toward the trailing edge, completes. A flick back faster than 500 px/s cancels. Otherwise it snaps back. The remaining distance runs an ease-out whose duration comes from distance ÷ velocity, clamped to 120–400 ms, so a fast flick finishes fast and a slow release finishes slow. That number is handed to CSS and the browser runs it out.'],
   ['Scroll', 'Pages beneath the top stay in the DOM, hidden. The transition writes only transform, so a page\'s scroll offset, form state and focus are untouched when you come back to it. No restoration logic exists because none is needed.'],
-  ['Your chrome', 'The stack emits progress events with (lower, upper, p). A host app that wants a fixed header to animate, or a tab bar to fade, subscribes and interpolates its own elements from the same p.'],
+  ['Your chrome', 'A fixed header or a tab bar can read --sn-t and --sn-e and the sn-page-upper / sn-page-lower classes and move in lockstep with the pages, on the compositor, from CSS alone. For chrome that needs the number, the stack still emits progress events with (lower, upper, p) and only runs a frame loop while something is listening.'],
   ['History', 'An optional adapter mirrors depth into history.state, so the browser or hardware back button pops with the same animation. On iOS browsers the pop is instant, because Safari already animated its own snapshot.'],
 ];
 const FILLER = Array.from({ length: 40 }, (_, i) => `Row ${i + 1}`);
@@ -126,7 +128,7 @@ const optionsPage = () =>
           applyPrefs();
         }),
       );
-      b.append(h('p', 'note', 'Multiplies every duration so the parallax, dim and settle curve are easy to watch.'));
+      b.append(h('p', 'note', 'Multiplies every duration the engine hands to CSS, so the parallax, dim and settle curve are easy to watch.'));
     },
   });
 

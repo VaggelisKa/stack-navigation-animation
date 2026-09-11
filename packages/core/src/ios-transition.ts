@@ -4,13 +4,6 @@ import type { SettleInput, StackEntry, Transition } from './navigation-stack.ts'
 export interface IOSTransitionOptions {
   /** ms, programmatic push/pop */
   duration: number;
-  /** fraction of the width the lower page travels */
-  parallax: number;
-  dimColor: string;
-  /** lower-page overlay opacity at p = 1 (≈0.35 reads well on dark UIs) */
-  dimMax: number;
-  /** box-shadow on the incoming page */
-  shadow: string;
   /** ms bounds for finishing an interactive pop */
   settleMin: number;
   settleMax: number;
@@ -18,27 +11,53 @@ export interface IOSTransitionOptions {
   settleVelocityFloor: number;
   /** multiplies every duration (slow motion / tests) */
   timeScale: number;
+
+  /**
+   * The look. Each of these is a CSS custom property on the container, and
+   * the stylesheet already has a value for it; set one here only to override
+   * the stylesheet from JavaScript. Leaving them undefined is the point —
+   * then a designer can retheme the whole transition without touching code.
+   */
+  /** `--sn-parallax`: fraction of the width the lower page travels */
+  parallax?: number;
+  /** `--sn-dim-color` */
+  dimColor?: string;
+  /** `--sn-dim`: lower-page overlay opacity at p = 1 (≈0.35 reads well on dark UIs) */
+  dimMax?: number;
+  /** `--sn-shadow`: box-shadow on the incoming page */
+  shadow?: string;
 }
 
 export interface IOSTransition extends Transition {
   readonly options: IOSTransitionOptions;
 }
 
-const DIM = Symbol('dim');
-type Dimmable = StackEntry & { [DIM]?: HTMLElement };
+/** Which option overrides which custom property. */
+const CSS_VARS = {
+  parallax: '--sn-parallax',
+  dimColor: '--sn-dim-color',
+  dimMax: '--sn-dim',
+  shadow: '--sn-shadow',
+} as const;
+
+/** Four decimals is well past a subpixel, and keeps the style strings short. */
+const round = (n: number): number => Math.round(n * 1e4) / 1e4 || 0;
 
 /**
  * The iOS navigation look: the upper page slides in from the trailing edge
  * with a soft shadow on its leading edge; the lower page parallaxes toward
- * the leading edge and dims. Everything is a function of one number, p.
+ * the leading edge and dims.
+ *
+ * Everything is still a function of one number, p — but p is only ever
+ * written twice per transition, at each end. CSS interpolates between them,
+ * so the parallax factor, the dim, the shadow and the reading direction all
+ * stay in the stylesheet and none of them cost a frame of JavaScript.
+ *
+ * One transition instance drives one stack.
  */
 export function createIOSTransition(options: Partial<IOSTransitionOptions> = {}): IOSTransition {
   const o: IOSTransitionOptions = {
     duration: 500,
-    parallax: 0.3,
-    dimColor: '#000',
-    dimMax: 0.1,
-    shadow: '-3px 0 14px rgba(0,0,0,0.16)',
     settleMin: 120,
     settleMax: 400,
     settleVelocityFloor: 900,
@@ -46,17 +65,17 @@ export function createIOSTransition(options: Partial<IOSTransitionOptions> = {})
     ...options,
   };
 
-  const dimOf = (entry: Dimmable): HTMLElement => {
-    let d = entry[DIM];
-    if (!d) {
-      d = document.createElement('div');
-      d.setAttribute('aria-hidden', 'true');
-      Object.assign(d.style, { position: 'fixed', inset: '0', pointerEvents: 'none', opacity: '0', zIndex: '2147483647' });
-      entry[DIM] = d;
+  /** Which custom properties this transition has written, so it only ever clears its own. */
+  const written = new Set<string>();
+  let dim: HTMLElement | null = null;
+  const dimOf = (lower: StackEntry): HTMLElement => {
+    if (!dim) {
+      dim = document.createElement('div');
+      dim.className = 'sn-dim';
+      dim.setAttribute('aria-hidden', 'true');
     }
-    d.style.background = o.dimColor;
-    if (d.parentElement !== entry.el) entry.el.append(d);
-    return d;
+    if (dim.parentElement !== lower.el) lower.el.append(dim);
+    return dim;
   };
 
   return {
@@ -74,25 +93,38 @@ export function createIOSTransition(options: Partial<IOSTransitionOptions> = {})
     },
 
     begin(lower, upper) {
-      upper.el.style.boxShadow = o.shadow;
+      const container = upper.el.parentElement;
+      if (container) {
+        for (const [key, prop] of Object.entries(CSS_VARS)) {
+          const value = o[key as keyof typeof CSS_VARS];
+          if (value !== undefined) {
+            container.style.setProperty(prop, String(value));
+            written.add(prop);
+          } else if (written.delete(prop)) {
+            container.style.removeProperty(prop); // an option that used to be set; not somebody else's
+          }
+        }
+      }
       if (lower) dimOf(lower);
     },
+
+    /**
+     * The state at p, written declaratively. Two calls with `--sn-t` set to a
+     * duration make an animation; a call per pointer move with `--sn-t: 0s`
+     * makes a drag. No layout is read: the travel is a percentage of the page.
+     */
     apply(lower, upper, p) {
-      const w = upper.el.parentElement?.clientWidth ?? 0;
-      upper.el.style.transform = `translate3d(${(1 - p) * w}px,0,0)`;
+      upper.el.style.transform = `translate3d(calc(${round((1 - p) * 100)}% * var(--sn-dir)),0,0)`;
       if (lower) {
-        lower.el.style.transform = `translate3d(${-p * o.parallax * w}px,0,0)`;
-        dimOf(lower).style.opacity = String(p * o.dimMax);
+        lower.el.style.transform = `translate3d(calc(${round(-p * 100)}% * var(--sn-parallax) * var(--sn-dir)),0,0)`;
+        dimOf(lower).style.opacity = `calc(${round(p)} * var(--sn-dim))`;
       }
     },
+
     end(lower, upper) {
-      upper.el.style.boxShadow = '';
       upper.el.style.transform = '';
-      if (lower) {
-        lower.el.style.transform = '';
-        const d = (lower as Dimmable)[DIM];
-        if (d) d.remove();
-      }
+      if (lower) lower.el.style.transform = '';
+      dim?.remove();
     },
   };
 }

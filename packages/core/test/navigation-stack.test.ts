@@ -40,7 +40,7 @@ test('push mounts the page, marks it top and visible', async () => {
   assert.equal(a.parentElement, container);
   assert.ok(a.classList.contains('sn-page'));
   assert.ok(a.classList.contains('sn-page-visible'));
-  assert.equal(a.style.transform, 'translate3d(0,0,0)');
+  assert.equal(a.style.transform, '', 'at rest the page sits where the stylesheet puts it');
 });
 
 test('push runs the transition from 0 to 1 and hides the lower page after', async () => {
@@ -178,6 +178,80 @@ test('interactive pop passes remaining distance and velocity to settle', async (
   await handle.finish({ complete: true, velocity: 1234 });
   assert.equal(got.remainingPx, 0.25 * 400);
   assert.equal(got.velocity, 1234);
+});
+
+test('the pages taking part carry their role, and drop it when it is over', async () => {
+  const a = el('a'), b = el('b');
+  await stack.push(a);
+  const roles = [];
+  stack.on('progress', () => roles.push([[...a.classes], [...b.classes]]));
+  await stack.push(b);
+  const during = roles[0];
+  assert.ok(during[0].includes('sn-page-lower'), 'lower page is marked while it moves');
+  assert.ok(during[1].includes('sn-page-upper'), 'upper page is marked while it moves');
+  assert.ok(!a.classList.contains('sn-page-lower'));
+  assert.ok(!b.classList.contains('sn-page-upper'));
+});
+
+// What CSS is told, at the moment it is told: --sn-t and --sn-e have to be in
+// force *before* the endpoint is written, or the browser has nothing to
+// interpolate over.
+const timings = () => {
+  const seen = [];
+  const inner = t.apply;
+  t.apply = (l, u, p) => {
+    seen.push([p, container.style.getPropertyValue('--sn-t'), container.style.getPropertyValue('--sn-e')]);
+    inner(l, u, p);
+  };
+  return seen;
+};
+
+test('the container carries the phase timing for CSS, and 0s the rest of the time', async () => {
+  t.duration = 300;
+  t.ease = Object.assign((x) => x, { css: 'cubic-bezier(0.32, 0.72, 0, 1)' });
+  await stack.push(el('a'));
+  const seen = timings();
+  await stack.push(el('b'));
+  assert.deepEqual(seen[0], [0, '0s', 'linear'], 'the near end lands instantly');
+  assert.deepEqual(seen[1], [1, '300ms', 'cubic-bezier(0.32, 0.72, 0, 1)'], 'the far end is a 300ms run on the iOS curve');
+  assert.equal(container.style.getPropertyValue('--sn-t'), '0s', 'and nothing is animating once it is over');
+});
+
+test('an unanimated operation never asks CSS to animate', async () => {
+  t.duration = 300;
+  await stack.push(el('a'));
+  const seen = timings();
+  await stack.push(el('b'), { animated: false });
+  assert.deepEqual(seen.map((s) => s[1]), ['0s', '0s']);
+});
+
+test('the interactive drag pins --sn-t at 0s so the page tracks the finger', async () => {
+  t.duration = 300;
+  await stack.push(el('a'));
+  await stack.push(el('b'));
+  t.settle = () => ({ duration: 250, ease: Object.assign((x) => x, { css: 'ease-out' }) });
+  const seen = timings();
+  const handle = stack.beginInteractivePop();
+  handle.update(0.6);
+  handle.update(0.4);
+  await handle.finish({ complete: true, velocity: 900 });
+  assert.deepEqual(seen.slice(0, 2), [[0.6, '0s', 'linear'], [0.4, '0s', 'linear']], 'every move is instant');
+  assert.deepEqual(seen[2], [0, '250ms', 'ease-out'], 'only the release is a run CSS owns');
+});
+
+test('progress still ends at the target, and nothing ticks when nobody listens', async () => {
+  t.duration = 50;
+  await stack.push(el('a'));
+  const seen = [];
+  const off = stack.on('progress', ({ p }) => seen.push(p));
+  await stack.push(el('b'));
+  assert.equal(seen[0], 0);
+  assert.equal(seen[seen.length - 1], 1, 'listeners always see the far end');
+  off();
+  const applied = [];
+  t.apply = (l, u, p) => applied.push(p);
+  await stack.push(el('c'));
+  assert.deepEqual(applied, [0, 1], 'with no listeners the stack writes the two ends and stops');
 });
 
 test('on() returns an unsubscribe function', async () => {

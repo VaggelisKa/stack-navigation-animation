@@ -128,7 +128,11 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
   private readonly browserLocation = inject(Location);
   private readonly document = inject(DOCUMENT);
 
-  /** The underlying core stack; subscribe to `progress` to drive your own chrome. */
+  /**
+   * The underlying core stack. Chrome that should move with the pages is
+   * usually best done in CSS off `--sn-t` / `--sn-e` and the `sn-page-upper` /
+   * `sn-page-lower` classes; subscribe to `progress` when you need the number.
+   */
   stack!: IOSStack;
   /** The direction of the last activation. */
   lastDirection: Direction | null = null;

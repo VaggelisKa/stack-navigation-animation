@@ -213,6 +213,114 @@ eq(s.pages.join(','), 'app-item', 'fallback replaced the deep-linked page with i
 eq(s.url, '/items/5', 'fallback url');
 eq(s.title, 'Item 5', 'fallback page got its input');
 
+// ---- 11. the browser, not JavaScript, is running the transition -------------
+// Only a real engine can tell us this, so it is checked here rather than in the
+// core's unit tests: that the pages move on a CSS transition the browser owns,
+// that the numbers behind the look come from the stylesheet, and that a whole
+// push costs a handful of style writes instead of one per page per frame.
+await page.goto(base + '/');
+await page.waitForSelector('app-home');
+const run = await page.evaluate(async () => {
+  const outlet = document.querySelector('sn-outlet');
+  const frames = [];
+  let writes = 0;
+  const obs = new MutationObserver((records) => (writes += records.length));
+  obs.observe(outlet, { attributeFilter: ['style'], subtree: true });
+  const x = (el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m41;
+
+  [...outlet.querySelectorAll('.sn-page-visible a')].find((a) => a.textContent.includes('Item 3')).click();
+  for (let i = 0; i < 6; i++) {
+    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => setTimeout(r, 45));
+    const upper = outlet.querySelector('.sn-page-upper');
+    const lower = outlet.querySelector('.sn-page-lower');
+    const dim = outlet.querySelector('.sn-dim');
+    if (!upper || !lower) continue;
+    frames.push({
+      duration: getComputedStyle(outlet).getPropertyValue('--sn-t').trim(),
+      ease: getComputedStyle(outlet).getPropertyValue('--sn-e').trim(),
+      upper: x(upper),
+      lower: x(lower),
+      dim: +getComputedStyle(dim).opacity,
+      shadowed: getComputedStyle(upper).boxShadow !== 'none',
+      owned: upper.getAnimations().map((a) => `${a.transitionProperty}@${a.effect.getTiming().duration}`),
+    });
+  }
+  await new Promise((r) => setTimeout(r, 700));
+  obs.disconnect();
+  const pages = [...outlet.querySelectorAll(':scope > .sn-page')];
+  return {
+    frames,
+    writes,
+    rest: {
+      duration: getComputedStyle(outlet).getPropertyValue('--sn-t').trim(),
+      roles: outlet.querySelectorAll('.sn-page-upper, .sn-page-lower').length,
+      dims: outlet.querySelectorAll('.sn-dim').length,
+      inline: pages.map((p) => p.style.transform).join('|'),
+      promoted: pages.filter((p) => getComputedStyle(p).willChange !== 'auto').length,
+      top: x(pages.at(-1)),
+    },
+  };
+});
+const f = run.frames;
+check(f.length >= 3, `sampled the push mid-flight (${f.length} frames)`);
+check(f[0].owned.includes('transform@500'), `the browser owns the transform run (${f[0].owned.join() || 'none'})`);
+eq(f[0].duration, '500ms', 'the container tells CSS how long the phase is');
+eq(f[0].ease, 'cubic-bezier(0.32, 0.72, 0, 1)', 'and on what curve');
+check(f[0].shadowed, 'the incoming page takes its shadow from the stylesheet');
+check(f[0].upper > 50 && f.at(-1).upper < f[0].upper, `the upper page slides in (${f.map((s) => Math.round(s.upper)).join(' → ')}px)`);
+check(Math.min(...f.map((s) => s.lower)) < -1 && Math.min(...f.map((s) => s.lower)) > -420 * 0.31, `the lower page parallaxes by --sn-parallax (${f.map((s) => Math.round(s.lower)).join(' → ')}px)`);
+check(Math.max(...f.map((s) => s.dim)) > 0.02 && Math.max(...f.map((s) => s.dim)) <= 0.1, `the dim rises to --sn-dim (${f.map((s) => s.dim.toFixed(3)).join(' → ')})`);
+check(run.writes <= 20, `a whole 500ms push costs ${run.writes} style writes`);
+eq(run.rest.duration, '0s', 'nothing is animating once it is over');
+eq(run.rest.roles, 0, 'the transition roles are dropped');
+eq(run.rest.dims, 0, 'the dim overlay is gone');
+eq(run.rest.inline, '|', 'no inline transform survives');
+eq(run.rest.promoted, 0, 'no page is left promoted at rest');
+eq(run.rest.top, 0, 'the resting page sits at the origin, from CSS');
+
+// The finger sets p directly; only the release is a run CSS owns.
+const swipe = await page.evaluate(async () => {
+  const outlet = document.querySelector('sn-outlet');
+  const box = outlet.getBoundingClientRect();
+  const send = (type, x) =>
+    outlet.querySelector('.sn-edge').dispatchEvent(
+      new PointerEvent(type, { pointerId: 1, pointerType: 'touch', clientX: box.left + x, clientY: box.top + 400, bubbles: true }),
+    );
+  const read = () => ({
+    duration: getComputedStyle(outlet).getPropertyValue('--sn-t').trim(),
+    x: new DOMMatrixReadOnly(getComputedStyle(outlet.querySelector('.sn-page-upper')).transform).m41,
+  });
+  send('pointerdown', 2);
+  const dragging = [];
+  for (const x of [20, 80, 140]) {
+    send('pointermove', x);
+    await new Promise((r) => requestAnimationFrame(r));
+    dragging.push(read());
+  }
+  send('pointerup', 140);
+  await new Promise((r) => requestAnimationFrame(r));
+  const released = read();
+  await new Promise((r) => setTimeout(r, 700));
+  return { dragging, released, depth: outlet.querySelectorAll(':scope > .sn-page').length };
+});
+check(swipe.dragging.every((d) => d.duration === '0s'), `while the finger is down nothing animates (${swipe.dragging.map((d) => d.duration).join()})`);
+check(swipe.dragging[0].x < swipe.dragging[2].x, `the page tracks the finger (${swipe.dragging.map((d) => Math.round(d.x)).join(' → ')}px)`);
+check(/^[\d.]+ms$/.test(swipe.released.duration), `the release hands a settle duration to CSS (${swipe.released.duration})`);
+eq(swipe.depth, 1, 'the settle ran and the page was popped');
+
+// prefers-reduced-motion is the stylesheet's call, and it overrules the engine.
+await page.emulateMedia({ reducedMotion: 'reduce' });
+const reduced = await page.evaluate(() => {
+  const outlet = document.querySelector('sn-outlet');
+  outlet.style.setProperty('--sn-t', '500ms');
+  const value = getComputedStyle(outlet).getPropertyValue('--sn-t').trim();
+  outlet.style.setProperty('--sn-t', '0s');
+  return value;
+});
+eq(reduced, '0s', 'reduced motion overrules an engine-written duration');
+await page.emulateMedia({ reducedMotion: null });
+
 await browser.close();
 server.close();
 if (errors.length) {

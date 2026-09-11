@@ -97,7 +97,7 @@ router.navigate(['/x'], { state: { stacknav: 'pop' } }); // the same hint by han
 
 ### `<sn-outlet>` (`StackNavOutlet`)
 
-Inputs: `name`, `transition`, `gesture`, `routerOutletData`. Outputs: `activate`, `deactivate`, `attach`, `detach` (like `router-outlet`) and `navigated` with `{ view, direction, animated, reused }`. Properties: `stack` (the core `NavigationStack`, for `progress` events), `pages` (kept pages, bottom to top), `canPop`, `lastDirection`.
+Inputs: `name`, `transition`, `gesture`, `routerOutletData`. Outputs: `activate`, `deactivate`, `attach`, `detach` (like `router-outlet`) and `navigated` with `{ view, direction, animated, reused }`. Properties: `stack` (the core `NavigationStack`, for `progress` events — though chrome that just needs to move with the pages can read `--sn-t` / `--sn-e` and the `sn-page-upper` / `sn-page-lower` classes in CSS instead), `pages` (kept pages, bottom to top), `canPop`, `lastDirection`.
 
 ### `StackNav`
 

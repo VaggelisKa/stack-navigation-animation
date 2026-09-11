@@ -1,4 +1,4 @@
-import { tween, type Easing } from './animate.ts';
+import { animationsFinished, commitStyles, cssDuration, cssEasing, tween, type CancellableTween, type Easing } from './animate.ts';
 
 /** One mounted page. `key` and `data` are the caller's; the stack only carries them. */
 export interface StackEntry<T = unknown> {
@@ -16,9 +16,17 @@ export interface SettleInput {
 /**
  * What the pages look like at any progress p (1 = upper page fully open,
  * 0 = upper page fully off-screen). Push runs p from 0 to 1, pop from 1 to 0.
+ *
+ * `apply` is a *declarative* write, not a frame: for a timed transition the
+ * stack calls it exactly twice, at each end, and CSS interpolates between
+ * them (the stack puts the phase's duration and curve in `--sn-t` / `--sn-e`
+ * on the container, which the stylesheet's `transition` rules read). During a
+ * drag `--sn-t` is `0s`, so the same two-argument write lands instantly.
+ * Keep `apply` to transform and opacity and the browser keeps it composited.
  */
 export interface Transition {
   readonly duration: number;
+  /** Sampled to report `progress`; its `css` spelling is what drives the pixels. */
   readonly ease: Easing;
   settle(input: SettleInput): { duration: number; ease: Easing };
   begin?(lower: StackEntry | null, upper: StackEntry): void;
@@ -249,7 +257,7 @@ export class NavigationStack {
       finish: async ({ complete, velocity = 0 }) => {
         const remainingPx = (complete ? p : 1 - p) * this.width();
         const { duration, ease } = this.transition.settle({ remainingPx, velocity });
-        await tween({ from: p, to: complete ? 0 : 1, duration, ease, onUpdate: (v) => this._apply(lower, upper, v) });
+        await this._animate(lower, upper, p, complete ? 0 : 1, duration, ease);
         this._end(lower, upper, 'interactive');
         if (complete) {
           this.entries.pop();
@@ -265,7 +273,9 @@ export class NavigationStack {
 
   destroy(): void {
     while (this.entries.length) this._unmount(this.entries.pop()!);
-    this.container.classList.remove('sn-container');
+    this.container.classList.remove('sn-container', 'sn-busy');
+    this.container.style.removeProperty('--sn-t');
+    this.container.style.removeProperty('--sn-e');
   }
 
   // -------------------------------------------------------------- internals
@@ -315,7 +325,7 @@ export class NavigationStack {
     return { el, index, key, data };
   }
   private _unmount(entry: StackEntry): StackEntry {
-    entry.el.classList.remove(this.pageClass, 'sn-page-visible');
+    entry.el.classList.remove(this.pageClass, 'sn-page-visible', 'sn-page-upper', 'sn-page-lower');
     entry.el.style.transform = '';
     entry.el.remove();
     return entry;
@@ -328,35 +338,82 @@ export class NavigationStack {
     return this._unmount(entry);
   }
 
+  /**
+   * The duration and curve of the phase in flight, as CSS reads them. `0s`
+   * means "land where you are told, now" — which is a drag, and also what
+   * `prefers-reduced-motion` forces from the stylesheet.
+   */
+  private _timing(duration: number, ease?: Easing): void {
+    this.container.style.setProperty('--sn-t', cssDuration(duration));
+    this.container.style.setProperty('--sn-e', cssEasing(ease));
+  }
+
   private _begin(lower: StackEntry | null, upper: StackEntry, kind: TransitionKind): void {
-    if (lower) lower.el.classList.add('sn-page-visible');
-    upper.el.classList.add('sn-page-visible');
+    this._timing(0);
+    lower?.el.classList.add('sn-page-visible', 'sn-page-lower');
+    upper.el.classList.add('sn-page-visible', 'sn-page-upper');
     this.transition.begin?.(lower, upper);
     this._emit('transitionstart', { lower, upper, kind });
   }
-  private _apply(lower: StackEntry | null, upper: StackEntry, p: number): void {
+  /** Write the state at p without telling anyone: the ticker reports the way there. */
+  private _write(lower: StackEntry | null, upper: StackEntry, p: number): void {
     this.transition.apply(lower, upper, p);
+  }
+  private _apply(lower: StackEntry | null, upper: StackEntry, p: number): void {
+    this._write(lower, upper, p);
     this._emit('progress', { lower, upper, p });
   }
   private _end(lower: StackEntry | null, upper: StackEntry, kind: TransitionKind): void {
+    this._timing(0);
+    upper.el.classList.remove('sn-page-upper');
+    lower?.el.classList.remove('sn-page-lower');
     this.transition.end?.(lower, upper);
     this._emit('transitionend', { lower, upper, kind });
   }
+
+  /**
+   * Hand the run from `from` to `to` over to CSS: commit where we are, say
+   * how long and on what curve, write where we are going, then wait for the
+   * browser to say it got there. No frame of this is ours.
+   */
+  private async _animate(lower: StackEntry | null, upper: StackEntry, from: number, to: number, duration: number, ease: Easing): Promise<void> {
+    if (duration <= 0) return this._apply(lower, upper, to);
+    commitStyles(upper.el);
+    this._timing(duration, ease);
+    this._write(lower, upper, to);
+    const ticker = this._ticker(lower, upper, from, to, duration, ease);
+    await animationsFinished([upper.el, lower?.el]);
+    ticker?.cancel();
+    this._timing(0);
+    this._emit('progress', { lower, upper, p: to });
+  }
+
+  /**
+   * `progress` used to be a by-product of animating in JS. Now that CSS
+   * animates, it costs a rAF loop — so only run one when somebody is
+   * listening. Host chrome that only needs to move in step with the pages is
+   * better off reading `--sn-t` / `--sn-e` and the `sn-page-upper` /
+   * `sn-page-lower` classes in CSS, which stays on the compositor.
+   */
+  private _ticker(lower: StackEntry | null, upper: StackEntry, from: number, to: number, duration: number, ease: Easing): CancellableTween | null {
+    if (!this._listeners.get('progress')?.size) return null;
+    return tween({ from, to, duration, ease, onUpdate: (p) => this._emit('progress', { lower, upper, p }) });
+  }
+
   private async _transition(lower: StackEntry | null, upper: StackEntry, from: number, to: number, animated: boolean, kind: TransitionKind): Promise<void> {
     this._begin(lower, upper, kind);
     this._apply(lower, upper, from);
-    const duration = animated ? this.transition.duration : 0;
-    await tween({ from, to, duration, ease: this.transition.ease, onUpdate: (p) => this._apply(lower, upper, p) });
+    await this._animate(lower, upper, from, to, animated ? this.transition.duration : 0, this.transition.ease);
     this._end(lower, upper, kind);
   }
 
-  /** Only the top page is visible; every page's transform is reset; indexes are renumbered. */
+  /** Only the top page is visible; every page is back at its CSS resting state; indexes are renumbered. */
   private _settle(): void {
     const top = this.top;
     this.entries.forEach((e, i) => {
       e.index = i;
       e.el.classList.toggle('sn-page-visible', e === top);
-      e.el.style.transform = e === top ? 'translate3d(0,0,0)' : '';
+      e.el.style.transform = '';
     });
   }
 }

@@ -1,14 +1,26 @@
-// The smallest DOM the engine needs: classList, style, parent/child, clientWidth.
+// The smallest DOM the engine needs: classList, style (including custom
+// properties), parent/child, clientWidth. No layout and no animations, so
+// `commitStyles` is a no-op and every CSS transition reads as already finished.
+const makeStyle = () => {
+  const style: any = {
+    setProperty: (k: string, v: string) => (style[k] = v),
+    removeProperty: (k: string) => delete style[k],
+    getPropertyValue: (k: string) => style[k] ?? '',
+  };
+  return style;
+};
+
 export function makeElement(tag = 'div'): any {
   const classes = new Set();
   const el: any = {
     tagName: tag.toUpperCase(),
-    style: {},
+    style: makeStyle(),
     parentElement: null,
     children: [],
     clientWidth: 400,
     attrs: {},
     listeners: {},
+    classes,
     classList: {
       add: (...cs) => cs.forEach((c) => classes.add(c)),
       remove: (...cs) => cs.forEach((c) => classes.delete(c)),
@@ -46,6 +58,13 @@ export function makeElement(tag = 'div'): any {
     },
     setPointerCapture() {},
   };
+  Object.defineProperty(el, 'className', {
+    get: () => [...classes].join(' '),
+    set: (v: string) => {
+      classes.clear();
+      for (const c of String(v).split(/\s+/).filter(Boolean)) classes.add(c);
+    },
+  });
   return el;
 }
 

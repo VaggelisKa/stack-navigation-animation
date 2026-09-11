@@ -1,8 +1,12 @@
 import type { InteractivePopHandle, NavigationStack } from './navigation-stack.ts';
 
 export interface EdgePanGestureOptions {
-  /** px strip on the leading edge that starts the gesture */
-  edgeWidth: number;
+  /**
+   * px strip on the leading edge that starts the gesture. `null` leaves it to
+   * the stylesheet's `--sn-edge-width`, which is where it belongs: the strip
+   * knows about reading direction and the safe area, and JavaScript does not.
+   */
+  edgeWidth: number | null;
   /** recognize the drag from anywhere on the page */
   anywhere: boolean;
   /** px of horizontal movement before the drag begins */
@@ -44,7 +48,7 @@ interface Drag {
  */
 export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {}): EdgePanGesture {
   const o: EdgePanGestureOptions = {
-    edgeWidth: 28,
+    edgeWidth: null,
     anywhere: false,
     startSlop: 6,
     verticalCancelSlop: 10,
@@ -126,10 +130,18 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
   const listen = (el: HTMLElement) => Object.entries(EVENTS).forEach(([k, f]) => el.addEventListener(k, f as EventListener));
   const unlisten = (el: HTMLElement) => Object.entries(EVENTS).forEach(([k, f]) => el.removeEventListener(k, f as EventListener));
 
+  /**
+   * Whether the strip is there at all is a CSS question — the stylesheet hides
+   * it when there is nothing to pop or when the whole page is the target — so
+   * all this does is tell CSS what is true.
+   */
   const refresh = () => {
     if (!strip) return;
-    strip.style.width = o.edgeWidth + 'px';
-    strip.style.display = o.anywhere || stack.entries.length < 2 ? 'none' : '';
+    const style = stack.container.style;
+    if (o.edgeWidth == null) style.removeProperty('--sn-edge-width');
+    else style.setProperty('--sn-edge-width', `${o.edgeWidth}px`);
+    stack.container.classList.toggle('sn-anywhere', o.anywhere);
+    stack.container.classList.toggle('sn-can-pop', stack.entries.length > 1);
   };
 
   const gesture: EdgePanGesture = {
@@ -138,8 +150,8 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
     attach(s) {
       stack = s;
       strip = document.createElement('div');
+      strip.className = 'sn-edge';
       strip.setAttribute('aria-hidden', 'true');
-      Object.assign(strip.style, { position: 'absolute', left: '0', top: '0', bottom: '0', zIndex: '10', touchAction: 'none' });
       stack.container.append(strip);
       listen(strip);
       listen(stack.container);
@@ -154,6 +166,8 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
       unlisten(strip);
       unlisten(stack.container);
       stack.container.removeEventListener('click', onClick, true);
+      stack.container.classList.remove('sn-anywhere', 'sn-can-pop');
+      stack.container.style.removeProperty('--sn-edge-width');
       strip.remove();
       strip = null;
     },

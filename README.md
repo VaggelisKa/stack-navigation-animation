@@ -14,6 +14,8 @@ Demos: [`apps/demo`](apps/demo) (vanilla, no router) and [`apps/angular-demo`](a
 
 Everything is a function of one number, `p`: how much of the upper page is showing. Push runs `p` from 0 to 1, pop from 1 to 0, and a swipe sets `p` straight from the finger. Pages beneath the top stay mounted and hidden, so scroll position, form state and focus are untouched when you come back.
 
+**The frames are the browser's.** A push writes `p` twice, at each end, and hands CSS a duration and a curve; a drag writes it per pointer move with the duration pinned at `0s`. Nothing runs per frame, nothing measures layout, and the parallax, the dim, the shadow and the reading direction are custom properties in a stylesheet rather than numbers in a bundle.
+
 **The engine never decides what is a push and what is a pop.** Apps differ: some number their screens, some read the route tree, some trust the browser's back button, some say it outright per navigation. So direction is resolved by a list of small strategies, in the order you trust them, and the first opinion wins:
 
 ```ts

@@ -1,7 +1,18 @@
-// Tiny animation toolkit: a cubic-bezier solver, a cancellable tween and the
-// two easing curves the iOS transition uses.
+// Timing, not rendering. The browser interpolates the pages (see styles.ts);
+// what lives here is the arithmetic CSS cannot do for us: a curve the engine
+// can both hand to CSS *and* evaluate in JS, and a tween used only to report
+// progress to listeners.
 
-export type Easing = (t: number) => number;
+/**
+ * An easing curve. Callable so JS can sample it; `css` is the same curve
+ * spelled for `transition-timing-function`, which is what actually drives
+ * the pixels. A plain `(t) => number` is still a valid easing — it just
+ * falls back to `linear` on the CSS side.
+ */
+export interface Easing {
+  (t: number): number;
+  readonly css?: string;
+}
 
 export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Easing {
   const A = (a: number, b: number) => 1 - 3 * b + 3 * a;
@@ -9,7 +20,7 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Eas
   const C = (a: number) => 3 * a;
   const calc = (t: number, a: number, b: number) => ((A(a, b) * t + B(a, b)) * t + C(a)) * t;
   const slope = (t: number, a: number, b: number) => 3 * A(a, b) * t * t + 2 * B(a, b) * t + C(a);
-  return (x) => {
+  const f = (x: number) => {
     if (x <= 0) return 0;
     if (x >= 1) return 1;
     let t = x;
@@ -20,13 +31,20 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Eas
     }
     return calc(t, y1, y2);
   };
+  return Object.assign(f, { css: `cubic-bezier(${x1}, ${y1}, ${x2}, ${y2})` });
 }
 
 export const easings: { linear: Easing; ios: Easing; easeOut: Easing } = {
-  linear: (t) => t,
+  linear: Object.assign((t: number) => t, { css: 'linear' }),
   ios: cubicBezier(0.32, 0.72, 0, 1), // the usual approximation of UIKit's navigation curve
   easeOut: cubicBezier(0.2, 0.8, 0.2, 1),
 };
+
+/** How an easing should be spelled for CSS. Unknown curves animate linearly. */
+export const cssEasing = (ease: Easing | undefined): string => ease?.css ?? 'linear';
+
+/** How a duration should be spelled for CSS. */
+export const cssDuration = (ms: number): string => (ms > 0 ? `${ms}ms` : '0s');
 
 export interface TweenOptions {
   from: number;
@@ -42,6 +60,9 @@ export type CancellableTween = Promise<void> & { cancel(): void };
  * Animate a number from `from` to `to` over `duration` ms, calling `onUpdate`
  * every frame. Returns a promise that resolves when done; `promise.cancel()`
  * stops it early. A duration of 0 (or less) jumps straight to `to`.
+ *
+ * The engine does not use this to move pages — CSS does that. It uses it to
+ * report `progress` to listeners, and only while someone is listening.
  */
 export function tween({ from, to, duration, ease = easings.linear, onUpdate }: TweenOptions): CancellableTween {
   let raf = 0;
@@ -70,6 +91,38 @@ export function tween({ from, to, duration, ease = easings.linear, onUpdate }: T
     cancelAnimationFrame(raf);
   };
   return promise;
+}
+
+/**
+ * Commit the styles written so far, so that the *next* write is seen as a
+ * change and starts a CSS transition from here rather than being collapsed
+ * into it. One forced layout per transition; the alternative is a frame of JS
+ * per frame of animation.
+ */
+export function commitStyles(el: HTMLElement): void {
+  void el.offsetWidth;
+}
+
+/**
+ * Resolve once the CSS transitions of `properties` on these elements have
+ * finished. Nothing running — no transition started, a zero duration,
+ * `prefers-reduced-motion`, an element that is not being rendered — resolves
+ * immediately, so a stack in a hidden tab still completes. Interrupted
+ * animations reject, which counts as finished.
+ *
+ * Only transitions of the named properties are waited on: an app is free to
+ * keep its own animation running on a page without stalling the stack.
+ */
+export function animationsFinished(els: Array<HTMLElement | null | undefined>, properties: readonly string[] = ['transform', 'opacity']): Promise<void> {
+  const running: Array<Promise<unknown>> = [];
+  for (const el of els) {
+    if (typeof el?.getAnimations !== 'function') continue;
+    for (const animation of el.getAnimations()) {
+      const property = (animation as { transitionProperty?: string }).transitionProperty;
+      if (property && properties.includes(property)) running.push(animation.finished.catch(() => {}));
+    }
+  }
+  return running.length ? Promise.all(running).then(() => {}) : Promise.resolve();
 }
 
 export const prefersReducedMotion = (): boolean =>
