@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeElement, installGlobals } from './dom-stub.ts';
 import { createIOSTransition } from '../src/ios-transition.ts';
+import { easings } from '../src/animate.ts';
 
 installGlobals();
 
@@ -114,5 +115,39 @@ test('refresh re-reads variables changed mid-stack', () => {
   container.vars['--sn-duration'] = '120ms';
   t.refresh();
   assert.equal(t.duration, 120);
+  t.end(lower, upper);
+});
+
+test('zero is a value, not an absence', () => {
+  const t = createIOSTransition({ parallax: 0.3, dimMax: 0.1, duration: 500 });
+  const { container, lower, upper } = entries();
+  Object.assign(container.vars, { '--sn-parallax': '0', '--sn-dim-max': '0', '--sn-duration': '0ms', '--sn-time-scale': '0' });
+  t.begin(lower, upper);
+  t.apply(lower, upper, 1);
+  assert.equal(t.resolved.parallax, 0, 'a flat transition is a legitimate thing to ask for');
+  assert.equal(t.resolved.dimMax, 0);
+  assert.equal(t.duration, 0);
+  assert.equal(lower.el.children[0].style.opacity, '0');
+  t.end(lower, upper);
+});
+
+test('ease and settleEase are settable from JS as well', () => {
+  const ease = (x: number) => x * x;
+  const settleEase = (x: number) => 1 - x;
+  const t = createIOSTransition({ ease, settleEase });
+  const { upper } = entries();
+  t.begin(null, upper);
+  assert.equal(t.ease, ease);
+  assert.equal(t.settle({ remainingPx: 100, velocity: 1000 }).ease, settleEase);
+  t.end(null, upper);
+});
+
+test('an easing the engine cannot read never reaches the tween', () => {
+  const t = createIOSTransition();
+  const { container, lower, upper } = entries();
+  container.vars['--sn-easing'] = '__proto__';
+  t.begin(lower, upper);
+  assert.equal(typeof t.ease, 'function', 'falls back to the default curve');
+  assert.equal(t.ease, easings.ios);
   t.end(lower, upper);
 });

@@ -18,7 +18,7 @@ export type {
 } from './navigation-stack.ts';
 export { createIOSTransition, IOS_TRANSITION_CSS_VARS } from './ios-transition.ts';
 export type { IOSTransition, IOSTransitionOptions } from './ios-transition.ts';
-export { cssVars, parseTime, parseNumber, parseRatio, parseEasing, parseString } from './css-vars.ts';
+export { cssVars, parseTime, parseNumber, parseRatio, parseEasing } from './css-vars.ts';
 export type { CSSVarReader } from './css-vars.ts';
 export { createEdgePanGesture } from './edge-pan-gesture.ts';
 export type { EdgePanGesture, EdgePanGestureOptions } from './edge-pan-gesture.ts';

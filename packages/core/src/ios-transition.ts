@@ -1,5 +1,5 @@
 import { easings, prefersReducedMotion, type Easing } from './animate.ts';
-import { cssVars, parseEasing, parseNumber, parseRatio, parseString, parseTime } from './css-vars.ts';
+import { cssVars, parseEasing, parseNumber, parseRatio, parseTime } from './css-vars.ts';
 import type { SettleInput, StackEntry, Transition } from './navigation-stack.ts';
 
 export interface IOSTransitionOptions {
@@ -26,7 +26,7 @@ export interface IOSTransitionOptions {
 }
 
 /** The CSS custom property behind each option. */
-export const IOS_TRANSITION_CSS_VARS: Readonly<Record<keyof IOSTransitionOptions, string>> = {
+export const IOS_TRANSITION_CSS_VARS: Readonly<Record<keyof IOSTransitionOptions, string>> = Object.freeze({
   duration: '--sn-duration',
   ease: '--sn-easing',
   parallax: '--sn-parallax',
@@ -38,7 +38,7 @@ export const IOS_TRANSITION_CSS_VARS: Readonly<Record<keyof IOSTransitionOptions
   settleEase: '--sn-settle-easing',
   settleVelocityFloor: '--sn-settle-velocity-floor',
   timeScale: '--sn-time-scale',
-};
+});
 
 export interface IOSTransition extends Transition {
   /** The JS options: the defaults with yours merged in. Mutable at runtime. */
@@ -93,9 +93,9 @@ export function createIOSTransition(options: Partial<IOSTransitionOptions> = {})
       duration: parseTime(read(v.duration)) ?? o.duration,
       ease: parseEasing(read(v.ease)) ?? o.ease,
       parallax: parseRatio(read(v.parallax)) ?? o.parallax,
-      dimColor: parseString(read(v.dimColor)) ?? o.dimColor,
+      dimColor: read(v.dimColor) ?? o.dimColor,
       dimMax: parseRatio(read(v.dimMax)) ?? o.dimMax,
-      shadow: parseString(read(v.shadow)) ?? o.shadow,
+      shadow: read(v.shadow) ?? o.shadow,
       settleMin: parseTime(read(v.settleMin)) ?? o.settleMin,
       settleMax: parseTime(read(v.settleMax)) ?? o.settleMax,
       settleEase: parseEasing(read(v.settleEase)) ?? o.settleEase,

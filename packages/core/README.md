@@ -112,11 +112,13 @@ Every option is also a custom property, read off the container when a transition
 }
 ```
 
-Durations take `ms`, `s` or a bare number of milliseconds; fractions take `0.3` or `30%`; easings take a CSS timing keyword, `cubic-bezier(…)`, or `ios` / `ios-settle` for the two defaults. A variable that is set wins over the JS option, so a stylesheet can retune a transition the app configured in code. One that is unset — or unparseable — falls through to the JS option, so there is nothing to declare to get the defaults.
+Durations take `ms`, `s` or a bare number of milliseconds. Fractions take `0.3` or `30%`. Easings take `linear`, `ease`, `ease-in`, `ease-out`, `ease-in-out`, `cubic-bezier(…)` with the x coordinates within `[0, 1]` as CSS requires, or `ios` / `ios-settle` for the two defaults — the step and `linear()` timing functions are not supported, since nothing here steps.
+
+A variable that is set wins over the JS option, so a stylesheet can retune a transition the app configured in code. One that is unset falls through to the JS option, so there is nothing to declare to get the defaults. So does one the engine cannot read: a bad value degrades to the default rather than breaking the animation, and never reaches the tween. That includes `calc()` and other math — these are plain custom properties, which reach `getComputedStyle` with their math unevaluated, so `--sn-duration: calc(var(--speed) * 2)` reads as nonsense and falls back. Do the arithmetic where you define the variable.
 
 Values are re-read at the start of every transition, which is enough for media queries and class changes. `transition.refresh()` re-reads them on demand (after changing `transition.options` mid-animation, say); `transition.resolved` is what is currently in force, and `IOS_TRANSITION_CSS_VARS` maps each option to its variable name.
 
-A transition is just `{ duration, ease, settle(), begin?(), apply(lower, upper, p), end?() }`, so you can write a different one (a fade, a vertical sheet) and pass it to `new NavigationStack({ container, transition })`. `cssVars()` and the `parseTime` / `parseRatio` / `parseEasing` helpers are exported if you want your own to read variables the same way.
+A transition is just `{ duration, ease, settle(), begin?(), apply(lower, upper, p), end?() }`, so you can write a different one (a fade, a vertical sheet) and pass it to `new NavigationStack({ container, transition })`. `cssVars()` and the `parseTime` / `parseNumber` / `parseRatio` / `parseEasing` helpers are exported if you want your own to read variables the same way; each returns `undefined` rather than `NaN` for anything it cannot parse, so `?? yourDefault` is all the handling a value needs.
 
 ### `createEdgePanGesture(options)`
 
@@ -143,7 +145,7 @@ For apps without a router. Mirrors depth into `history.state`. Returns a detach 
 ## Develop
 
 ```sh
-pnpm test         # node:test with a 60-line DOM stub, no browser
+pnpm test         # node:test with a 68-line DOM stub, no browser
 pnpm build        # tsc → dist/, plus dist/stacknav.css
 ```
 

@@ -29,6 +29,8 @@ bootstrapApplication(App, {
 :root { --sn-duration: 340ms; --sn-parallax: 20%; }
 ```
 
+A variable that is set wins over the matching `provideStackNav({ transition })` option, so the stylesheet is the last word on how the animation feels.
+
 ```ts
 // a page
 @Component({

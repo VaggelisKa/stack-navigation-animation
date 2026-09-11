@@ -56,6 +56,12 @@ export function installGlobals() {
   globalThis.performance ||= { now: () => Date.now() };
   globalThis.matchMedia = () => ({ matches: false });
   // Custom properties inherit, so walk up until one element declares the name.
+  // Two deliberate fictions: this resolves on detached elements, where a real
+  // browser returns an empty declaration, which lets the tests skip building a
+  // document; and it hands back values verbatim, where a browser would have
+  // substituted var() already. Neither changes what is under test — how the
+  // engine reads and parses what it is given — but a variable that only works
+  // here is possible, so new plumbing wants a look in a real browser too.
   globalThis.getComputedStyle = (el) => ({
     getPropertyValue(name) {
       for (let e = el; e; e = e.parentElement) if (e.vars?.[name] !== undefined) return e.vars[name];
