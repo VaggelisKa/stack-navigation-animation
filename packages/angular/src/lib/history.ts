@@ -3,11 +3,16 @@ import { NavigationCancel, NavigationEnd, NavigationError, NavigationSkipped, Na
 import type { Direction, DirectionOpinion, NavigationTrigger } from '@stacknav/core';
 import { STACKNAV_CONFIG } from './config';
 
-/** What a navigation can carry in `history.state[stateKey]`. */
-export interface StackNavStateHint {
-  direction?: DirectionOpinion;
-  animated?: boolean;
-}
+/**
+ * What a navigation can say to the outlet through the router's own
+ * `NavigationExtras.info`, under the configured key (default `stacknav`):
+ *
+ * ```ts
+ * router.navigate(['/items', 2], { info: { stacknav: 'push' } });
+ * router.navigate(['/login'], { info: { stacknav: { direction: 'replace', animated: false } } });
+ * ```
+ */
+export type StackNavHint = Direction | { direction?: DirectionOpinion; animated?: boolean };
 
 export interface NavigationInfo {
   id: number;
@@ -31,7 +36,7 @@ interface Entry {
  * are on, and which came before. It answers two questions for the outlet:
  * "is this navigation going back or forward?" and "is the previous history
  * entry the page beneath the top?". Everything comes from public router
- * events, so it needs no router configuration.
+ * events, so it needs no router configuration. Internal to the outlet.
  */
 @Injectable({ providedIn: 'root' })
 export class StackNavHistory {
@@ -79,7 +84,7 @@ export class StackNavHistory {
       if (idx >= 0 && this.cursor >= 0) historyDelta = idx - this.cursor;
       else if (restoredId != null && this.cursor >= 0) historyDelta = restoredId < this.entries[this.cursor].id ? -1 : 1;
     }
-    const hint = isHistory ? undefined : readHint(nav?.extras.state, this.config.stateKey);
+    const hint = isHistory ? undefined : readHint(nav?.extras.info, this.config.infoKey);
     this.pending = {
       id: e.id,
       trigger: isHistory ? 'history' : 'imperative',
@@ -150,10 +155,9 @@ export class StackNavHistory {
   }
 }
 
-function readHint(state: Record<string, unknown> | undefined, key: string): StackNavStateHint | undefined {
-  const v = state?.[key];
+function readHint(info: unknown, key: string): { direction?: DirectionOpinion; animated?: boolean } | undefined {
+  if (info == null || typeof info !== 'object') return undefined;
+  const v = (info as Record<string, unknown>)[key] as StackNavHint | undefined;
   if (v == null) return undefined;
-  if (typeof v === 'string') return { direction: v as Direction };
-  if (typeof v === 'object') return v as StackNavStateHint;
-  return undefined;
+  return typeof v === 'string' ? { direction: v } : v;
 }
