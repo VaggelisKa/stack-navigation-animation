@@ -54,16 +54,22 @@ export function parseRatio(v: string | undefined): number | undefined {
  * The CSS timing keywords that are cubic curves, plus the two this engine
  * ships. Null-prototype, so `__proto__` and `constructor` are misses like any
  * other unknown word rather than truthy junk that is not an easing function.
+ *
+ * Built on first use rather than at module load: solving four curves here
+ * would be work a bundler cannot prove pointless, which would keep this
+ * module (and `easings`) in bundles that never parse a CSS variable.
  */
-const EASING_KEYWORDS: Record<string, Easing> = Object.assign(Object.create(null), {
-  linear: easings.linear,
-  ease: cubicBezier(0.25, 0.1, 0.25, 1),
-  'ease-in': cubicBezier(0.42, 0, 1, 1),
-  'ease-out': cubicBezier(0, 0, 0.58, 1),
-  'ease-in-out': cubicBezier(0.42, 0, 0.58, 1),
-  ios: easings.ios,
-  'ios-settle': easings.easeOut,
-});
+let easingKeywords: Record<string, Easing> | undefined;
+const easingKeywordsOf = (): Record<string, Easing> =>
+  (easingKeywords ??= Object.assign(Object.create(null), {
+    linear: easings.linear,
+    ease: cubicBezier(0.25, 0.1, 0.25, 1),
+    'ease-in': cubicBezier(0.42, 0, 1, 1),
+    'ease-out': cubicBezier(0, 0, 0.58, 1),
+    'ease-in-out': cubicBezier(0.42, 0, 0.58, 1),
+    ios: easings.ios,
+    'ios-settle': easings.easeOut,
+  }));
 
 /**
  * A timing keyword or `cubic-bezier(x1, y1, x2, y2)`. The x coordinates must
@@ -73,7 +79,7 @@ const EASING_KEYWORDS: Record<string, Easing> = Object.assign(Object.create(null
 export function parseEasing(v: string | undefined): Easing | undefined {
   if (v === undefined) return undefined;
   const s = v.trim().toLowerCase();
-  const keyword = EASING_KEYWORDS[s];
+  const keyword = easingKeywordsOf()[s];
   if (keyword) return keyword;
   const m = /^cubic-bezier\(([^)]*)\)$/.exec(s);
   if (!m) return undefined;

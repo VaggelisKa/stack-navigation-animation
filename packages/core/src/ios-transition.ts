@@ -26,7 +26,7 @@ export interface IOSTransitionOptions {
 }
 
 /** The CSS custom property behind each option. */
-export const IOS_TRANSITION_CSS_VARS: Readonly<Record<keyof IOSTransitionOptions, string>> = Object.freeze({
+export const IOS_TRANSITION_CSS_VARS: Readonly<Record<keyof IOSTransitionOptions, string>> = /*#__PURE__*/ Object.freeze({
   duration: '--sn-duration',
   ease: '--sn-easing',
   parallax: '--sn-parallax',
@@ -53,7 +53,7 @@ export interface IOSTransition extends Transition {
   refresh(el?: Element | null): void;
 }
 
-const DIM = Symbol('dim');
+const DIM = /*#__PURE__*/ Symbol('dim');
 type Dimmable = StackEntry & { [DIM]?: HTMLElement };
 
 /**

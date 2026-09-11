@@ -15,7 +15,8 @@
   ],
   "scripts": {
     "build": "ng-packagr -p ng-package.json -c tsconfig.lib.json",
-    "test": "echo \"@stacknav/angular: covered by apps/angular-demo e2e\""
+    "test": "echo \"@stacknav/angular: covered by apps/angular-demo e2e\"",
+    "size": "node scripts/size.mjs"
   },
   "peerDependencies": {
     "@angular/common": ">=19.0.0",

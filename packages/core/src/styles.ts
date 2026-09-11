@@ -1,40 +1,28 @@
 /**
  * The only styles the engine needs. Theme nothing here; it is layout — the
- * look lives in the transition, tunable through the custom properties listed
- * below. They are documented, not declared: leaving them unset is what makes
- * the JS defaults apply, so set one only where you mean to override.
+ * look lives in the transition, tunable through the `--sn-*` custom properties
+ * (see `IOS_TRANSITION_CSS_VARS` and the README). They are documented, not
+ * declared: leaving them unset is what makes the JS defaults apply, so set one
+ * only where you mean to override.
+ *
+ * The string is kept minified because it ships inside every consumer's JS
+ * bundle (`injectStyles()` is the default path); `scripts/write-css.mjs`
+ * expands it into the readable `dist/stacknav.css`. What each rule is for:
+ *
+ * - `.sn-container`: the stack's scroll-clipping frame.
+ * - `.sn-page`: absolutely fills the container and is its own scroll container.
+ *   `touch-action: pan-y` keeps vertical scrolling native while horizontal
+ *   drags reach the gesture; `visibility: hidden` keeps pages beneath the top
+ *   mounted (scroll position, form state) but out of sight and out of the
+ *   accessibility tree.
+ * - `.sn-page-visible`: the top page, and both pages during a transition.
+ * - `.sn-busy .sn-page`: no clicks land on a page that is mid-transition.
  */
-export const STACKNAV_CSS = `
-/* Tune the iOS transition by setting these on .sn-container (or any ancestor):
-     --sn-duration: 500ms;                        push/pop length
-     --sn-easing: cubic-bezier(0.32, 0.72, 0, 1); its curve, or a keyword, or ios
-     --sn-parallax: 30%;                          how far the page beneath travels
-     --sn-dim-color: #000;                        overlay on the page beneath
-     --sn-dim-max: 10%;                           its opacity at full open
-     --sn-shadow: -3px 0 14px rgba(0,0,0,0.16);   on the incoming page, none to drop it
-     --sn-settle-min: 120ms;                      bounds for finishing a swipe
-     --sn-settle-max: 400ms;
-     --sn-settle-easing: ios-settle;              the curve a released swipe finishes on
-     --sn-settle-velocity-floor: 900;             px/s assumed when the finger was slower
-     --sn-time-scale: 1;                          multiplies every duration */
-.sn-container {
-  position: relative;
-  overflow: hidden;
-}
-.sn-page {
-  position: absolute;
-  inset: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  touch-action: pan-y;         /* vertical scroll stays native; horizontal drags reach the gesture */
-  visibility: hidden;          /* pages beneath the top stay mounted (keeping scroll etc.) but hidden */
-  will-change: transform;
-}
-.sn-page-visible { visibility: visible; }
-.sn-busy .sn-page { pointer-events: none; }
-`;
+export const STACKNAV_CSS =
+  '.sn-container{position:relative;overflow:hidden}' +
+  '.sn-page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;visibility:hidden;will-change:transform}' +
+  '.sn-page-visible{visibility:visible}' +
+  '.sn-busy .sn-page{pointer-events:none}';
 
 export const STACKNAV_STYLE_ID = 'stacknav-styles';
 

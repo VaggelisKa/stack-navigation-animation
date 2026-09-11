@@ -63,7 +63,8 @@ Every one is optional, and unset means the iOS default. The [core README](packag
 ```sh
 pnpm install
 pnpm build          # packages/core, then packages/angular
-pnpm test           # core unit tests (node:test, no browser)
+pnpm test           # core unit tests (node:test, no browser), including tree-shaking checks
+pnpm size           # what each package costs a consumer, minified + gzipped (after a build)
 pnpm e2e            # builds the Angular demo and drives it in Chromium
 pnpm dev:demo       # vanilla demo
 pnpm dev:angular    # Angular demo on http://localhost:4200
