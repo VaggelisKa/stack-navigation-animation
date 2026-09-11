@@ -5,10 +5,10 @@ import { FakeApi } from '../fake-api';
 import { BackButton, DEMO_UI } from '../shared';
 
 /**
- * A kept page with a nested `<router-outlet>`: the segmented control swaps
- * children inside this page without touching the stack. When a member's page
- * is pushed over it the router deactivates the child route; the shell stays
- * alive and, on the pop back, the same tab is activated again in it.
+ * A kept page with a nested `<router-outlet>`. The segmented control swaps
+ * children inside this page without touching the stack. When a member's page is
+ * pushed over it, the router deactivates the child route, but the shell stays
+ * alive and the same tab is activated again on the pop back.
  */
 @Component({
   selector: 'dash-shell',
@@ -81,7 +81,7 @@ export class DashOverview {
   readonly abs = Math.abs;
 }
 
-/** A table wider than the phone, scrolling sideways inside the page. */
+/** A table wider than the viewport, scrolling horizontally inside the page. */
 @Component({
   selector: 'dash-activity',
   imports: [...DEMO_UI],
@@ -149,7 +149,7 @@ export class DashTeam {
   readonly team = resource({ loader: () => this.api.team() });
 }
 
-/** Pushed over the whole dashboard (a descendant in the route tree), with links out to other demos. */
+/** Pushed over the whole dashboard as a descendant in the route tree, with links out to other demos. */
 @Component({
   selector: 'dash-member',
   imports: [BackButton, DecimalPipe, ...DEMO_UI],

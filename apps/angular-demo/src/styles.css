@@ -1,7 +1,7 @@
 /* Page colours live in custom properties on `:root`, so the dark-scheme block
-   below is the only place that flips them. A page that commits to its own look
-   (every demo app does) re-declares the tokens on its own root: the globals
-   below then follow that page instead of the system scheme. */
+   below is the only place that flips them. A page with its own look, as every
+   demo app has, re-declares the tokens on its own root, and the globals below
+   then follow that page instead of the system scheme. */
 :root {
   color-scheme: light dark;
   font: 15px/1.45 -apple-system, system-ui, sans-serif;

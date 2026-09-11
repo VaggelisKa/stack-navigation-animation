@@ -1,7 +1,7 @@
 // Drives the demo apps (feed, shop, messages, gallery, forms, search,
-// dashboard, lab) through the outlet: pushes and pops across different
-// layouts, content that arrives before, during and after a transition,
-// resolvers, replaced pages, a nested outlet, and the swipe on all of them.
+// dashboard, lab) through the outlet: pushes and pops across different layouts,
+// content arriving before, during and after a transition, resolvers, replaced
+// pages, a nested outlet, and the swipe gesture on all of them.
 // Run `ng build` first.
 import { launch } from './harness.mjs';
 
@@ -162,7 +162,7 @@ for (const url of ['/messages/foo', '/feed/post/999', '/gallery/0']) {
   await page.waitForSelector('.err', { timeout: 5000 });
 }
 check(true, 'unknown ids on deep links render an error box instead of throwing');
-// the loop above left the browser on the last deep link: go home before clicking one of its links
+// the loop above left the browser on the last deep link, so go home before clicking one of its links
 await page.goto(base + '/');
 await page.waitForSelector('app-home');
 
@@ -378,8 +378,8 @@ await waitCount('feed-card', 10);
 check(true, 'backend healthy again: the fresh feed loads');
 
 // ============================================================ colour scheme
-// A demo page commits to its own look: the dark system scheme must reach the
-// app's own pages and stop at a demo's root, header and cards included.
+// Each demo page has its own look, so the dark system scheme must reach the
+// app's own pages and stop at a demo's root, including its header and cards.
 section('dark system scheme: the app follows it, a demo keeps its own colours');
 const colours = (sel) =>
   page.evaluate((sel) => {

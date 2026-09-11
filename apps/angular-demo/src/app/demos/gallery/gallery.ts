@@ -5,7 +5,7 @@ import { BackButton, DEMO_UI } from '../shared';
 
 const paint = (p: Photo) => `linear-gradient(${p.angle}deg, hsl(${p.hues[0]} 70% 55%), hsl(${p.hues[1]} 65% 35%))`;
 
-/** A dense three-column grid of tiles, on a light page. */
+/** A dense three-column grid of tiles on a light page. */
 @Component({
   selector: 'gallery-grid',
   imports: [RouterLink, BackButton, ...DEMO_UI],
@@ -44,9 +44,9 @@ export class GalleryGrid {
 
 /**
  * A dark viewer. The filmstrip's links are siblings in the route tree, so they
- * replace this page in place; "Next" is an explicit push so the stack grows
- * and swiping back retraces the photos you opened. A deferred block brings
- * the details in a moment after the page lands.
+ * replace this page in place. "Next" is an explicit push, so the stack grows
+ * and swiping back retraces the photos you opened. A deferred block loads the
+ * details shortly after the page lands.
  */
 @Component({
   selector: 'gallery-photo',

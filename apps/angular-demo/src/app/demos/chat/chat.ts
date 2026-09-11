@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { AUTHORS, FakeApi, type Message } from '../fake-api';
 import { BackButton, DEMO_UI } from '../shared';
 
-/** An inbox: rows with unread badges, loaded once and kept; a refresh re-asks the backend. */
+/** An inbox: rows with unread badges, loaded once and kept. Refresh re-queries the backend. */
 @Component({
   selector: 'chat-inbox',
   imports: [RouterLink, BackButton, DecimalPipe, ...DEMO_UI],
@@ -53,8 +53,8 @@ export class ChatInbox {
 }
 
 /**
- * A thread: bubbles, a composer stuck to the bottom of the scroll container,
- * and replies that keep arriving after you have popped back to the inbox.
+ * A thread: message bubbles, a composer pinned to the bottom of the scroll
+ * container, and replies that keep arriving after you pop back to the inbox.
  */
 @Component({
   selector: 'chat-thread',
@@ -98,14 +98,14 @@ export class ChatThread {
   readonly id = input.required<string>();
   private readonly api = inject(FakeApi);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-  /** Null for an id that names no conversation (`/messages/0`, `/messages/foo`); the thread resource reports the error. */
+  /** Null for an id that matches no conversation (`/messages/0`, `/messages/foo`). The thread resource reports the error. */
   readonly peer = computed(() => {
     const n = Number(this.id());
     return Number.isInteger(n) && n >= 1 && n <= AUTHORS.length ? AUTHORS[n - 1] : null;
   });
   readonly thread = resource({ params: () => Number(this.id()), loader: ({ params }) => this.api.thread(params) });
   readonly sent = signal<Message[]>([]);
-  /** What the backend gave us plus what happened since; a reload of the thread carries the latter, so dedupe. */
+  /** The backend's messages plus any added since. A reload of the thread includes the latter, so they are deduplicated. */
   readonly messages = computed(() => {
     const base = this.thread.hasValue() ? this.thread.value() : [];
     const seen = new Set(base.map((m) => m.id));

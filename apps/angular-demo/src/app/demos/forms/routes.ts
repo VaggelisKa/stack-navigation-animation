@@ -5,7 +5,7 @@ export const FORMS_ROUTES: Routes = [
   { path: '', component: FormsHome },
   { path: 'profile', component: FormsProfile },
   { path: 'preferences', component: FormsPreferences },
-  // The wizard's steps are siblings in the tree; their numbers order them.
+  // The wizard's steps are siblings in the tree, ordered by their numbers.
   // `step` reaches the component as an input through data binding.
   { path: 'wizard/1', component: FormsWizard, data: { step: '1', stackLevel: 1 } },
   { path: 'wizard/2', component: FormsWizard, data: { step: '2', stackLevel: 2 } },
