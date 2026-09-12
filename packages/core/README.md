@@ -62,10 +62,38 @@ So a 500 ms push costs about a dozen style writes in total rather than one per p
 
 ## API
 
-### `createIOSStack({ container, transition?, gesture? })`
+### Swipe-back policy
 
-Builds a `NavigationStack` with the iOS transition and the edge-pan gesture
-attached. `transition` and `gesture` are option objects for the two factories
+```js
+const stack = createIOSStack({ container, swipeBack: 'browser' });
+stack.setSwipeBack('custom');   // interactive drag; request browser suppression
+stack.setSwipeBack('disabled'); // no custom drag; request browser suppression
+stack.setSwipeBack('browser');  // no custom drag; release our suppression request
+console.log(stack.swipeBack);
+```
+
+`SwipeBackMode` is exported as a type. Mode changes preserve the stack and history
+and cancel any active custom drag. Destroying the stack releases its policy.
+Gesture options tune `custom` mode; they do not enable it.
+
+**Migration:** custom swiping was previously enabled by default. Pass
+`swipeBack: 'custom'` to retain it. A standalone `createEdgePanGesture()` remains
+an explicit custom recognizer and does not manage browser suppression.
+
+Browser suppression is **best effort and document-wide**, using
+`overscroll-behavior-x: contain` on the document root. Safari and OS gestures may
+still navigate. Back/Forward buttons and keyboard navigation continue to work.
+Multiple stacks share suppression; `browser` releases only that stack's request.
+The original inline value and priority are restored when the last request ends,
+unless the application has replaced our declaration in the meantime.
+See [CSS overscroll behavior](https://drafts.csswg.org/css-overscroll/) and
+[WebKit's limitation](https://bugs.webkit.org/show_bug.cgi?id=240183).
+Page retention and transition effects work in every mode.
+
+### `createIOSStack({ container, transition?, gesture?, swipeBack? })`
+
+Builds a `NavigationStack` with the iOS transition. Set `swipeBack: 'custom'`
+to attach the edge-pan gesture. The default is `browser`. `transition` and `gesture` are option objects for the two factories
 below. The gesture is exposed as `stack.gesture`; `stack.destroy()` detaches it.
 
 ### `NavigationStack`

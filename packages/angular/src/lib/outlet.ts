@@ -9,6 +9,7 @@ import {
   Output,
   ViewContainerRef,
   inject,
+  effect,
   input,
   reflectComponentType,
   type ComponentRef,
@@ -42,6 +43,7 @@ import {
   type NavigationSource,
   type RouteRef,
   type StackEntry,
+  type SwipeBackMode,
 } from '@stacknav/core';
 import { Subscription, combineLatest, from, of, switchMap } from 'rxjs';
 import { StackNavActivatedRoute } from './activated-route-proxy';
@@ -107,6 +109,8 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
   @Input() transition: Partial<IOSTransitionOptions> | undefined;
   /** Per-outlet gesture options, merged over `provideStackNav({ gesture })`. `false` disables the swipe. */
   @Input() gesture: Partial<EdgePanGestureOptions> | false | undefined;
+  /** Live per-outlet override of the configured swipe policy. */
+  readonly swipeBack = input<SwipeBackMode>();
   /** Same as on `router-outlet`: available to pages through `ROUTER_OUTLET_DATA`. */
   readonly routerOutletData = input<unknown>(undefined);
 
@@ -153,7 +157,16 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
   private subs = new Subscription();
 
   constructor() {
+    effect(() => {
+      const mode = this.swipeMode();
+      this.stack?.setSwipeBack(mode);
+    });
     if (this.router.componentInputBindingEnabled) this.supportsBindingToComponentInputs = true;
+  }
+
+  private swipeMode(): SwipeBackMode {
+    const mode = this.swipeBack() ?? this.config.swipeBack;
+    return mode === 'custom' && (this.gesture === false || this.config.gesture === false) ? 'browser' : mode;
   }
 
   // ------------------------------------------------------------- lifecycle
@@ -163,8 +176,8 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
       container: this.host,
       transition: { ...this.config.transition, ...(this.transition || {}) },
       gesture: gesture || {},
+      swipeBack: this.swipeMode(),
     });
-    if (gesture === false) this.stack.gesture.detach();
     if (this.config.injectStyles) injectStyles(this.document);
 
     this.stack.on('pop', (e) => this.onStackRemoved(e.removed, e.source));

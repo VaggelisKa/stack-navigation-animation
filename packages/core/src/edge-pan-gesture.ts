@@ -163,7 +163,9 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
     options: o,
     refresh,
     attach(s) {
+      gesture.detach();
       stack = s;
+      stack.container.classList.add('sn-swipe-custom');
       strip = document.createElement('div');
       strip.className = 'sn-edge';
       strip.setAttribute('aria-hidden', 'true');
@@ -178,10 +180,13 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
     },
     detach() {
       if (!strip) return;
+      const handle = drag?.handle;
+      drag = null;
+      if (handle) void handle.finish({ complete: false, velocity: 0 });
       offs.forEach((f) => f());
       unlisten(stack.container);
       stack.container.removeEventListener('click', onClick, true);
-      stack.container.classList.remove('sn-anywhere', 'sn-can-pop');
+      stack.container.classList.remove('sn-anywhere', 'sn-can-pop', 'sn-swipe-custom');
       strip.remove();
       strip = null;
     },

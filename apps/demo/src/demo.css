@@ -46,7 +46,7 @@ body {
   font-family: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
-  overscroll-behavior: none;
+  overscroll-behavior-y: none;
 }
 
 .desk { position: fixed; inset: 0; display: grid; place-items: center; }
