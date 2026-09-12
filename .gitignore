@@ -4,3 +4,4 @@ out-tsc/
 .angular/
 .DS_Store
 apps/angular-demo/e2e/shots/
+apps/react-demo/e2e/shots/

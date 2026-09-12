@@ -8,10 +8,11 @@ replacing it.
 | --- | --- |
 | [`@stacknav/core`](packages/core) | The engine: a stack of page elements, the iOS transition (slide, parallax, dim, shadow), an interactive edge-swipe pop, direction resolution, and a `history.state` adapter for apps without a router. No dependencies. |
 | [`@stacknav/angular`](packages/angular) | `<sn-outlet />`, a router outlet for Angular Router that keeps pages alive beneath the top one, animates every navigation, and supports swipe-back. It adds no navigation API of its own: the router, `routerLink` and `Location` handle navigation. |
-| `@stacknav/react` | Planned. |
+| [`@stacknav/react`](packages/react) | `<StackRoutes>`, a drop-in for React Router's `<Routes>` with the same behaviour: kept pages, animated navigations, swipe-back through the router's history. Built on `<StackNav>`, a router-agnostic component that takes a page key and a node and keeps the pages it came from. |
 
-Demos: [`apps/demo`](apps/demo) (vanilla, no router) and
-[`apps/angular-demo`](apps/angular-demo) (Angular router).
+Demos: [`apps/demo`](apps/demo) (vanilla, no router),
+[`apps/angular-demo`](apps/angular-demo) (Angular Router) and
+[`apps/react-demo`](apps/react-demo) (React Router).
 
 ## How it works
 
@@ -85,19 +86,32 @@ the transition while content is loading, arriving mid-transition, or failing.
 | Dashboard | segmented tabs, stat tiles, bar chart, wide table | a nested `<router-outlet>` inside a kept page, tabs that replace their history entry |
 | Lab | controls and stress pages | slow motion, swipe from anywhere, API latency and failures, a 600-row page, a stack five siblings deep, a 2 s resolver, horizontal scrollers under the edge swipe |
 
-`pnpm e2e` builds the demo and drives it in Chromium: `e2e/run.mjs` covers the
-mechanics, `e2e/demos.mjs` covers the demo apps.
+`pnpm e2e:angular` builds the demo and drives it in Chromium: `e2e/run.mjs`
+covers the mechanics, `e2e/demos.mjs` covers the demo apps.
+
+## The React demo
+
+The same idea on React Router, in declarative mode: the home page demonstrates
+the mechanics (the route tree, numbered screens, hints in the navigation
+`state`, siblings, a deep link and the back button's fallback), and above it
+sit the Feed, Shop, Messages, Gallery and Lab demos from the Angular app, ported
+to React with the same fake API. Where Angular had resolvers and guards, the
+React pages load in place behind skeletons, which is what declarative routing
+does, and the Lab's slow page says so.
+
+`pnpm e2e:react` builds it and drives it in Chromium (`e2e/run.mjs`).
 
 ## Develop
 
 ```sh
 pnpm install
-pnpm build          # packages/core, then packages/angular
-pnpm test           # core unit tests (node:test, no browser), including tree-shaking checks
+pnpm build          # packages/core, then packages/angular and packages/react
+pnpm test           # core and react unit tests (node:test, no browser), including tree-shaking checks
 pnpm size           # what each package costs a consumer, minified + gzipped (after a build)
-pnpm e2e            # builds the Angular demo and drives it in Chromium
+pnpm e2e            # builds both demos and drives them in Chromium (or e2e:angular / e2e:react)
 pnpm dev:demo       # vanilla demo
 pnpm dev:angular    # Angular demo on http://localhost:4200
+pnpm dev:react      # React demo on http://localhost:5173
 ```
 
 Node 22.18+ runs the core; its tests use Node's built-in TypeScript stripping.
@@ -128,8 +142,8 @@ request, so it always reflects the next release.
 
 ### Bumping a package when its dependency changes
 
-`@stacknav/angular` depends on `@stacknav/core`, so any core release also
-releases the Angular package:
+`@stacknav/angular` and `@stacknav/react` depend on `@stacknav/core`, so any
+core release also releases the ports:
 
 | core                | angular         | published range |
 | ------------------- | --------------- | --------------- |
@@ -137,14 +151,13 @@ releases the Angular package:
 | `0.2.0` -> `0.3.0`  | patch           | `^0.3.0`        |
 | `0.2.0` -> `1.0.0`  | patch           | `^1.0.0`        |
 
-The Angular package's own version reflects its own changes; you write those
-changesets yourself. What it inherits from core is the dependency range, which
-pnpm resolves from `workspace:^` at publish time so a consumer always gets a
-core that matches.
+A port's own version reflects its own changes; you write those changesets
+yourself. What it inherits from core is the dependency range, which pnpm
+resolves from `workspace:^` at publish time so a consumer always gets a core
+that matches.
 
 Two settings drive this. `updateInternalDependents: "always"` releases the
-Angular package on every core release, not only when core leaves the declared
-range. `updateInternalDependencies: "patch"` rewrites the range for any bump
+ports on every core release, not only when core leaves the declared range. `updateInternalDependencies: "patch"` rewrites the range for any bump
 down to a patch.
 
 ### First-time setup
@@ -163,8 +176,10 @@ introduced them. In CI the workflow supplies it.
 ```
 packages/core/          @stacknav/core     TypeScript, built with tsc to dist/
 packages/angular/       @stacknav/angular  built with ng-packagr to dist/
+packages/react/         @stacknav/react    TypeScript, built with tsc to dist/
 apps/demo/              vanilla demo (esbuild → dist/demo.html)
 apps/angular-demo/      Angular CLI app + Playwright e2e (e2e/run.mjs)
+apps/react-demo/        Vite + React Router app + Playwright e2e (e2e/run.mjs)
 .changeset/             pending release notes and the changesets config
 .github/workflows/      the Release and Changeset workflows
 ```
