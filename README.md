@@ -6,12 +6,28 @@ replacing it.
 
 | Package | Description |
 | --- | --- |
-| [`@stacknav/core`](packages/core) | The engine: a stack of page elements, the iOS transition (slide, parallax, dim, shadow), an interactive edge-swipe pop, direction resolution, and a `history.state` adapter for apps without a router. No dependencies. |
+| [`@stacknav/core`](packages/core) | The engine: a stack of page elements, the iOS transition (slide, parallax, dim, shadow), an opt-in interactive edge-swipe pop, direction resolution, and a `history.state` adapter for apps without a router. No dependencies. |
 | [`@stacknav/angular`](packages/angular) | `<sn-outlet />`, a router outlet for Angular Router that keeps pages alive beneath the top one, animates every navigation, and supports swipe-back. It adds no navigation API of its own: the router, `routerLink` and `Location` handle navigation. |
 | `@stacknav/react` | Planned. |
 
 Demos: [`apps/demo`](apps/demo) (vanilla, no router) and
 [`apps/angular-demo`](apps/angular-demo) (Angular router).
+
+## Swipe-back modes
+
+Browser gestures are the default. Choose `swipeBack: 'custom'` for our interactive
+preview, `'browser'` to leave browser gestures alone, or `'disabled'` to disable
+ours and request browser swipe suppression where supported. Browser suppression
+is document-wide and cannot guarantee blocking Safari or OS gestures. Back buttons
+continue to work in every mode.
+
+Configure this in `createIOSStack()` or `provideStackNav()`. Change it live with
+`stack.setSwipeBack(mode)` or `<sn-outlet [swipeBack]="mode()" />`.
+Existing consumers wanting the previous custom gesture default should explicitly
+set `swipeBack: 'custom'`.
+
+Try all three in **Lab → Swipe back** in the Angular demo or **Options → Swipe
+back** in the vanilla demo. The demos explicitly start in custom mode.
 
 ## How it works
 

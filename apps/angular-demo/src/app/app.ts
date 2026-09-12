@@ -12,13 +12,13 @@ import { DemoPrefs } from './demos/shared';
   template: `
     <div class="phone">
       <div class="progress" [class.on]="busy()" [attr.aria-hidden]="!busy()"></div>
-      <sn-outlet />
+      <sn-outlet [swipeBack]="prefs.swipeBack()" />
     </div>
   `,
 })
 export class App {
   private readonly outlet = viewChild.required(StackNavOutlet);
-  private readonly prefs = inject(DemoPrefs);
+  readonly prefs = inject(DemoPrefs);
   private readonly api = inject(FakeApi);
   private readonly router = inject(Router);
   /** True while the router is between NavigationStart and its end, which covers resolvers and lazy chunks. */

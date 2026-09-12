@@ -14,8 +14,23 @@ import { BackButton, DEMO_UI, DemoNav, DemoPrefs } from '../shared';
         <h2>Transition</h2>
         <div class="frm-group">
           <label class="switch"><span>Slow motion (4×)</span><input type="checkbox" [checked]="prefs.slow()" (change)="prefs.slow.set($any($event.target).checked)" /><i></i></label>
-          <label class="switch"><span>Swipe back from anywhere</span><input type="checkbox" [checked]="prefs.anywhere()" (change)="prefs.anywhere.set($any($event.target).checked)" /><i></i></label>
+          <label class="switch"><span>Swipe back from anywhere</span><input type="checkbox" [disabled]="prefs.swipeBack() !== 'custom'" [checked]="prefs.anywhere()" (change)="prefs.anywhere.set($any($event.target).checked)" /><i></i></label>
         </div>
+        <section aria-labelledby="swipe-title">
+          <h2 id="swipe-title">Swipe back</h2>
+          <fieldset class="swipe-modes" aria-describedby="swipe-help">
+            <legend>Choose who handles the gesture</legend>
+            @for (mode of swipeModes; track mode.value) {
+              <label class="swipe-mode">
+                <input type="radio" name="swipe-back" [value]="mode.value" [checked]="prefs.swipeBack() === mode.value" (change)="prefs.swipeBack.set(mode.value)" />
+                <span><strong>{{ mode.label }}</strong><small>{{ mode.description }}</small></span>
+              </label>
+            }
+          </fieldset>
+          <p id="swipe-help" class="muted">This demo starts in Custom. Browser is the library default. Browser gesture suppression depends on your browser and OS; Back buttons work in every mode.</p>
+          <p class="muted" role="status">Active mode: {{ prefs.swipeBack() }}. Applies immediately to the main demo outlet.</p>
+          <a class="item" routerLink="/lab/deep/1"><span>Try the selected mode</span><small>Open a page, then swipe back or use Back</small><i>›</i></a>
+        </section>
         <h2>Fake backend</h2>
         <div class="frm-group">
           <label class="lab-range"><span>Latency <b>{{ api.latency() }} ms</b></span><input type="range" min="0" max="3000" step="100" [value]="api.latency()" (input)="api.latency.set(+$any($event.target).value)" /></label>
@@ -32,6 +47,11 @@ import { BackButton, DEMO_UI, DemoNav, DemoPrefs } from '../shared';
   `,
 })
 export class LabHome {
+  readonly swipeModes = [
+    { value: 'custom', label: 'Custom', description: 'Drag the page with our interactive preview. Requests browser swipe suppression.' },
+    { value: 'browser', label: 'Browser', description: 'Our gesture is off. Use your browser’s normal back gesture.' },
+    { value: 'disabled', label: 'Disabled', description: 'Our gesture is off. Requests browser swipe suppression where supported.' },
+  ] as const;
   readonly prefs = inject(DemoPrefs);
   readonly api = inject(FakeApi);
 }

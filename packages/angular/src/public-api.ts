@@ -5,3 +5,5 @@ export { provideStackNav, STACKNAV_CONFIG, defaultKeyOf, defaultLevelOf, resolve
 export type { StackNavConfig, ResolvedStackNavConfig } from './lib/config';
 export { StackNavRouteReuseStrategy } from './lib/route-reuse-strategy';
 export { StackNavActivatedRoute } from './lib/activated-route-proxy';
+
+export type { SwipeBackMode } from '@stacknav/core';

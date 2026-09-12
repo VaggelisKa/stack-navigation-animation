@@ -317,4 +317,45 @@ s = await state();
 eq(s.pages.join(','), 'app-home', 'the settle ran and the page was popped');
 
 
+section('live swipe-back modes in the Lab');
+await deepLink('/');
+await transitioned(() => page.locator('a[href="/lab"]').click());
+const mode = (value) => page.locator(`lab-home input[name="swipe-back"][value="${value}"]`);
+const policy = () => page.evaluate(() => ({
+  strip: document.querySelectorAll('sn-outlet > .sn-edge').length,
+  touch: getComputedStyle(document.querySelector('lab-home')).touchAction,
+  overscroll: getComputedStyle(document.documentElement).overscrollBehaviorX,
+  historyLength: history.length,
+  url: location.pathname,
+}));
+const initial = await policy();
+await mode('browser').check();
+await page.waitForFunction(() => !document.querySelector('sn-outlet > .sn-edge'));
+eq((await policy()).touch, 'auto', 'browser mode restores native touch handling');
+eq((await policy()).overscroll, 'auto', 'browser mode releases viewport suppression');
+await swipeBack();
+eq((await state()).url, '/lab', 'mouse drag does not invoke a custom pop in browser mode');
+await mode('disabled').check();
+await page.waitForFunction(() => getComputedStyle(document.documentElement).overscrollBehaviorX === 'contain');
+eq((await policy()).strip, 0, 'disabled mode has no custom recognizer');
+await swipeBack();
+eq((await state()).url, '/lab', 'disabled mode ignores custom drags');
+eq((await policy()).historyLength, initial.historyLength, 'switching modes does not rewrite history');
+await page.screenshot({ path: join(shots, 'swipe-back-modes.png'), fullPage: true });
+await transitioned(() => page.locator('lab-home a').filter({ hasText: 'Try the selected mode' }).click());
+await transitioned(() => page.locator('lab-deep button.back').click());
+eq((await state()).url, '/lab', 'Back button works with gestures disabled');
+await transitioned(() => page.goBack());
+eq((await state()).url, '/', 'browser history Back works with gestures disabled');
+await transitioned(() => page.goForward());
+eq((await state()).url, '/lab', 'browser history Forward still works');
+await mode('browser').check();
+await mode('browser').focus();
+await page.keyboard.press('ArrowUp');
+await page.waitForFunction(() => document.querySelector('lab-home input[value="custom"]').checked);
+await page.waitForSelector('sn-outlet > .sn-edge');
+eq((await policy()).touch, 'pan-y', 'keyboard selection enables custom touch handling');
+await swipeBack();
+eq((await state()).url, '/', 'custom mode still completes an interactive pop after mode changes');
+
 await finish();

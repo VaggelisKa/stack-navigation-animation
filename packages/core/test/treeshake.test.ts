@@ -19,7 +19,7 @@ import { build, type Plugin } from 'esbuild';
 const SRC = fileURLToPath(new URL('../src/', import.meta.url));
 
 /** Every module of the package, by file name without the extension. */
-const ALL = ['animate', 'css-vars', 'direction', 'edge-pan-gesture', 'history-adapter', 'index', 'ios-transition', 'navigation-stack', 'styles'];
+const ALL = ['animate', 'css-vars', 'direction', 'edge-pan-gesture', 'history-adapter', 'index', 'ios-transition', 'navigation-stack', 'styles', 'swipe-back'];
 
 const everythingHasSideEffects: Plugin = {
   name: 'every-module-has-side-effects',
@@ -69,5 +69,5 @@ test('NavigationStack with a custom transition leaves out the iOS look, the gest
 });
 
 test('createIOSStack leaves out direction resolution, the history adapter and the stylesheet', async () => {
-  assert.deepEqual(await survivors(`export { createIOSStack } from './index.ts';`), ['animate', 'css-vars', 'edge-pan-gesture', 'index', 'ios-transition', 'navigation-stack']);
+  assert.deepEqual(await survivors(`export { createIOSStack } from './index.ts';`), ['animate', 'css-vars', 'edge-pan-gesture', 'index', 'ios-transition', 'navigation-stack', 'swipe-back']);
 });

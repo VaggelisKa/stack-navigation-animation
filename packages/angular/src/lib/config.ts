@@ -8,6 +8,7 @@ import {
   type DirectionStrategy,
   type EdgePanGestureOptions,
   type IOSTransitionOptions,
+  type SwipeBackMode,
 } from '@stacknav/core';
 
 /** Everything `provideStackNav()` accepts. All optional. */
@@ -40,7 +41,9 @@ export interface StackNavConfig {
   infoKey?: string;
   /** Defaults for every outlet's transition. An outlet's `transition` input overrides these per key. */
   transition?: Partial<IOSTransitionOptions>;
-  /** Defaults for every outlet's swipe-back gesture. `false` disables it. */
+  /** Default browser. Custom/disabled request document-wide browser gesture suppression where supported. */
+  swipeBack?: SwipeBackMode;
+  /** Custom gesture tuning. `false` disables our gesture, without suppressing browser gestures on its own. */
   gesture?: Partial<EdgePanGestureOptions> | false;
   /**
    * Detaches change detection from pages hidden beneath the top and reattaches
@@ -60,6 +63,7 @@ export interface ResolvedStackNavConfig {
   infoKey: string;
   transition: Partial<IOSTransitionOptions>;
   gesture: Partial<EdgePanGestureOptions> | false;
+  swipeBack: SwipeBackMode;
   detachInactiveViews: boolean;
   injectStyles: boolean;
   animated: boolean;
@@ -94,6 +98,7 @@ export function resolveConfig(c: StackNavConfig): ResolvedStackNavConfig {
     infoKey: c.infoKey ?? 'stacknav',
     transition: c.transition ?? {},
     gesture: c.gesture ?? {},
+    swipeBack: c.swipeBack ?? 'browser',
     detachInactiveViews: c.detachInactiveViews ?? false,
     injectStyles: c.injectStyles ?? true,
     animated: c.animated ?? true,

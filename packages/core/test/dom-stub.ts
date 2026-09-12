@@ -7,9 +7,11 @@
 // what the engine writes. There is no layout and no animation, so
 // `commitStyles` is a no-op and every CSS transition reads as already finished.
 const makeStyle = (vars: Record<string, string>) => {
+  const priorities: Record<string, string> = {};
   const style: any = {
-    setProperty: (k: string, v: string) => ((k.startsWith('--') ? vars : style)[k] = v),
-    removeProperty: (k: string) => delete (k.startsWith('--') ? vars : style)[k],
+    setProperty: (k: string, v: string, priority = '') => { priorities[k] = priority; (k.startsWith('--') ? vars : style)[k] = v; },
+    getPropertyPriority: (k: string) => priorities[k] ?? '',
+    removeProperty: (k: string) => { delete priorities[k]; delete (k.startsWith('--') ? vars : style)[k]; },
     getPropertyValue: (k: string) => (k.startsWith('--') ? vars[k] : style[k]) ?? '',
   };
   return style;
@@ -49,6 +51,7 @@ export function makeElement(tag = 'div'): any {
       if (!el.parentElement) return;
       const sib = el.parentElement.children;
       sib.splice(sib.indexOf(el), 1);
+      el.parentElement = null;
       el.parentElement = null;
     },
     setAttribute(k, v) {

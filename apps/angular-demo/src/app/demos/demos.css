@@ -374,3 +374,12 @@
 .lab-depth i.top { opacity: 1; }
 .lab-scroller { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 8px; scrollbar-width: none; }
 .lab-scroller div { flex: none; width: 120px; height: 80px; border-radius: 12px; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 20px; background: hsl(var(--h) 60% 55%); }
+
+/* Native radios keep keyboard selection and focus in the mode chooser. */
+.swipe-modes { margin: 0; padding: 14px; border: 1px solid #c8c8ce; border-radius: 12px; }
+.swipe-modes legend { padding: 0 5px; font-size: 14px; }
+.swipe-mode { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; cursor: pointer; }
+.swipe-mode + .swipe-mode { border-top: 1px solid #dcdce2; }
+.swipe-mode input { flex: 0 0 auto; width: 20px; height: 20px; margin: 2px 0 0; accent-color: #0066cc; }
+.swipe-mode small { display: block; margin-top: 4px; font-size: 13px; line-height: 1.5; color: #595963; }
+.swipe-mode input:focus-visible { outline: 2px solid #0066cc; outline-offset: 3px; }

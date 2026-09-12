@@ -1,3 +1,4 @@
+export type { SwipeBackMode } from './swipe-back.ts';
 export { NavigationStack } from './navigation-stack.ts';
 export type {
   StackEntry,
@@ -55,31 +56,58 @@ import { NavigationStack } from './navigation-stack.ts';
 import { createIOSTransition, type IOSTransition, type IOSTransitionOptions } from './ios-transition.ts';
 import { createEdgePanGesture, type EdgePanGesture, type EdgePanGestureOptions } from './edge-pan-gesture.ts';
 
+import { suppressBrowserSwipe, type SwipeBackMode } from './swipe-back.ts';
+
 export interface IOSStackOptions {
   container: HTMLElement;
   transition?: Partial<IOSTransitionOptions>;
   gesture?: Partial<EdgePanGestureOptions>;
+  /** Default browser. Custom and disabled request document-wide browser swipe suppression. */
+  swipeBack?: SwipeBackMode;
 }
 
 export interface IOSStack extends NavigationStack {
   transition: IOSTransition;
   gesture: EdgePanGesture;
+  readonly swipeBack: SwipeBackMode;
+  /** Changes gesture policy without replacing pages or changing browser history. */
+  setSwipeBack(mode: SwipeBackMode): void;
 }
 
 /**
  * Wires the three pieces together in one call: a stack in `container`, the iOS
- * transition, and the edge-pan gesture. The gesture is exposed as
- * `stack.gesture`, and destroying the stack detaches it.
+ * transition, and an optional edge-pan gesture. Browser mode is the default.
+ * The gesture is exposed as `stack.gesture`; destroying releases its policy.
  */
-export function createIOSStack({ container, transition = {}, gesture = {} }: IOSStackOptions): IOSStack {
+export function createIOSStack({ container, transition = {}, gesture = {}, swipeBack = 'browser' }: IOSStackOptions): IOSStack {
   const t = createIOSTransition(transition);
   const g = createEdgePanGesture(gesture);
   const stack = new NavigationStack({ container, transition: t }) as IOSStack;
-  g.attach(stack);
   stack.gesture = g;
+  let mode: SwipeBackMode | undefined;
+  let release: (() => void) | undefined;
+  let destroyed = false;
+  Object.defineProperty(stack, 'swipeBack', { get: () => mode });
+  stack.setSwipeBack = (next) => {
+    if (destroyed || next === mode) return;
+    if (next !== 'custom' && next !== 'browser' && next !== 'disabled') throw new TypeError('Invalid swipeBack mode');
+    g.detach();
+    if (next === 'browser') {
+      release?.();
+      release = undefined;
+    } else {
+      release ??= suppressBrowserSwipe(container);
+    }
+    mode = next;
+    if (mode === 'custom') g.attach(stack);
+  };
+  stack.setSwipeBack(swipeBack);
   const destroy = stack.destroy.bind(stack);
   stack.destroy = () => {
+    destroyed = true;
     g.detach();
+    release?.();
+    release = undefined;
     destroy();
   };
   return stack;
