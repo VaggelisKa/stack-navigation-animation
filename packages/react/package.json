@@ -1,7 +1,7 @@
 {
   "name": "@stacknav/react",
   "version": "0.0.0",
-  "description": "React components for iOS-style push/pop navigation with interactive swipe back, built on @stacknav/core. Router-agnostic, with a drop-in for React Router's <Routes>.",
+  "description": "The iOS push/pop transition for React Router: <StackRoutes>, an outlet that keeps pages alive beneath the top one, animates every navigation and supports swipe back. Built on @stacknav/core.",
   "license": "MIT",
   "type": "module",
   "keywords": ["react", "react-router", "navigation", "transition", "ios", "swipe-back", "stack", "animation"],
@@ -9,7 +9,6 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-    "./react-router": { "types": "./dist/react-router.d.ts", "default": "./dist/react-router.js" },
     "./package.json": "./package.json"
   },
   "files": ["dist", "src"],
@@ -24,9 +23,6 @@
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0",
     "react-router": ">=7.0.0"
-  },
-  "peerDependenciesMeta": {
-    "react-router": { "optional": true }
   },
   "dependencies": {
     "@stacknav/core": "workspace:^"

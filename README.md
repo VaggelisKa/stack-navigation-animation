@@ -8,7 +8,7 @@ replacing it.
 | --- | --- |
 | [`@stacknav/core`](packages/core) | The engine: a stack of page elements, the iOS transition (slide, parallax, dim, shadow), an interactive edge-swipe pop, direction resolution, and a `history.state` adapter for apps without a router. No dependencies. |
 | [`@stacknav/angular`](packages/angular) | `<sn-outlet />`, a router outlet for Angular Router that keeps pages alive beneath the top one, animates every navigation, and supports swipe-back. It adds no navigation API of its own: the router, `routerLink` and `Location` handle navigation. |
-| [`@stacknav/react`](packages/react) | `<StackRoutes>`, a drop-in for React Router's `<Routes>` with the same behaviour: kept pages, animated navigations, swipe-back through the router's history. Built on `<StackNav>`, a router-agnostic component that takes a page key and a node and keeps the pages it came from. |
+| [`@stacknav/react`](packages/react) | `<StackRoutes>`, React Router's `<Routes>` with the same behaviour: kept pages, animated navigations, swipe-back through the router's history. An outlet, not a router: `<Link>`, `useNavigate` and browser history handle navigation. |
 
 Demos: [`apps/demo`](apps/demo) (vanilla, no router),
 [`apps/angular-demo`](apps/angular-demo) (Angular Router) and

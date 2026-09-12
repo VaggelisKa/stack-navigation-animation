@@ -1,12 +1,12 @@
-import { segmentsOf, type RouteRef } from '@stacknav/core';
-import { forwardRef, useCallback, useMemo, useRef, type ForwardedRef, type ReactNode } from 'react';
+import { segmentsOf, type Direction, type DirectionResolver, type DirectionStrategy, type EdgePanGestureOptions, type IOSTransitionOptions, type RouteRef } from '@stacknav/core';
+import { forwardRef, useCallback, useMemo, useRef, type CSSProperties, type ForwardedRef, type ReactNode } from 'react';
 import { createRoutesFromChildren, matchRoutes, useLocation, useNavigate, useNavigationType, useParams, useRoutes, type Location, type RouteMatch, type RouteObject } from 'react-router';
 import { createHistoryTracker } from './history-tracker.ts';
 import { readHint } from './hint.ts';
-import { StackNav, type StackNavHandle, type StackNavProps } from './stack-nav.tsx';
+import { StackNav, useStackNav as useStackNavHandle, type StackNavActivation, type StackNavHandle } from './stack-nav.tsx';
 import type { StackPage } from './model.ts';
 
-/** What the stack knows about a page, passed to direction strategies. */
+/** What the outlet knows about a page, passed to direction strategies. */
 export interface StackRoutesRouteRef extends RouteRef {
   /** the location the page was last shown at */
   location: Location;
@@ -14,7 +14,14 @@ export interface StackRoutesRouteRef extends RouteRef {
   matches: RouteMatch[] | null;
 }
 
-export interface StackRoutesProps extends Omit<StackNavProps<StackRoutesRouteRef>, 'route' | 'navigation' | 'children' | 'onSwipeBack'> {
+/** A page the outlet keeps alive. */
+export type StackRoutesPage = StackPage<StackRoutesRouteRef>;
+/** An activation, with the direction that was resolved for it. */
+export type StackRoutesActivation = StackNavActivation<StackRoutesRouteRef>;
+/** What `ref` and `useStackNav()` give access to. */
+export type StackRoutesHandle = StackNavHandle<StackRoutesRouteRef>;
+
+export interface StackRoutesProps {
   /** `<Route>` elements, as for `<Routes>`. */
   children?: ReactNode;
   /** Route objects, as for `useRoutes()`. Takes precedence over `children`. */
@@ -34,6 +41,29 @@ export interface StackRoutesProps extends Omit<StackNavProps<StackRoutesRouteRef
    * `navigate('/x', { state: { stacknav: 'pop' } })`. Default `stacknav`.
    */
   stateKey?: string;
+  /**
+   * Strategies that decide push / pop / replace, in priority order, or one
+   * resolver function. Defaults to the core's `defaultStrategies()`.
+   */
+  direction?: readonly DirectionStrategy[] | DirectionResolver;
+  /** Used when no strategy has an answer. Default `push`. */
+  fallbackDirection?: Direction;
+  /**
+   * `createIOSTransition` options. The same options are CSS custom properties
+   * (`--sn-duration`, `--sn-easing`, `--sn-parallax`, …) read off the outlet,
+   * and a variable that is set wins over the option here.
+   */
+  transition?: Partial<IOSTransitionOptions>;
+  /** `createEdgePanGesture` options. `false` disables swiping back. */
+  gesture?: Partial<EdgePanGestureOptions> | false;
+  /** Whether to animate at all. Default true. `prefers-reduced-motion` is honoured either way. */
+  animated?: boolean;
+  /** Inserts the core stylesheet at runtime. Default true. Turn it off if you import `@stacknav/core/stacknav.css`. */
+  injectStyles?: boolean;
+  /** Every activation, with the direction that was resolved for it. */
+  onNavigate?: (activation: StackRoutesActivation) => void;
+  className?: string;
+  style?: CSSProperties;
 }
 
 export function defaultKeyOf(location: Location): string {
@@ -49,11 +79,12 @@ export function defaultLevelOf(matches: RouteMatch[] | null): number | null | un
 const toPath = (l: Location) => ({ pathname: l.pathname, search: l.search, hash: l.hash });
 
 /**
- * A drop-in for React Router's `<Routes>` with the iOS push/pop transition.
- * The router keeps doing everything it does: `<Link>`, `useNavigate`,
- * `useParams`, browser history. The page that was showing stays alive beneath
- * the new one, the change is animated, and a swipe from the leading edge
- * pops, through `navigate(-1)`.
+ * React Router's `<Routes>` with the iOS push/pop transition: an outlet, not a
+ * router. Use it where you would use `<Routes>`; the router keeps doing
+ * everything it does (`<Link>`, `useNavigate`, `useParams`, browser history),
+ * and this only changes what happens when the location changes: the page that
+ * was showing stays alive beneath the new one, the change is animated, and a
+ * swipe from the leading edge pops, through `navigate(-1)`.
  *
  * ```tsx
  * <BrowserRouter>
@@ -71,7 +102,7 @@ const toPath = (l: Location) => ({ pathname: l.pathname, search: l.search, hash:
  * Declarative mode only: data routers render loader data per route id, which
  * cannot describe two pages of the same route kept alive at once.
  */
-function StackRoutesImpl({ children, routes, keyOf = defaultKeyOf, levelOf = defaultLevelOf, stateKey = 'stacknav', ...rest }: StackRoutesProps, ref: ForwardedRef<StackNavHandle<StackRoutesRouteRef>>) {
+function StackRoutesImpl({ children, routes, keyOf = defaultKeyOf, levelOf = defaultLevelOf, stateKey = 'stacknav', ...rest }: StackRoutesProps, ref: ForwardedRef<StackRoutesHandle>) {
   const location = useLocation();
   const action = useNavigationType();
   const navigate = useNavigate();
@@ -98,7 +129,7 @@ function StackRoutesImpl({ children, routes, keyOf = defaultKeyOf, levelOf = def
 
   // The swipe already revealed the page beneath. Bring the router in line with it.
   const onSwipeBack = useCallback(
-    (revealed: StackPage<StackRoutesRouteRef>) => {
+    (revealed: StackRoutesPage) => {
       if (tracker.previousKey != null && tracker.previousKey === revealed.route.location.key) void navigate(-1);
       else void navigate(toPath(revealed.route.location), { replace: true, state: { [stateKey]: { direction: 'pop', animated: false } } });
     },
@@ -113,7 +144,12 @@ function StackRoutesImpl({ children, routes, keyOf = defaultKeyOf, levelOf = def
 }
 
 export const StackRoutes = forwardRef(StackRoutesImpl);
-export { useStackNav } from './stack-nav.tsx';
-export type { StackNavHandle, StackNavActivation } from './stack-nav.tsx';
-export type { StackPage, StackNavigation } from './model.ts';
+
+/**
+ * The state of the nearest `<StackRoutes>`: its kept pages, whether it can
+ * pop, and the core stack. Re-renders when pages come and go.
+ */
+export function useStackNav(): StackRoutesHandle {
+  return useStackNavHandle<StackRoutesRouteRef>();
+}
 export type { StackNavHint } from './hint.ts';

@@ -1,4 +1,4 @@
-import { StackRoutes } from '@stacknav/react/react-router';
+import { StackRoutes } from '@stacknav/react';
 import { useMemo } from 'react';
 import { api } from './demos/fake-api';
 import { prefs } from './demos/shared';

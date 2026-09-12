@@ -1,5 +1,4 @@
-import { useStackNav } from '@stacknav/react/react-router';
-import type { StackRoutesRouteRef } from '@stacknav/react/react-router';
+import { useStackNav } from '@stacknav/react';
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useNavigate, type LinkProps } from 'react-router';
 import { useBack } from '../back';
@@ -21,7 +20,7 @@ export const prefs = createStore({
  * back afterwards lands on the expected page.
  */
 export function usePopTo(): (path: string) => void {
-  const { pages } = useStackNav<StackRoutesRouteRef>();
+  const { pages } = useStackNav();
   const navigate = useNavigate();
   return useCallback(
     (path: string) => {

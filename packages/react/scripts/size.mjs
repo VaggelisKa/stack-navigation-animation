@@ -1,6 +1,6 @@
 // What @stacknav/react costs a consumer, minified and gzipped (run `pnpm build`
 // first). React and React Router are external, as they would be in an app;
-// @stacknav/core is bundled in the first two rows and external in the last, so
+// @stacknav/core is bundled in the first row and external in the second, so
 // the difference is what the port itself adds on top of the engine.
 import { build } from 'esbuild';
 import { gzipSync } from 'node:zlib';
@@ -8,9 +8,8 @@ import { fileURLToPath } from 'node:url';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const CASES = [
-  ['StackNav (with core)', `export { StackNav } from './index.js';`, []],
-  ['StackRoutes for React Router (with core)', `export { StackRoutes } from './react-router.js';`, []],
-  ['StackRoutes, core external', `export { StackRoutes } from './react-router.js';`, ['@stacknav/core']],
+  ['StackRoutes (with core)', `export { StackRoutes } from './index.js';`, []],
+  ['StackRoutes, core external', `export { StackRoutes } from './index.js';`, ['@stacknav/core']],
 ];
 
 const kb = (n) => (n / 1024).toFixed(2).padStart(6) + ' kB';
