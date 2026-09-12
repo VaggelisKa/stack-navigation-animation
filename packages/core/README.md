@@ -74,6 +74,8 @@ console.log(stack.swipeBack);
 
 `SwipeBackMode` is exported as a type. Mode changes preserve the stack and history
 and cancel any active custom drag. Destroying the stack releases its policy.
+Destruction is terminal: queued and subsequent navigation promises reject with
+`AbortError`, so callers should handle cancellation when tearing down a stack.
 Gesture options tune `custom` mode; they do not enable it.
 
 **Migration:** custom swiping was previously enabled by default. Pass

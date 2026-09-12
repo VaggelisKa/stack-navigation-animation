@@ -81,3 +81,40 @@ test('changing mode during a drag cancels it without popping or leaving the stac
   assert.equal(container.children.filter((el) => el.className === 'sn-edge').length, 1);
   stack.destroy();
 });
+
+test('destroy during a drag cancels queued navigation instead of remounting pages', async () => {
+  const { stack, container } = setup();
+  await stack.push(makeElement(), { animated: false });
+  await stack.push(makeElement(), { animated: false });
+  stack.setSwipeBack('custom');
+  const strip = container.children.find((el) => el.className === 'sn-edge');
+  const pointer = (x) => ({ bubbles: true, pointerId: 1, pointerType: 'touch', clientX: x, clientY: 0 });
+  strip.dispatch('pointerdown', pointer(5));
+  strip.dispatch('pointermove', pointer(250));
+  assert.equal(stack.busy, true);
+  const pages = stack.entries.slice();
+  let factoryCalls = 0;
+  const events: string[] = [];
+  stack.on('push', () => events.push('push'));
+  stack.on('transitionend', () => events.push('transitionend'));
+  const pending = Promise.allSettled([
+    stack.push(() => { factoryCalls++; return makeElement(); }),
+    stack.present(makeElement(), 'replace'),
+  ]);
+  stack.destroy();
+  const results = await pending;
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(factoryCalls, 0, 'queued factories never execute after destruction');
+  assert.deepEqual(results.map((r) => r.status), ['rejected', 'rejected']);
+  for (const result of results) if (result.status === 'rejected') assert.equal(result.reason.name, 'AbortError');
+  assert.equal(stack.depth, 0);
+  assert.equal(container.children.length, 0);
+  assert.equal(stack.busy, false);
+  assert.equal(container.style.getPropertyValue('--sn-t'), '');
+  assert.deepEqual(events, []);
+  for (const { el } of pages) {
+    assert.equal(el.children.length, 0, 'transition overlays are cleaned up');
+    assert.equal(el.style.boxShadow, '', 'transition shadows are cleaned up');
+  }
+  await assert.rejects(stack.push(makeElement()), { name: 'AbortError' });
+});
