@@ -1,6 +1,6 @@
 {
   "name": "@stacknav/core",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Framework-agnostic native-style (iOS and Android) push/pop navigation stack: transition, interactive swipe back, direction resolution, history mirroring.",
   "license": "MIT",
   "type": "module",
