@@ -20,6 +20,31 @@ let s = await state();
 eq(s.pages.join(','), 'app-home', 'home is the only page');
 eq(s.visible.join(','), 'app-home', 'home visible');
 
+// ---- 1b. reduced motion ----------------------------------------------------
+// Test the browser rule against an inline duration because that is how the
+// engine supplies timing. This also lets a preference change stop a run that
+// JavaScript has already started.
+section('reduced motion');
+await page.emulateMedia({ reducedMotion: 'reduce' });
+const reducedDuration = await page.evaluate(() => {
+  const outlet = document.querySelector('sn-outlet');
+  const current = outlet.querySelector('.sn-page-visible');
+  outlet.style.setProperty('--sn-t', '10s');
+  current.classList.add('sn-page-upper');
+  const duration = getComputedStyle(current).transitionDuration;
+  current.classList.remove('sn-page-upper');
+  outlet.style.removeProperty('--sn-t');
+  return duration;
+});
+eq(reducedDuration, '0s', 'browser preference overrides an inline transition duration');
+await page.click('.sn-page-visible a:has-text("Item 3")');
+await settled();
+s = await state();
+eq(s.title, 'Item 3', 'reduced-motion navigation still completes');
+await page.goBack();
+await settled();
+await page.emulateMedia({ reducedMotion: 'no-preference' });
+
 // ---- 2. push from the tree: / -> /items/3 ----------------------------------
 await page.click('text=+');
 await page.click('text=+');

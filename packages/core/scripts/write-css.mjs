@@ -25,14 +25,34 @@ const vars = Object.entries(IOS_TRANSITION_CSS_VARS).map(([option, name]) => {
 });
 const header = ['/* Tune the iOS transition by setting these on .sn-container or any ancestor:', ...vars.slice(0, -1), vars.at(-1) + ' */'].join('\n');
 
-const rules = STACKNAV_CSS.split('}')
-  .filter(Boolean)
-  .map((rule) => {
-    const [selector, body] = rule.split('{');
-    const decls = body.split(';').filter(Boolean);
-    return `${selector} {\n${decls.map((d) => `  ${d.replace(':', ': ')};`).join('\n')}\n}`;
-  });
+/** Expands the minified source, including nested at-rules such as media queries. */
+const formatCSS = (css) => {
+  let depth = 0;
+  let token = '';
+  let out = '';
+  const line = (value) => (out += `${'  '.repeat(depth)}${value}\n`);
+  const declaration = (value) => {
+    const i = value.indexOf(':');
+    return i < 0 ? value : `${value.slice(0, i)}: ${value.slice(i + 1)}`;
+  };
+  for (const char of css) {
+    if (char === '{') {
+      line(`${token.trim()} {`);
+      token = '';
+      depth++;
+    } else if (char === ';') {
+      line(`${declaration(token.trim())};`);
+      token = '';
+    } else if (char === '}') {
+      if (token.trim()) line(`${declaration(token.trim())};`);
+      token = '';
+      depth--;
+      line('}');
+    } else token += char;
+  }
+  return out.trimEnd();
+};
 
 await mkdir(new URL('../dist/', import.meta.url), { recursive: true });
-await writeFile(new URL('../dist/stacknav.css', import.meta.url), [header, ...rules].join('\n') + '\n');
+await writeFile(new URL('../dist/stacknav.css', import.meta.url), `${header}\n${formatCSS(STACKNAV_CSS)}\n`);
 console.log('wrote dist/stacknav.css');

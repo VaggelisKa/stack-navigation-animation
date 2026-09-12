@@ -40,6 +40,9 @@
  *   the container's classes.
  * - `.sn-busy`: no clicks land on a page that is mid-transition, and a drag
  *   does not select the text under it.
+ * - `prefers-reduced-motion`: forces the phase duration to zero in CSS. The
+ *   `!important` is intentional: it must override the inline `--sn-t` written
+ *   by the engine, including when the preference changes during a transition.
  */
 export const STACKNAV_CSS =
   '.sn-container{position:relative;overflow:hidden}' +
@@ -51,7 +54,8 @@ export const STACKNAV_CSS =
   '.sn-edge{position:absolute;inset-block:0;inset-inline-start:0;z-index:10;touch-action:none}' +
   '.sn-container:not(.sn-can-pop) .sn-edge,.sn-container.sn-anywhere .sn-edge{display:none}' +
   '.sn-busy{user-select:none;-webkit-user-select:none}' +
-  '.sn-busy .sn-page{pointer-events:none}';
+  '.sn-busy .sn-page{pointer-events:none}' +
+  '@media(prefers-reduced-motion:reduce){.sn-container{--sn-t:0s!important}}';
 
 export const STACKNAV_STYLE_ID = 'stacknav-styles';
 
