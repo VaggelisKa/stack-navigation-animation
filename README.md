@@ -71,7 +71,7 @@ available as JS options.
 ## The Angular demo
 
 The home page demonstrates the router mechanics on small pages. Above them are
-eight demo apps, each with its own design and layout, backed by a fake API that
+nine demo apps, each with its own design and layout, backed by a fake API that
 responds after a delay and can be made to fail. This makes it possible to watch
 the transition while content is loading, arriving mid-transition, or failing.
 
@@ -84,6 +84,7 @@ the transition while content is loading, arriving mid-transition, or failing.
 | Forms | iOS grouped settings, long form, wizard | inputs preserved while away, async save, steps ordered by `stackLevel`, a replaced final step, pop to root |
 | Search | search field in the header | debounced requests cancelled in flight, the query in the URL, results that push pages of other demos |
 | Dashboard | segmented tabs, stat tiles, bar chart, wide table | a nested `<router-outlet>` inside a kept page, tabs that replace their history entry |
+| Mail | folders, message, composer | direction from `data.animation`, the route names Angular's own route-transition recipe uses, looked up in a `transition('A => B')`-style table by an app-side strategy |
 | Lab | controls and stress pages | slow motion, swipe from anywhere, API latency and failures, a 600-row page, a stack five siblings deep, a 2 s resolver, horizontal scrollers under the edge swipe |
 
 `pnpm e2e:angular` builds the demo and drives it in Chromium: `e2e/run.mjs`
@@ -115,7 +116,7 @@ pnpm dev:react      # React demo on http://localhost:5173
 ```
 
 Node 22.18+ runs the core; its tests use Node's built-in TypeScript stripping.
-The Angular tooling requires Node 22.22.3+ or 24.
+The Angular tooling requires Node ^22.22.3, ^24.15.0, or >=26.0.0.
 
 The demo runs without zone.js, so a click's view update lands on the next
 animation frame. The e2e helpers wait for one frame before reading the DOM.

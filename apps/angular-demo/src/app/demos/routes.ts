@@ -12,6 +12,7 @@ export const DEMO_ROUTES: Routes = [
   { path: 'forms', loadChildren: () => import('./forms/routes').then((m) => m.FORMS_ROUTES) },
   { path: 'search', loadChildren: () => import('./search/routes').then((m) => m.SEARCH_ROUTES) },
   { path: 'dashboard', loadChildren: () => import('./dashboard/routes').then((m) => m.DASHBOARD_ROUTES) },
+  { path: 'mail', loadChildren: () => import('./mail/routes').then((m) => m.MAIL_ROUTES) },
   { path: 'lab', loadChildren: () => import('./lab/routes').then((m) => m.LAB_ROUTES) },
 ];
 
