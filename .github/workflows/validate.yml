@@ -23,8 +23,11 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # The ports typecheck against core's built types, so the packages come first.
+      - run: pnpm build
       - run: pnpm test
       - run: pnpm typecheck
       - run: pnpm build:all
       - run: pnpm --filter @stacknav/angular-demo exec playwright-core install --with-deps chromium
       - run: pnpm --filter @stacknav/angular-demo e2e
+      - run: pnpm --filter @stacknav/react-demo e2e

@@ -1,0 +1,40 @@
+{
+  "name": "@stacknav/react",
+  "version": "0.0.0",
+  "description": "The iOS push/pop transition for React Router: <StackRoutes>, an outlet that keeps pages alive beneath the top one, animates every navigation and supports swipe back. Built on @stacknav/core.",
+  "license": "MIT",
+  "type": "module",
+  "keywords": ["react", "react-router", "navigation", "transition", "ios", "swipe-back", "stack", "animation"],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "src"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "size": "node scripts/size.mjs"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0",
+    "react-router": ">=7.0.0"
+  },
+  "dependencies": {
+    "@stacknav/core": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.28.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router": "^8.3.1",
+    "typescript": "~6.0.0"
+  }
+}
