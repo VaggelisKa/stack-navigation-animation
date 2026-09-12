@@ -62,7 +62,8 @@ export class MailFolder {
   /** Bound from route data by `withComponentInputBinding()`. */
   readonly folder = input<'inbox' | 'sent'>('inbox');
   private readonly api = inject(FakeApi);
-  readonly mail = resource({ params: () => this.folder(), loader: ({ params }) => this.api.mail(params) });
+  /** Reloads when the folder changes and after a send, so a kept Sent folder shows what was just filed. */
+  readonly mail = resource({ params: () => ({ folder: this.folder(), version: this.api.mailVersion() }), loader: ({ params }) => this.api.mail(params.folder) });
   /** The same `data.animation` the strategy reads, from the page's own `ActivatedRoute`. */
   readonly animation: string = inject(ActivatedRoute).snapshot.data['animation'];
   readonly rules = Object.entries(MAIL_TRANSITIONS).map(([pair, direction]) => ({ pair, direction }));
@@ -113,7 +114,7 @@ export class MailThread {
  */
 @Component({
   selector: 'mail-compose',
-  imports: [BackButton],
+  imports: [BackButton, ...DEMO_UI],
   template: `
     <div class="page mail">
       <header class="hdr mail-hdr">
@@ -121,6 +122,9 @@ export class MailThread {
         <h1>{{ re() ? 'Reply' : 'New message' }}</h1>
         <button type="button" class="mail-action" (click)="send()" [disabled]="!canSend() || sending()">{{ sending() ? '…' : 'Send' }}</button>
       </header>
+      @if (error(); as e) {
+        <demo-error [error]="e" (retry)="send()" />
+      }
       <form class="mail-form" (submit)="$event.preventDefault(); send()">
         <label><span>To</span><input name="to" [value]="to()" (input)="to.set($any($event.target).value)" autocomplete="off" /></label>
         <label><span>Subject</span><input name="subject" [value]="subject()" (input)="subject.set($any($event.target).value)" autocomplete="off" /></label>
@@ -140,14 +144,19 @@ export class MailCompose {
   readonly subject = linkedSignal(() => (this.original.hasValue() ? `Re: ${this.original.value().subject}` : ''));
   readonly text = signal('');
   readonly sending = signal(false);
+  /** A failed send: shown above the form, the draft kept. */
+  readonly error = signal<unknown>(null);
   readonly canSend = computed(() => this.to().trim() !== '' && this.subject().trim() !== '');
 
   async send(): Promise<void> {
     if (!this.canSend() || this.sending()) return;
     this.sending.set(true);
+    this.error.set(null);
     try {
       await this.api.sendMail({ to: this.to(), subject: this.subject(), text: this.text() });
       this.back(['/mail']);
+    } catch (e) {
+      this.error.set(e);
     } finally {
       this.sending.set(false);
     }

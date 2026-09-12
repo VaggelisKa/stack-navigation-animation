@@ -316,6 +316,8 @@ export class FakeApi {
   }
 
   // messages
+  /** Bumped whenever the mail data changes, so a kept folder page can reload. */
+  readonly mailVersion = signal(0);
   mail(folder: Email['folder']): Promise<Email[]> {
     return this.request(() => MAIL.filter((m) => m.folder === folder));
   }
@@ -333,6 +335,7 @@ export class FakeApi {
       const from = AUTHORS.find((a) => a.handle === handle) ?? { handle, name: draft.to, hue: 200, bio: '', followers: 0, following: 0 };
       const body = draft.text.split(/\n+/).filter(Boolean);
       MAIL.unshift({ id: this.nextId++, folder: 'sent', from, subject: draft.subject, preview: body[0] ?? '', body, minutesAgo: 0, unread: false });
+      this.mailVersion.update((v) => v + 1);
     });
   }
   conversations(): Promise<Conversation[]> {

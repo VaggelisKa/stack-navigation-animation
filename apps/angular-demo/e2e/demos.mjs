@@ -357,12 +357,31 @@ eq(s.pages.join(','), 'app-home,mail-folder,mail-thread', 'Send popped the compo
 await transitioned(() => page.click('.sn-page-visible .back'), 'mail-thread-back');
 s = await state();
 eq(s.pages.join(','), 'app-home,mail-folder', 'Thread => * popped back to the folder');
+await page.waitForFunction(() => document.querySelector('.sn-page-visible a.mail-row strong')?.textContent.startsWith('Re: '));
+check(true, 'the kept Sent folder reloaded: the reply is filed at the top');
 await transitioned(() => page.click('.sn-page-visible .mail-action[aria-label=Compose]'), 'mail-compose');
 eq((await state()).pages.join(','), 'app-home,mail-folder,mail-compose', 'Sent => Compose pushed the composer over a folder too');
 await transitioned(() => page.click('.sn-page-visible .back:has-text("Cancel")'), 'mail-cancel');
 eq((await state()).pages.join(','), 'app-home,mail-folder', 'Cancel popped it');
 await transitioned(() => page.goBack(), 'mail-out');
 eq((await state()).pages.join(','), 'app-home', 'one browser back leaves the demo: the folder switch had replaced its history entry');
+await openDemo('Lab');
+await page.click('.sn-page-visible label:has-text("Every request fails")');
+await transitioned(() => page.goBack(), 'mail-lab-back');
+await openDemo('Mail');
+await transitioned(() => page.click('.sn-page-visible .mail-action[aria-label=Compose]'), 'mail-compose-failing');
+await page.fill('.sn-page-visible input[name=to]', 'pri@example.com');
+await page.fill('.sn-page-visible input[name=subject]', 'Will not go');
+await page.click('.sn-page-visible .mail-action:has-text("Send")');
+await page.waitForSelector('.sn-page-visible mail-compose .err, .sn-page-visible .err');
+s = await state();
+eq(s.pages.join(','), 'app-home,mail-folder,mail-compose', 'a failed send stays on the composer with an error');
+eq(await page.inputValue('.sn-page-visible input[name=subject]'), 'Will not go', 'the draft is kept');
+await transitioned(() => page.goBack(), 'mail-failed-back');
+await transitioned(() => page.goBack(), 'mail-out-2');
+await openDemo('Lab');
+await page.click('.sn-page-visible label:has-text("Every request fails")');
+await transitioned(() => page.goBack(), 'mail-lab-back-2');
 
 // ============================================================ lab
 section('lab: deep stack, slow resolver, heavy page, failing backend');
