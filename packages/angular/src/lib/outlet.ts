@@ -4,6 +4,7 @@ import {
   Directive,
   ElementRef,
   EventEmitter,
+  ErrorHandler,
   Injector,
   Input,
   Output,
@@ -133,6 +134,8 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly browserLocation = inject(Location);
   private readonly document = inject(DOCUMENT);
+  private readonly errorHandler = inject(ErrorHandler);
+  private destroyed = false;
 
   /**
    * The underlying core stack. Chrome that just has to move with the pages is
@@ -208,6 +211,8 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
+    this.leaving = null;
     if (this.parentContexts.getContext(this.name)?.outlet === this) this.parentContexts.onChildOutletDestroyed(this.name);
     this.subs.unsubscribe();
     for (const view of this.byEl.values()) view.inputs?.unsubscribe();
@@ -273,7 +278,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
       if (this.leaving !== view) return;
       this.leaving = null;
       this.views = [];
-      void this.stack.reset([]);
+      this.runStackTask(this.stack.reset([]));
     });
   }
 
@@ -288,7 +293,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
     this.byEl.delete(view.el);
     this.views = this.views.filter((v) => v !== view);
     this.detached.set(ref, view);
-    void this.stack.remove(view.el);
+    this.runStackTask(this.stack.remove(view.el));
     const i = this.location.indexOf(ref.hostView);
     if (i >= 0) this.location.detach(i);
     this.detachEvents.emit(ref.instance);
@@ -308,6 +313,14 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
   }
 
   // -------------------------------------------------------------- internals
+  /** Teardown cancels queued navigation; report other failures through Angular. */
+  private runStackTask(task: Promise<unknown>): void {
+    void task.catch((error: unknown) => {
+      if (this.destroyed && error instanceof Error && error.name === 'AbortError') return;
+      this.errorHandler.handleError(error);
+    });
+  }
+
   private takeLeaving(): View | null {
     const leaving = this.leaving;
     this.leaving = null;
@@ -349,7 +362,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
     this.lastDirection = direction;
     this.place(view, direction, leaving);
     if (!alreadyOnScreen) {
-      void this.stack.present(view.el, direction, { key: view.key, animated, source: sourceOf(nav?.trigger) });
+      this.runStackTask(this.stack.present(view.el, direction, { key: view.key, animated, source: sourceOf(nav?.trigger) }));
     }
     this.changeDetector.markForCheck();
     this.bindInputs(view);
@@ -447,7 +460,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
       if (!view.pendingRemoval) continue;
       view.pendingRemoval = false;
       this.views.push(view);
-      void this.stack.push(view.el, { animated: false, key: view.key, source: 'restore' });
+      this.runStackTask(this.stack.push(view.el, { animated: false, key: view.key, source: 'restore' }));
     }
   }
 
