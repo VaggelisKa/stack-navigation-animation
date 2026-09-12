@@ -101,7 +101,7 @@ pnpm dev:angular    # Angular demo on http://localhost:4200
 ```
 
 Node 22.18+ runs the core; its tests use Node's built-in TypeScript stripping.
-The Angular tooling requires Node 22.22.3+ or 24.
+The Angular tooling requires Node ^22.22.3, ^24.15.0, or >=26.0.0.
 
 The demo runs without zone.js, so a click's view update lands on the next
 animation frame. The e2e helpers wait for one frame before reading the DOM.

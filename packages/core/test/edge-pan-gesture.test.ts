@@ -9,7 +9,7 @@ installGlobals();
 const instant = { duration: 0, ease: (t) => t, settle: () => ({ duration: 0, ease: (t) => t }), apply() {} };
 
 let container, stack, gesture, strip, now;
-const ptr = (x, y = 0, extra = {}) => ({ pointerId: 1, pointerType: 'touch', clientX: x, clientY: y, ...extra });
+const ptr = (x, y = 0, extra = {}) => ({ bubbles: true, pointerId: 1, pointerType: 'touch', clientX: x, clientY: y, ...extra });
 
 beforeEach(async () => {
   now = 0;
@@ -174,4 +174,15 @@ test('detach removes the strip and listeners', () => {
   gesture.detach();
   assert.equal(container.children.includes(strip), false);
   assert.equal(container.listeners.pointerdown?.size ?? 0, 0);
+});
+
+
+test('a bubbling move from the edge strip updates progress exactly once', () => {
+  const seen = [];
+  stack.on('progress', ({ p }) => seen.push(p));
+  strip.dispatch('pointerdown', ptr(5));
+  now += 16;
+  strip.dispatch('pointermove', ptr(100));
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0], 1 - (100 - 5 - gesture.options.startSlop) / stack.width());
 });

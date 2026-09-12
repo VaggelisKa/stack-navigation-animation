@@ -258,7 +258,7 @@ Plain ES modules, no dependencies, no work at module load: a bundler keeps only 
 ## Develop
 
 ```sh
-pnpm test         # node:test with a 68-line DOM stub, no browser; includes the tree-shaking checks
+pnpm test         # node:test with a small DOM stub, no browser; includes the tree-shaking checks
 pnpm build        # tsc → dist/, plus dist/stacknav.css
 pnpm size         # what each entry point costs, minified + gzipped (after a build)
 ```
@@ -275,3 +275,16 @@ src/
   styles.ts             the CSS the engine needs, motion included, and injectStyles()
   index.ts              exports + createIOSStack()
 ```
+
+### Animation implementation notes
+
+Timed transforms and opacity run as CSS transitions. Pointer handling, velocity
+sampling, distance-dependent settle timing, and completion promises remain in
+JavaScript. A `progress` subscriber also needs a JavaScript frame loop; omit
+that subscription when CSS can drive your page chrome.
+
+The browser resolves `--sn-dim-color` and `--sn-shadow` directly, so theme changes
+to these variables take effect during a transition without `refresh()`. The JS
+options remain their fallbacks. `resolved` remains a snapshot taken by
+`begin()` or `refresh()`; numeric options still use that snapshot, including
+support for percentage ratios and bare millisecond values.
