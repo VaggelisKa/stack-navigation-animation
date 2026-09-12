@@ -355,12 +355,8 @@ export class NavigationStack {
     this.transition.begin?.(lower, upper);
     this._emit('transitionstart', { lower, upper, kind });
   }
-  /** Writes the state at p without announcing it: the ticker reports the way there. */
-  private _write(lower: StackEntry | null, upper: StackEntry, p: number): void {
-    this.transition.apply(lower, upper, p);
-  }
   private _apply(lower: StackEntry | null, upper: StackEntry, p: number): void {
-    this._write(lower, upper, p);
+    this.transition.apply(lower, upper, p);
     this._emit('progress', { lower, upper, p });
   }
   private _end(lower: StackEntry | null, upper: StackEntry, kind: TransitionKind): void {
@@ -377,10 +373,10 @@ export class NavigationStack {
    * then wait to be told they arrived. No frame of it is ours.
    */
   private async _animate(lower: StackEntry | null, upper: StackEntry, from: number, to: number, duration: number, ease: Easing): Promise<void> {
-    if (duration <= 0) return this._apply(lower, upper, to);
+    if (duration <= 0 || from === to) return this._apply(lower, upper, to);
     commitStyles(upper.el);
     this._timing(duration, ease);
-    this._write(lower, upper, to);
+    this.transition.apply(lower, upper, to);
     const ticker = this._ticker(lower, upper, from, to, duration, ease);
     await animationsFinished([upper.el, lower?.el]);
     ticker?.cancel();

@@ -397,3 +397,17 @@ test('the stack reads a transition\'s timing only after begin() has run', async 
   await h.finish({ complete: true, velocity: 100 });
   assert.deepEqual(reads.slice(0, 2), ['begin', 'settle:80'], 'and so does the settle after a swipe');
 });
+
+
+test('settling an interactive pop already at its target skips layout and animation', async () => {
+  const a = el('a'), b = el('b');
+  await stack.push(a);
+  await stack.push(b);
+  t.settle = () => ({ duration: 200, ease: (x) => x });
+  Object.defineProperty(b, 'offsetWidth', { get() { throw new Error('unnecessary layout'); } });
+  const handle = stack.beginInteractivePop();
+  handle.update(0);
+  await handle.finish({ complete: true });
+  assert.equal(stack.depth, 1);
+  assert.equal(stack.busy, false);
+});

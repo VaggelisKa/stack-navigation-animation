@@ -110,10 +110,11 @@ export function createIOSTransition(options: Partial<IOSTransitionOptions> = {})
       settleVelocityFloor: parseNumber(read(v.settleVelocityFloor)) ?? o.settleVelocityFloor,
       timeScale: parseNumber(read(v.timeScale)) ?? o.timeScale,
     };
+    if (dim?.parentElement) dim.style.setProperty('--sn-dim-fallback', o.dimColor);
   };
 
   // One overlay, moved to whichever page is underneath. Everything about it
-  // except its colour and its opacity is a rule in the stylesheet.
+  // except its opacity is a rule in the stylesheet; JS supplies the fallback colour.
   let dim: HTMLElement | null = null;
   const dimOf = (lower: StackEntry): HTMLElement => {
     if (!dim) {
@@ -121,7 +122,7 @@ export function createIOSTransition(options: Partial<IOSTransitionOptions> = {})
       dim.className = 'sn-dim';
       dim.setAttribute('aria-hidden', 'true');
     }
-    dim.style.background = r.dimColor;
+    dim.style.setProperty('--sn-dim-fallback', o.dimColor);
     if (dim.parentElement !== lower.el) lower.el.append(dim);
     return dim;
   };
@@ -153,7 +154,7 @@ export function createIOSTransition(options: Partial<IOSTransitionOptions> = {})
 
     begin(lower, upper) {
       refresh(upper.el.parentElement);
-      upper.el.style.boxShadow = r.shadow;
+      upper.el.style.boxShadow = `var(--sn-shadow, ${o.shadow})`;
       if (lower) dimOf(lower);
     },
     /**
@@ -166,7 +167,7 @@ export function createIOSTransition(options: Partial<IOSTransitionOptions> = {})
       upper.el.style.transform = shift(1 - p);
       if (lower) {
         lower.el.style.transform = shift(-p * r.parallax);
-        dimOf(lower).style.opacity = String(p * r.dimMax);
+        dim!.style.opacity = String(p * r.dimMax);
       }
     },
     end(lower, upper) {

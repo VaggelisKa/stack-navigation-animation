@@ -83,7 +83,7 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
   const onDown = (ev: PointerEvent) => {
     if (drag || !stack.canPop()) return;
     if (ev.pointerType === 'mouse' && ev.button !== 0) return;
-    if (ev.currentTarget === stack.container && !o.anywhere) return;
+    if (!o.anywhere && ev.target !== strip) return;
     drag = { id: ev.pointerId, target: ev.currentTarget as Drag['target'], x0: ev.clientX, y0: ev.clientY, dir: direction(), handle: null, p: 1, samples: [[ev.clientX, performance.now()]] };
   };
 
@@ -168,7 +168,8 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
       strip.className = 'sn-edge';
       strip.setAttribute('aria-hidden', 'true');
       stack.container.append(strip);
-      listen(strip);
+      // Pointer events from the strip bubble here; one listener per event
+      // avoids applying each move and recording its velocity sample twice.
       listen(stack.container);
       stack.container.addEventListener('click', onClick, true);
       offs = (['push', 'pop', 'replace', 'reset'] as const).map((e) => stack.on(e, refresh));
@@ -178,7 +179,6 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
     detach() {
       if (!strip) return;
       offs.forEach((f) => f());
-      unlisten(strip);
       unlisten(stack.container);
       stack.container.removeEventListener('click', onClick, true);
       stack.container.classList.remove('sn-anywhere', 'sn-can-pop');

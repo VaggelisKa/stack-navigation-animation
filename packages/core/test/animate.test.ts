@@ -49,3 +49,28 @@ test('tween.cancel stops further updates', async () => {
   await new Promise((r) => setTimeout(r, 20));
   assert.ok(seen.length <= 1);
 });
+
+// Generate inputs from the parametric curve itself: this checks the inverse
+// solver against known points without duplicating its numerical algorithm.
+test('Bezier sampling agrees with curves with flat slopes and overshoot', () => {
+  for (const [x1, y1, x2, y2] of [[0, 0, 0, 1], [1, 0, 0, 1], [1, 0, 1, 1], [0.3, -1, 0.7, 2]]) {
+    const ease = cubicBezier(x1, y1, x2, y2);
+    for (const t of [0.01, 0.1, 0.25, 0.49, 0.5, 0.51, 0.75, 0.9, 0.99]) {
+      const coord = (a, b) => 3 * (1 - t) ** 2 * t * a + 3 * (1 - t) * t ** 2 * b + t ** 3;
+      assert.ok(Math.abs(ease(coord(x1, x2)) - coord(y1, y2)) < 1e-5, `curve ${[x1, y1, x2, y2]} at ${t}`);
+    }
+  }
+});
+
+test('a cancelled tween resolves and does not schedule another frame from onUpdate', async () => {
+  const frames = new Map();
+  let nextId = 0;
+  globalThis.requestAnimationFrame = (fn) => { frames.set(++nextId, fn); return nextId; };
+  globalThis.cancelAnimationFrame = (id) => frames.delete(id);
+  const t = tween({ from: 0, to: 1, duration: 1000, onUpdate: () => t.cancel() });
+  const frame = frames.get(nextId);
+  frames.delete(nextId);
+  frame(performance.now());
+  await t;
+  assert.equal(frames.size, 0);
+});

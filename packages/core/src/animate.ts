@@ -16,21 +16,33 @@ export interface Easing {
 }
 
 export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Easing {
-  const A = (a: number, b: number) => 1 - 3 * b + 3 * a;
-  const B = (a: number, b: number) => 3 * b - 6 * a;
-  const C = (a: number) => 3 * a;
-  const calc = (t: number, a: number, b: number) => ((A(a, b) * t + B(a, b)) * t + C(a)) * t;
-  const slope = (t: number, a: number, b: number) => 3 * A(a, b) * t * t + 2 * B(a, b) * t + C(a);
+  // The coefficients are constant for the lifetime of a curve.
+  const ax = 1 - 3 * x2 + 3 * x1, bx = 3 * x2 - 6 * x1, cx = 3 * x1;
+  const ay = 1 - 3 * y2 + 3 * y1, by = 3 * y2 - 6 * y1, cy = 3 * y1;
+  const sampleX = (t: number) => ((ax * t + bx) * t + cx) * t;
+  const sampleY = (t: number) => ((ay * t + by) * t + cy) * t;
   const f = (x: number) => {
     if (x <= 0) return 0;
     if (x >= 1) return 1;
     let t = x;
+    // Newton converges quickly for ordinary curves. Flat slopes can send it
+    // outside [0, 1], so fall back to a bounded search when it fails.
     for (let i = 0; i < 8; i++) {
-      const s = slope(t, x1, x2);
-      if (s === 0) break;
-      t -= (calc(t, x1, x2) - x) / s;
+      const error = sampleX(t) - x;
+      if (Math.abs(error) < 1e-8) return sampleY(t);
+      const slope = (3 * ax * t + 2 * bx) * t + cx;
+      if (Math.abs(slope) < 1e-8) break;
+      const next = t - error / slope;
+      if (next < 0 || next > 1) break;
+      t = next;
     }
-    return calc(t, y1, y2);
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 30; i++) {
+      t = (lo + hi) / 2;
+      if (sampleX(t) < x) lo = t;
+      else hi = t;
+    }
+    return sampleY(t);
   };
   return Object.assign(f, { css: `cubic-bezier(${x1}, ${y1}, ${x2}, ${y2})` });
 }
@@ -63,8 +75,8 @@ export type CancellableTween = Promise<void> & { cancel(): void };
 /**
  * Animates a number from `from` to `to` over `duration` ms, calling `onUpdate`
  * every frame. Returns a promise that resolves when the tween is done;
- * `promise.cancel()` stops it early. A duration of 0 or less jumps straight
- * to `to`.
+ * `promise.cancel()` stops it early and resolves the promise. A duration of
+ * 0 or less jumps straight to `to`.
  *
  * The engine does not use this to move pages, CSS does that. It uses it to
  * report `progress` to listeners, and only while someone is listening.
@@ -72,7 +84,9 @@ export type CancellableTween = Promise<void> & { cancel(): void };
 export function tween({ from, to, duration, ease = easings.linear, onUpdate }: TweenOptions): CancellableTween {
   let raf = 0;
   let done = false;
+  let finish: () => void;
   const promise = new Promise<void>((resolve) => {
+    finish = resolve;
     if (duration <= 0) {
       onUpdate(to);
       done = true;
@@ -83,6 +97,7 @@ export function tween({ from, to, duration, ease = easings.linear, onUpdate }: T
       if (done) return;
       const k = Math.min(1, (now - t0) / duration);
       onUpdate(from + (to - from) * ease(k));
+      if (done) return;
       if (k < 1) raf = requestAnimationFrame(step);
       else {
         done = true;
@@ -94,6 +109,7 @@ export function tween({ from, to, duration, ease = easings.linear, onUpdate }: T
   promise.cancel = () => {
     done = true;
     cancelAnimationFrame(raf);
+    finish();
   };
   return promise;
 }

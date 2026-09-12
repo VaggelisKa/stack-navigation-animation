@@ -40,7 +40,7 @@ test('apply moves upper by (1-p) and lower by -p·parallax, with dim', () => {
   const t = createIOSTransition({ parallax: 0.3, dimMax: 0.1 });
   const { lower, upper } = entries();
   t.begin(lower, upper);
-  assert.equal(upper.el.style.boxShadow, t.options.shadow);
+  assert.equal(upper.el.style.boxShadow, `var(--sn-shadow, ${t.options.shadow})`);
   t.apply(lower, upper, 0.5);
   assert.equal(upper.el.style.transform, shift('50'));
   assert.equal(lower.el.style.transform, shift('-15'));
@@ -106,11 +106,12 @@ test('CSS variables on the container override the JS options', () => {
   t.begin(lower, upper);
   assert.equal(t.duration, 400, '200ms × timeScale 2');
   assert.equal(t.ease(0.25), 0.25, 'linear');
-  assert.equal(upper.el.style.boxShadow, 'none');
+  assert.equal(t.resolved.shadow, 'none');
   t.apply(lower, upper, 0.5);
   assert.equal(lower.el.style.transform, shift('-25'), 'parallax 50% of a half-open page');
   assert.equal(lower.el.children[0].style.opacity, '0.2');
-  assert.equal(lower.el.children[0].style.background, '#123456');
+  assert.equal(t.resolved.dimColor, '#123456');
+  assert.equal(lower.el.children[0].vars['--sn-dim-fallback'], t.options.dimColor);
   assert.equal(t.options.duration, 500, 'the JS options are left alone');
   assert.equal(t.resolved.duration, 200, 'resolved reports what is in force');
   t.end(lower, upper);

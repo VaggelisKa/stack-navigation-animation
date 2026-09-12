@@ -61,7 +61,9 @@ export function makeElement(tag = 'div'): any {
       el.listeners[type]?.delete(fn);
     },
     dispatch(type, ev) {
-      el.listeners[type]?.forEach((fn) => fn({ type, currentTarget: el, ...ev }));
+      const event = { type, target: el, ...ev, currentTarget: el };
+      el.listeners[type]?.forEach((fn) => fn(event));
+      if (event.bubbles) el.parentElement?.dispatch(type, event);
     },
     setPointerCapture() {},
   };

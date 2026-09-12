@@ -268,7 +268,24 @@ const readDrag = () =>
       x: upper ? new DOMMatrixReadOnly(getComputedStyle(upper).transform).m41 : null,
     };
   });
-await swipeBack({ until: 0.8, mid: async () => dragged.push(await readDrag()) });
+await swipeBack({ until: 0.8, mid: async () => {
+  dragged.push(await readDrag());
+  const colors = await page.evaluate(() => {
+    const outlet = document.querySelector('sn-outlet');
+    const dim = outlet.querySelector('.sn-dim');
+    const upper = outlet.querySelector('.sn-page-upper');
+    const fallback = getComputedStyle(dim).backgroundColor;
+    outlet.style.setProperty('--sn-dim-color', 'rgb(12, 34, 56)');
+    outlet.style.setProperty('--sn-shadow', 'none');
+    const result = { fallback, dim: getComputedStyle(dim).backgroundColor, shadow: getComputedStyle(upper).boxShadow };
+    outlet.style.removeProperty('--sn-dim-color');
+    outlet.style.removeProperty('--sn-shadow');
+    return result;
+  });
+  eq(colors.fallback, 'rgb(0, 0, 0)', 'the dim uses the default JS colour as a CSS fallback');
+  eq(colors.dim, 'rgb(12, 34, 56)', 'CSS colour changes apply during a drag without refresh');
+  eq(colors.shadow, 'none', 'CSS shadow changes apply during a drag without refresh');
+} });
 eq(dragged[0]?.duration, '0s', 'while the pointer is down nothing animates');
 check(dragged[0]?.x > 20, `the page tracks the pointer (${Math.round(dragged[0]?.x)}px)`);
 s = await state();
