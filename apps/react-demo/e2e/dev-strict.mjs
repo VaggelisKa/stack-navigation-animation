@@ -7,14 +7,26 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 
 const PORT = 5199;
+const base = `http://127.0.0.1:${PORT}`;
+// Nothing here may wait forever: a hung dev server or browser fails the run instead.
+setTimeout(() => {
+  console.error('dev-strict: timed out after 3 minutes');
+  process.exit(1);
+}, 180_000).unref();
 const vite = spawn('pnpm', ['exec', 'vite', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { cwd: fileURLToPath(new URL('..', import.meta.url)), stdio: ['ignore', 'pipe', 'pipe'] });
 process.on('exit', () => vite.kill());
-await new Promise((resolve, reject) => {
-  vite.stdout.on('data', (d) => String(d).includes('Local:') && resolve());
-  vite.stderr.on('data', (d) => process.stderr.write(d));
-  vite.on('exit', (code) => reject(new Error(`vite exited with ${code}`)));
-});
-const base = `http://127.0.0.1:${PORT}`;
+vite.stdout.on('data', (d) => process.stderr.write(d));
+vite.stderr.on('data', (d) => process.stderr.write(d));
+let exited = null;
+vite.on('exit', (code) => (exited = code ?? 'signal'));
+// Ready when the server answers, whatever it prints.
+for (let i = 0; ; i++) {
+  if (exited !== null) throw new Error(`vite exited with ${exited}`);
+  if (i >= 120) throw new Error('vite did not start within 60 s');
+  const up = await fetch(base + '/').then((r) => r.ok, () => false);
+  if (up) break;
+  await new Promise((r) => setTimeout(r, 500));
+}
 
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const browser = await chromium.launch({ executablePath });

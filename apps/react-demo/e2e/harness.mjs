@@ -12,6 +12,11 @@ const SHOTS = fileURLToPath(new URL('./shots/', import.meta.url));
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.map': 'application/json' };
 
 export async function launch({ width = 420, height = 800 } = {}) {
+  // A suite that stalls fails rather than holding CI.
+  setTimeout(() => {
+    console.error('e2e: timed out after 5 minutes');
+    process.exit(1);
+  }, 300_000).unref();
   const server = createServer(async (req, res) => {
     const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     let file = join(ROOT, path);
