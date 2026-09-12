@@ -92,7 +92,9 @@ export class NavigationStack {
   readonly pageClass: string;
   entries: StackEntry[] = [];
   busy = false;
-  private _queue: Array<() => void> = [];
+  private _destroyed = false;
+  private _activeTransition: { lower: StackEntry | null; upper: StackEntry } | null = null;
+  private _queue: Array<{ run: () => void; cancel: () => void }> = [];
   private _listeners = new Map<string, Set<Listener<unknown>>>();
 
   constructor({ container, transition, pageClass = 'sn-page' }: NavigationStackOptions) {
@@ -130,6 +132,7 @@ export class NavigationStack {
     };
   }
   private _emit<K extends keyof StackEvents>(event: K, detail: StackEvents[K]): void {
+    if (this._destroyed) return;
     const set = this._listeners.get(event);
     if (set) set.forEach((fn) => fn(detail));
   }
@@ -251,13 +254,16 @@ export class NavigationStack {
     this._begin(lower, upper, 'interactive');
     return {
       update: (v) => {
+        if (this._destroyed) return;
         p = Math.min(1, Math.max(0, v));
         this._apply(lower, upper, p);
       },
       finish: async ({ complete, velocity = 0 }) => {
+        if (this._destroyed) return;
         const remainingPx = (complete ? p : 1 - p) * this.width();
         const { duration, ease } = this.transition.settle({ remainingPx, velocity });
         await this._animate(lower, upper, p, complete ? 0 : 1, duration, ease);
+        if (this._destroyed) return;
         this._end(lower, upper, 'interactive');
         if (complete) {
           this.entries.pop();
@@ -271,7 +277,20 @@ export class NavigationStack {
     };
   }
 
+  /** Terminal: queued and subsequent navigation reject with AbortError. */
   destroy(): void {
+    if (this._destroyed) return;
+    this._destroyed = true;
+    this._listeners.clear();
+    for (const task of this._queue.splice(0)) task.cancel();
+    this.busy = false;
+    const active = this._activeTransition;
+    this._activeTransition = null;
+    if (active) {
+      this.transition.end?.(active.lower, active.upper);
+      // During a pop the outgoing page has already left entries.
+      if (!this.entries.includes(active.upper)) this._unmount(active.upper);
+    }
     while (this.entries.length) this._unmount(this.entries.pop()!);
     this.container.classList.remove('sn-container', 'sn-busy');
     this.container.style.removeProperty('--sn-t');
@@ -280,6 +299,7 @@ export class NavigationStack {
 
   // -------------------------------------------------------------- internals
   private _setBusy(v: boolean): void {
+    if (this._destroyed) return;
     this.busy = v;
     this.container.classList.toggle('sn-busy', v);
   }
@@ -287,6 +307,8 @@ export class NavigationStack {
   /** Serializes operations: while a transition runs, later calls wait their turn. */
   private _run<R>(fn: () => Promise<R>): Promise<R> {
     return new Promise<R>((resolve, reject) => {
+      const cancel = () => reject(new DOMException('NavigationStack has been destroyed', 'AbortError'));
+      if (this._destroyed) return cancel();
       const task = async () => {
         this._setBusy(true);
         try {
@@ -298,12 +320,12 @@ export class NavigationStack {
           this._drain();
         }
       };
-      if (this.busy) this._queue.push(task);
+      if (this.busy) this._queue.push({ run: task, cancel });
       else task();
     });
   }
   private _drain(): void {
-    if (!this.busy && this._queue.length) this._queue.shift()!();
+    if (!this._destroyed && !this.busy && this._queue.length) this._queue.shift()!.run();
   }
 
   private async _popRevealing(depth: number, animated: boolean, source: NavigationSource): Promise<StackEntry> {
@@ -312,6 +334,7 @@ export class NavigationStack {
     while (this.entries.length > depth) removed.push(this._unmount(this.entries.pop()!)); // intermediate pages: removed without animation
     const lower = this.top;
     await this._transition(lower, upper, 1, 0, animated, 'pop');
+    if (this._destroyed) return upper;
     removed.push(this._unmount(upper));
     this._settle();
     this._emit('pop', { entry: upper, removed, entries: this.entries.slice(), source });
@@ -344,11 +367,13 @@ export class NavigationStack {
    * `prefers-reduced-motion` reduces every phase to.
    */
   private _timing(duration: number, ease?: Easing): void {
+    if (this._destroyed) return;
     this.container.style.setProperty('--sn-t', cssDuration(duration));
     this.container.style.setProperty('--sn-e', cssEasing(ease));
   }
 
   private _begin(lower: StackEntry | null, upper: StackEntry, kind: TransitionKind): void {
+    this._activeTransition = { lower, upper };
     this._timing(0);
     lower?.el.classList.add('sn-page-visible', 'sn-page-lower');
     upper.el.classList.add('sn-page-visible', 'sn-page-upper');
@@ -360,6 +385,8 @@ export class NavigationStack {
     this._emit('progress', { lower, upper, p });
   }
   private _end(lower: StackEntry | null, upper: StackEntry, kind: TransitionKind): void {
+    if (this._destroyed) return;
+    this._activeTransition = null;
     this._timing(0);
     upper.el.classList.remove('sn-page-upper');
     lower?.el.classList.remove('sn-page-lower');

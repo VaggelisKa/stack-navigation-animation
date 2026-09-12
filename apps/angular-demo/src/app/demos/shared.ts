@@ -1,13 +1,15 @@
 import { Location } from '@angular/common';
 import { Component, Directive, Injectable, computed, inject, input, output, signal } from '@angular/core';
 import { ChildrenOutletContexts, PRIMARY_OUTLET, Router } from '@angular/router';
-import { type StackNavOutlet } from '@stacknav/angular';
+import { type SwipeBackMode, type StackNavOutlet } from '@stacknav/angular';
 import { useBack } from '../back';
 import { initials } from './fake-api';
 
 /** Settings the Lab page changes. The App applies them to the outlet. */
 @Injectable({ providedIn: 'root' })
 export class DemoPrefs {
+  /** This demo explicitly opts into custom gestures; the library default is browser. */
+  readonly swipeBack = signal<SwipeBackMode>('custom');
   /** 4x slower transitions, for inspecting a transition mid-flight. */
   readonly slow = signal(false);
   /** Start the back gesture from anywhere on the page, not only the leading edge. */

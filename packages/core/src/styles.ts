@@ -20,7 +20,7 @@
  * - `.sn-container:dir(rtl)`: reading direction is a CSS question, so the
  *   transform the engine writes is signed by `--sn-dir` rather than by JS.
  * - `.sn-page`: absolutely fills the container and is its own scroll container.
- *   `touch-action: pan-y` keeps vertical scrolling native while horizontal
+ *   `touch-action: pan-y` in custom swipe mode keeps vertical scrolling native while horizontal
  *   drags reach the gesture; `visibility: hidden` keeps pages beneath the top
  *   mounted (scroll position, form state) but out of sight and out of the
  *   accessibility tree. The identity transform is the resting state, and the
@@ -48,7 +48,8 @@
 export const STACKNAV_CSS =
   '.sn-container{position:relative;overflow:hidden}' +
   '.sn-container:dir(rtl){--sn-dir:-1}' +
-  '.sn-page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;visibility:hidden;transform:translate3d(0,0,0)}' +
+  '.sn-page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;visibility:hidden;transform:translate3d(0,0,0)}' +
+  '.sn-swipe-custom > .sn-page{touch-action:pan-y}' +
   '.sn-page-visible{visibility:visible}' +
   '.sn-page-upper,.sn-page-lower{will-change:transform;transition-property:transform,opacity;transition-duration:var(--sn-t,0s);transition-timing-function:var(--sn-e,linear)}' +
   '.sn-dim{position:fixed;inset:0;z-index:2147483647;pointer-events:none;background:var(--sn-dim-color,var(--sn-dim-fallback,#000));opacity:0;transition:opacity var(--sn-t,0s) var(--sn-e,linear)}' +

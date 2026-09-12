@@ -411,3 +411,28 @@ test('settling an interactive pop already at its target skips layout and animati
   assert.equal(stack.depth, 1);
   assert.equal(stack.busy, false);
 });
+
+for (const operation of ['pop', 'popTo', 'popWith']) {
+  test(`destroy unmounts the outgoing page synchronously during ${operation}`, async () => {
+    const lower = el('lower');
+    const upper = el('upper');
+    await stack.push(lower);
+    await stack.push(upper);
+    t.duration = 100;
+    let finishAnimation;
+    const finished = new Promise((resolve) => { finishAnimation = resolve; });
+    upper.getAnimations = () => [{ transitionProperty: 'transform', finished }];
+    const pending = operation === 'pop' ? stack.pop() : operation === 'popTo' ? stack.popTo(1) : stack.popWith(el('replacement'));
+    assert.equal(stack.busy, true);
+    assert.equal(stack.entries.some((entry) => entry.el === upper), false);
+    stack.destroy();
+    assert.equal(upper.parentElement, null, 'outgoing page is removed without waiting for its animation');
+    assert.equal(upper.classList.contains('sn-page-upper'), false);
+    assert.equal(container.children.length, 0);
+    const otherContainer = makeElement();
+    otherContainer.append(upper);
+    finishAnimation();
+    await pending;
+    assert.equal(upper.parentElement, otherContainer, 'late completion cannot unmount a reused page');
+  });
+}

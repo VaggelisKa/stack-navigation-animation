@@ -6,13 +6,14 @@ const nav = createNativeStack({ container });
 // Let pages clean up (timers, subscriptions) when they leave the stack.
 nav.on('pop', ({ removed }) => removed.forEach((e) => e.el.dispatchEvent(new Event('sn:destroyed'))));
 
-const prefs = { anywhere: false, slow: false, gentle: false };
+const prefs = { swipeBack: 'custom', anywhere: false, slow: false, gentle: false };
 try {
   Object.assign(prefs, JSON.parse(localStorage.getItem('stacknav-demo') || '{}'));
 } catch (e) {
   /* storage may be unavailable */
 }
 function applyPrefs() {
+  nav.setSwipeBack(['custom', 'browser', 'disabled'].includes(prefs.swipeBack) ? prefs.swipeBack : 'browser');
   nav.gesture.options.anywhere = prefs.anywhere;
   nav.gesture.refresh();
   // Both of these tune the transition from CSS alone: a variable on the
@@ -118,6 +119,27 @@ const optionsPage = () =>
     title: 'Options',
     back: true,
     body: (b) => {
+      const modes = h('fieldset', '', '');
+      modes.append(h('legend', '', 'Swipe back'));
+      const status = h('p', 'note', '');
+      status.setAttribute('role', 'status');
+      for (const [value, label] of [['custom', 'Custom — interactive page preview'], ['browser', 'Browser — use browser defaults'], ['disabled', 'Disabled — suppress swipes where supported']]) {
+        const row = h('label', 'item', '');
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'swipe-back';
+        radio.value = value;
+        radio.checked = nav.swipeBack === value;
+        radio.addEventListener('change', () => {
+          prefs.swipeBack = value;
+          applyPrefs();
+          status.textContent = `Active mode: ${value}.`;
+        });
+        row.append(radio, document.createTextNode(label));
+        modes.append(row);
+      }
+      b.append(modes, status, h('p', 'note', 'This demo starts in Custom; Browser is the library default. Custom and Disabled request browser swipe suppression, which depends on the browser and OS. Back buttons still work. Select a mode and swipe this page back.'));
+
       b.append(
         toggle('Swipe back from anywhere', prefs.anywhere, (v) => {
           prefs.anywhere = v;

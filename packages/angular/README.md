@@ -8,8 +8,7 @@ It is an outlet, not a router. Angular Router keeps doing everything it does:
 routes, guards, resolvers, `routerLink`, `router.navigate`, lazy loading,
 component input binding and browser history. The outlet only changes what
 happens when the router activates a route: the page that was showing stays alive
-beneath the new one, the change is animated, and a swipe from the leading edge
-pops.
+beneath the new one and the change is animated. Interactive edge swiping is opt-in.
 
 - **Works alongside the router.** There is no navigation API of its own. You
   navigate with the router, go back with `Location`, and read params as you
@@ -17,7 +16,7 @@ pops.
 - **Pages stay alive.** The page you came from is kept beneath the top one,
   hidden. Its scroll position, form state, signals and subscriptions are intact
   when you pop back, with nothing to restore.
-- **Swipe back.** Drag from the leading edge and the page follows the pointer;
+- **Optional swipe back.** With `swipeBack: 'custom'`, drag from the leading edge and the page follows the pointer;
   the router follows the gesture, through `history.back()` when that lands on the
   right page. A `canDeactivate` guard that rejects puts the page back.
 - **Configurable direction.** Whether a navigation is a push, a pop or a replace
@@ -67,6 +66,42 @@ export class Item {
 `canceledNavigationResolution: 'computed'` is optional but recommended. With the
 router's default, a back navigation refused by a guard rewrites the history entry
 the browser landed on.
+
+## Swipe-back modes
+
+```ts
+provideStackNav({ swipeBack: 'browser' }); // default
+provideStackNav({ swipeBack: 'custom', gesture: { edgeWidth: 28 } });
+provideStackNav({ swipeBack: 'disabled' });
+```
+
+| `swipeBack` | Our gesture | Browser gesture |
+| --- | --- | --- |
+| `browser` (default) | Off | Leave browser defaults alone |
+| `custom` | Interactive page preview | Request suppression where supported |
+| `disabled` | Off | Request suppression where supported |
+
+Change a single outlet live with `<sn-outlet [swipeBack]="mode()" />`.
+Changing modes preserves the pages, URL and history; an active custom drag is
+cancelled. `gesture` tunes custom mode. Existing `gesture: false` prevents the
+custom recognizer from attaching: it maps `custom` to `browser`, but does not
+cancel an explicit `disabled` suppression request.
+
+**Migration:** gestures used to be enabled by default. Add `swipeBack: 'custom'`
+to keep that behavior. Gesture tuning alone no longer enables swiping.
+The demos explicitly opt into custom mode and let you try all three options
+in **Lab → Swipe back** (Angular) or **Options → Swipe back** (vanilla).
+
+Browser suppression uses `overscroll-behavior-x: contain` on the document root.
+It is **document-wide and best effort**, not a guarantee against Safari edge
+navigation or OS gestures. A `browser` outlet cannot undo another outlet's
+suppression request; the original inline declaration is restored after the last
+request ends or its outlet is destroyed. Avoid enabling suppression in an outlet
+when the rest of the document should retain native swipe navigation.
+See the [CSS specification](https://drafts.csswg.org/css-overscroll/) and
+[WebKit's history navigation limitation](https://bugs.webkit.org/show_bug.cgi?id=240183).
+Browser Back/Forward buttons, keyboard navigation, router guards, page retention
+and push/pop animation are independent of this gesture policy.
 
 ## Deciding the direction
 
@@ -155,6 +190,34 @@ exports, like any other:
 
 Routes opt out of it with `data: { reuseRoute: true }`.
 
+### Mobile only
+
+The transition is an iOS idiom, and plenty of apps want it on handhelds and a
+plain instant change on a desktop. `animated: 'touch'` is that: it animates where
+the primary pointer is coarse, and not where it is a mouse. It is asked before
+every navigation, so a tablet that gets docked to a trackpad is handled too.
+
+```ts
+provideStackNav({ animated: 'touch', gesture: isTouchPrimary() ? {} : false });
+```
+
+The swipe back is a separate decision, and a static one — the gesture is attached
+when the outlet is created — so it reads the same media query directly;
+`isTouchPrimary()` comes from `@stacknav/core`. A mouse can drag from the edge,
+which some apps want and some do not.
+
+Pass a function instead of `'touch'` to decide it yourself, e.g. from a user
+setting or the window's width:
+
+```ts
+provideStackNav({ animated: () => window.innerWidth < 768 });
+```
+
+Turning animation off does not change any of the rest: pages beneath the top are
+still kept alive with their scroll position and state, and the direction is still
+resolved, so `pop` still restores the page you came from rather than rebuilding
+it.
+
 ## API
 
 ### `provideStackNav(config?)`
@@ -167,14 +230,15 @@ Routes opt out of it with `data: { reuseRoute: true }`.
 | `keyOf(snapshot)` | the route's URL path | identity of a page |
 | `infoKey` | `'stacknav'` | key in `NavigationExtras.info` for hints |
 | `transition` | `{}` | `createNativeTransition` options for every outlet: `platform` (`'auto'`, `'ios'`, `'android'`), duration, curve and the rest. The same options are CSS variables (`--sn-duration`, `--sn-easing`, `--sn-parallax`, `--sn-dim-max`, `--sn-shadow`, …) read off the outlet, so a stylesheet can retune them. See the [core README](../core#tuning-from-css) |
-| `gesture` | `{}` | `createEdgePanGesture` options; `false` disables swiping |
+| `swipeBack` | `browser` | `browser`, `custom`, or `disabled`; see the browser suppression limitations above |
+| `gesture` | `{}` | Custom gesture tuning; `false` disables our recognizer |
 | `detachInactiveViews` | `false` | detach change detection from hidden pages |
 | `injectStyles` | `true` | insert the core stylesheet at runtime |
-| `animated` | `true` | animate at all |
+| `animated` | `true` | animate at all. `'touch'` only on a coarse pointer, or a predicate asked before every navigation; see [Mobile only](#mobile-only) |
 
 ### `<sn-outlet>` (`StackNavOutlet`)
 
-Inputs: `name`, `transition`, `gesture`, `routerOutletData`.
+Inputs: `name`, `transition`, `gesture`, `swipeBack`, `routerOutletData`.
 
 Outputs: `activate`, `deactivate`, `attach`, `detach` (as on `router-outlet`) and
 `navigated` with `{ view, direction, animated, reused }`.

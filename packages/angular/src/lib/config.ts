@@ -3,11 +3,13 @@ import type { ActivatedRouteSnapshot } from '@angular/router';
 import {
   createDirectionResolver,
   defaultStrategies,
+  isTouchPrimary,
   type Direction,
   type DirectionResolver,
   type DirectionStrategy,
   type EdgePanGestureOptions,
   type NativeTransitionOptions,
+  type SwipeBackMode,
 } from '@stacknav/core';
 
 /** Everything `provideStackNav()` accepts. All optional. */
@@ -40,7 +42,9 @@ export interface StackNavConfig {
   infoKey?: string;
   /** Defaults for every outlet's transition. An outlet's `transition` input overrides these per key. */
   transition?: Partial<NativeTransitionOptions>;
-  /** Defaults for every outlet's swipe-back gesture. `false` disables it. */
+  /** Default browser. Custom/disabled request document-wide browser gesture suppression where supported. */
+  swipeBack?: SwipeBackMode;
+  /** Custom gesture tuning. `false` disables our gesture, without suppressing browser gestures on its own. */
   gesture?: Partial<EdgePanGestureOptions> | false;
   /**
    * Detaches change detection from pages hidden beneath the top and reattaches
@@ -49,8 +53,21 @@ export interface StackNavConfig {
   detachInactiveViews?: boolean;
   /** Inserts the engine's stylesheet at runtime. Default true. Turn it off if you import `stacknav.css`. */
   injectStyles?: boolean;
-  /** Whether to animate at all. Default true. `prefers-reduced-motion` is honoured either way. */
-  animated?: boolean;
+  /**
+   * Whether to animate at all. Default true. `prefers-reduced-motion` is
+   * honoured either way.
+   *
+   * `'touch'` animates only where the primary pointer is coarse — a phone or a
+   * tablet — and navigates instantly on a desktop, which is the usual reason to
+   * ask. A function is asked again before every navigation, so it can decide on
+   * whatever the app knows: a user setting, the window's width, a route.
+   *
+   * ```ts
+   * provideStackNav({ animated: 'touch' });
+   * provideStackNav({ animated: () => settings.pageTransitions() });
+   * ```
+   */
+  animated?: boolean | 'touch' | (() => boolean);
 }
 
 export interface ResolvedStackNavConfig {
@@ -60,9 +77,11 @@ export interface ResolvedStackNavConfig {
   infoKey: string;
   transition: Partial<NativeTransitionOptions>;
   gesture: Partial<EdgePanGestureOptions> | false;
+  swipeBack: SwipeBackMode;
   detachInactiveViews: boolean;
   injectStyles: boolean;
-  animated: boolean;
+  /** Asked before every navigation. */
+  animated: () => boolean;
 }
 
 export const STACKNAV_CONFIG = /*#__PURE__*/ new InjectionToken<ResolvedStackNavConfig>('STACKNAV_CONFIG', {
@@ -94,10 +113,18 @@ export function resolveConfig(c: StackNavConfig): ResolvedStackNavConfig {
     infoKey: c.infoKey ?? 'stacknav',
     transition: c.transition ?? {},
     gesture: c.gesture ?? {},
+    swipeBack: c.swipeBack ?? 'browser',
     detachInactiveViews: c.detachInactiveViews ?? false,
     injectStyles: c.injectStyles ?? true,
-    animated: c.animated ?? true,
+    animated: resolveAnimated(c.animated),
   };
+}
+
+function resolveAnimated(animated: StackNavConfig['animated']): () => boolean {
+  if (typeof animated === 'function') return animated;
+  if (animated === 'touch') return isTouchPrimary;
+  const on = animated ?? true;
+  return () => on;
 }
 
 /**

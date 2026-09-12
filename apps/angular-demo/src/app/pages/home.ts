@@ -43,7 +43,7 @@ export class Home {
     { path: '/search', name: 'Search', note: 'debounced, cancelled, in the URL' },
     { path: '/dashboard', name: 'Dashboard', note: 'nested outlet, wide table' },
     { path: '/mail', name: 'Mail', note: 'direction from data.animation' },
-    { path: '/lab', name: 'Lab', note: 'slow motion, latency, stress' },
+    { path: '/lab', name: 'Lab', note: 'swipe modes, slow motion, stress' },
   ];
   readonly items = ITEMS;
   readonly count = signal(0);
