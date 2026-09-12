@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cubicBezier, easings, tween } from '../src/animate.ts';
+import { cubicBezier, easings, isTouchPrimary, prefersReducedMotion, tween } from '../src/animate.ts';
 
 test('cubicBezier is clamped and passes through the endpoints', () => {
   const f = cubicBezier(0.32, 0.72, 0, 1);
@@ -73,4 +73,16 @@ test('a cancelled tween resolves and does not schedule another frame from onUpda
   frame(performance.now());
   await t;
   assert.equal(frames.size, 0);
+});
+
+test('media helpers ask the right queries, and are false without matchMedia', () => {
+  const asked = [];
+  globalThis.matchMedia = undefined;
+  assert.equal(isTouchPrimary(), false, 'no matchMedia');
+  assert.equal(prefersReducedMotion(), false, 'no matchMedia');
+  globalThis.matchMedia = (q) => { asked.push(q); return { matches: true }; };
+  assert.equal(isTouchPrimary(), true);
+  assert.equal(prefersReducedMotion(), true);
+  assert.deepEqual(asked, ['(pointer: coarse)', '(prefers-reduced-motion: reduce)']);
+  globalThis.matchMedia = () => ({ matches: false });
 });

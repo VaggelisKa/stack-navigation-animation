@@ -24,7 +24,7 @@ export { createEdgePanGesture } from './edge-pan-gesture.ts';
 export type { EdgePanGesture, EdgePanGestureOptions } from './edge-pan-gesture.ts';
 export { attachBrowserHistory, isIOSBrowser } from './history-adapter.ts';
 export type { BrowserHistoryOptions } from './history-adapter.ts';
-export { cubicBezier, easings, cssEasing, cssDuration, tween, commitStyles, animationsFinished, prefersReducedMotion } from './animate.ts';
+export { cubicBezier, easings, cssEasing, cssDuration, tween, commitStyles, animationsFinished, prefersReducedMotion, matchesMedia, isTouchPrimary } from './animate.ts';
 export type { Easing, TweenOptions, CancellableTween } from './animate.ts';
 export {
   resolveDirection,

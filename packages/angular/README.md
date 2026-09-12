@@ -154,6 +154,34 @@ exports, like any other:
 
 Routes opt out of it with `data: { reuseRoute: true }`.
 
+### Mobile only
+
+The transition is an iOS idiom, and plenty of apps want it on handhelds and a
+plain instant change on a desktop. `animated: 'touch'` is that: it animates where
+the primary pointer is coarse, and not where it is a mouse. It is asked before
+every navigation, so a tablet that gets docked to a trackpad is handled too.
+
+```ts
+provideStackNav({ animated: 'touch', gesture: isTouchPrimary() ? {} : false });
+```
+
+The swipe back is a separate decision, and a static one — the gesture is attached
+when the outlet is created — so it reads the same media query directly;
+`isTouchPrimary()` comes from `@stacknav/core`. A mouse can drag from the edge,
+which some apps want and some do not.
+
+Pass a function instead of `'touch'` to decide it yourself, e.g. from a user
+setting or the window's width:
+
+```ts
+provideStackNav({ animated: () => window.innerWidth < 768 });
+```
+
+Turning animation off does not change any of the rest: pages beneath the top are
+still kept alive with their scroll position and state, and the direction is still
+resolved, so `pop` still restores the page you came from rather than rebuilding
+it.
+
 ## API
 
 ### `provideStackNav(config?)`
@@ -169,7 +197,7 @@ Routes opt out of it with `data: { reuseRoute: true }`.
 | `gesture` | `{}` | `createEdgePanGesture` options; `false` disables swiping |
 | `detachInactiveViews` | `false` | detach change detection from hidden pages |
 | `injectStyles` | `true` | insert the core stylesheet at runtime |
-| `animated` | `true` | animate at all |
+| `animated` | `true` | animate at all. `'touch'` only on a coarse pointer, or a predicate asked before every navigation; see [Mobile only](#mobile-only) |
 
 ### `<sn-outlet>` (`StackNavOutlet`)
 

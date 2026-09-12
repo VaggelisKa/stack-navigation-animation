@@ -145,5 +145,16 @@ export function animationsFinished(els: Array<HTMLElement | null | undefined>, p
   return running.length ? Promise.all(running).then(() => {}) : Promise.resolve();
 }
 
-export const prefersReducedMotion = (): boolean =>
-  typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** `matchMedia`, and false where there is none: a server, a test. */
+export const matchesMedia = (query: string): boolean =>
+  typeof matchMedia === 'function' && matchMedia(query).matches;
+
+export const prefersReducedMotion = (): boolean => matchesMedia('(prefers-reduced-motion: reduce)');
+
+/**
+ * Whether the primary pointer is coarse: a phone or a tablet, not a mouse. The
+ * test to reach for when a behaviour is meant for handhelds only. It is a media
+ * query, so it answers again after the device changes — a tablet docked to a
+ * trackpad stops being touch-primary.
+ */
+export const isTouchPrimary = (): boolean => matchesMedia('(pointer: coarse)');

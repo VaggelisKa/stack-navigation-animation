@@ -3,6 +3,7 @@ import type { ActivatedRouteSnapshot } from '@angular/router';
 import {
   createDirectionResolver,
   defaultStrategies,
+  isTouchPrimary,
   type Direction,
   type DirectionResolver,
   type DirectionStrategy,
@@ -49,8 +50,21 @@ export interface StackNavConfig {
   detachInactiveViews?: boolean;
   /** Inserts the engine's stylesheet at runtime. Default true. Turn it off if you import `stacknav.css`. */
   injectStyles?: boolean;
-  /** Whether to animate at all. Default true. `prefers-reduced-motion` is honoured either way. */
-  animated?: boolean;
+  /**
+   * Whether to animate at all. Default true. `prefers-reduced-motion` is
+   * honoured either way.
+   *
+   * `'touch'` animates only where the primary pointer is coarse — a phone or a
+   * tablet — and navigates instantly on a desktop, which is the usual reason to
+   * ask. A function is asked again before every navigation, so it can decide on
+   * whatever the app knows: a user setting, the window's width, a route.
+   *
+   * ```ts
+   * provideStackNav({ animated: 'touch' });
+   * provideStackNav({ animated: () => settings.pageTransitions() });
+   * ```
+   */
+  animated?: boolean | 'touch' | (() => boolean);
 }
 
 export interface ResolvedStackNavConfig {
@@ -62,7 +76,8 @@ export interface ResolvedStackNavConfig {
   gesture: Partial<EdgePanGestureOptions> | false;
   detachInactiveViews: boolean;
   injectStyles: boolean;
-  animated: boolean;
+  /** Asked before every navigation. */
+  animated: () => boolean;
 }
 
 export const STACKNAV_CONFIG = /*#__PURE__*/ new InjectionToken<ResolvedStackNavConfig>('STACKNAV_CONFIG', {
@@ -96,8 +111,15 @@ export function resolveConfig(c: StackNavConfig): ResolvedStackNavConfig {
     gesture: c.gesture ?? {},
     detachInactiveViews: c.detachInactiveViews ?? false,
     injectStyles: c.injectStyles ?? true,
-    animated: c.animated ?? true,
+    animated: resolveAnimated(c.animated),
   };
+}
+
+function resolveAnimated(animated: StackNavConfig['animated']): () => boolean {
+  if (typeof animated === 'function') return animated;
+  if (animated === 'touch') return isTouchPrimary;
+  const on = animated ?? true;
+  return () => on;
 }
 
 /**
