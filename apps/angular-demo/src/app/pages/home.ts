@@ -42,6 +42,7 @@ export class Home {
     { path: '/forms', name: 'Forms', note: 'long form, numbered wizard' },
     { path: '/search', name: 'Search', note: 'debounced, cancelled, in the URL' },
     { path: '/dashboard', name: 'Dashboard', note: 'nested outlet, wide table' },
+    { path: '/mail', name: 'Mail', note: 'direction from data.animation' },
     { path: '/lab', name: 'Lab', note: 'slow motion, latency, stress' },
   ];
   readonly items = ITEMS;

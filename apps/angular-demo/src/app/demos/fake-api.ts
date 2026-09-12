@@ -76,6 +76,16 @@ export interface Activity {
   status: 'ok' | 'warn' | 'fail';
   duration: string;
 }
+export interface Email {
+  id: number;
+  folder: 'inbox' | 'sent';
+  from: Author;
+  subject: string;
+  preview: string;
+  body: string[];
+  minutesAgo: number;
+  unread: boolean;
+}
 export interface TeamMember {
   id: number;
   name: string;
@@ -211,6 +221,15 @@ const PRODUCTS = buildProducts();
 const PHOTOS = buildPhotos();
 const TEAM = buildTeam();
 const ACTIVITY = buildActivity();
+const SUBJECTS = ['Easing curve for the pop', 'Friday demo', 'Parallax at 0.3?', 'Re: swipe on the gallery', 'Scroll restoration is gone', 'Tab bar during a push', 'Guard that refuses', 'Dark viewer dim', 'Notes from the review', 'Wizard step order', 'Lazy chunk timing', 'The 600-row page'];
+function buildMail(): Email[] {
+  const r = rng(53);
+  return SUBJECTS.map((subject, i) => {
+    const body = [pick(r, SENTENCES), pick(r, SENTENCES), pick(r, SENTENCES)];
+    return { id: i + 1, folder: i % 3 === 2 ? 'sent' : 'inbox', from: AUTHORS[(i * 5) % AUTHORS.length], subject, preview: body[0], body, minutesAgo: 6 + i * 47, unread: i % 4 === 0 };
+  });
+}
+const MAIL = buildMail();
 
 /**
  * A fake backend. Every call resolves after `latency()` milliseconds, and
@@ -297,6 +316,28 @@ export class FakeApi {
   }
 
   // messages
+  /** Bumped whenever the mail data changes, so a kept folder page can reload. */
+  readonly mailVersion = signal(0);
+  mail(folder: Email['folder']): Promise<Email[]> {
+    return this.request(() => MAIL.filter((m) => m.folder === folder));
+  }
+  email(id: number): Promise<Email> {
+    return this.request(() => {
+      const m = MAIL.find((x) => x.id === id);
+      if (!m) throw new Error(`No message ${id}`);
+      return m;
+    });
+  }
+  /** Files the draft under Sent. */
+  sendMail(draft: { to: string; subject: string; text: string }): Promise<void> {
+    return this.request(() => {
+      const handle = draft.to.split('@')[0];
+      const from = AUTHORS.find((a) => a.handle === handle) ?? { handle, name: draft.to, hue: 200, bio: '', followers: 0, following: 0 };
+      const body = draft.text.split(/\n+/).filter(Boolean);
+      MAIL.unshift({ id: this.nextId++, folder: 'sent', from, subject: draft.subject, preview: body[0] ?? '', body, minutesAgo: 0, unread: false });
+      this.mailVersion.update((v) => v + 1);
+    });
+  }
   conversations(): Promise<Conversation[]> {
     const r = rng(3);
     return this.request(() =>

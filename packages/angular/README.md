@@ -127,6 +127,13 @@ provideStackNav({
 A strategy receives `{ from, to, trigger, historyDelta, hint, stack }`, where
 `from` and `to` carry `{ key, segments, level, data, snapshot }`.
 
+Because `data` is the route's own data, a strategy can work off metadata your
+routes already carry. An app that names its routes the way Angular's
+route-transition recipe does (`data: { animation: 'Thread' }`) keeps those names
+and adds one strategy that looks the from/to pair up in a
+`transition('Inbox => Thread')`-style table; see the Mail demo's
+[`animation.ts`](../../apps/angular-demo/src/app/demos/mail/animation.ts).
+
 ### Back buttons
 
 A back button is `Location.back()`. After a deep link there is nothing to go back
