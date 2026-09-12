@@ -28,3 +28,4 @@ jobs:
       - run: pnpm build:all
       - run: pnpm --filter @stacknav/angular-demo exec playwright-core install --with-deps chromium
       - run: pnpm --filter @stacknav/angular-demo e2e
+      - run: pnpm --filter @stacknav/react-demo e2e
