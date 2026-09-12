@@ -1,5 +1,12 @@
 # @stacknav/angular
 
+## 0.1.2
+
+### Patch Changes
+
+- Updated dependencies [[`1f61fd8`](https://github.com/VaggelisKa/stack-navigation-animation/commit/1f61fd81a480e806474d751c0a4a1c1c91117dfa)]:
+  - @stacknav/core@0.3.0
+
 ## 0.1.1
 
 ### Patch Changes
