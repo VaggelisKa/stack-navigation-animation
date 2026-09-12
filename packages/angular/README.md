@@ -1,6 +1,7 @@
 # @stacknav/angular
 
-`<sn-outlet />`: a router outlet with the iOS push/pop transition, built on
+`<sn-outlet />`: a router outlet with the native push/pop transition (iOS, or
+Android's own on Android), built on
 [`@stacknav/core`](../core).
 
 It is an outlet, not a router. Angular Router keeps doing everything it does:
@@ -165,7 +166,7 @@ Routes opt out of it with `data: { reuseRoute: true }`.
 | `levelOf(snapshot)` | `data.stackLevel` | the route's number |
 | `keyOf(snapshot)` | the route's URL path | identity of a page |
 | `infoKey` | `'stacknav'` | key in `NavigationExtras.info` for hints |
-| `transition` | `{}` | `createIOSTransition` options for every outlet. The same options are CSS variables (`--sn-duration`, `--sn-easing`, `--sn-parallax`, `--sn-dim-max`, `--sn-shadow`, …) read off the outlet, so a stylesheet can retune them. See the [core README](../core#tuning-from-css) |
+| `transition` | `{}` | `createNativeTransition` options for every outlet: `platform` (`'auto'`, `'ios'`, `'android'`), duration, curve and the rest. The same options are CSS variables (`--sn-duration`, `--sn-easing`, `--sn-parallax`, `--sn-dim-max`, `--sn-shadow`, …) read off the outlet, so a stylesheet can retune them. See the [core README](../core#tuning-from-css) |
 | `gesture` | `{}` | `createEdgePanGesture` options; `false` disables swiping |
 | `detachInactiveViews` | `false` | detach change detection from hidden pages |
 | `injectStyles` | `true` | insert the core stylesheet at runtime |

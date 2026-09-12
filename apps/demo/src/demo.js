@@ -1,7 +1,7 @@
-import { createIOSStack, attachBrowserHistory } from '@stacknav/core';
+import { createNativeStack, attachBrowserHistory } from '@stacknav/core';
 
 const container = document.getElementById('app');
-const nav = createIOSStack({ container });
+const nav = createNativeStack({ container });
 
 // Let pages clean up (timers, subscriptions) when they leave the stack.
 nav.on('pop', ({ removed }) => removed.forEach((e) => e.el.dispatchEvent(new Event('sn:destroyed'))));
@@ -74,7 +74,7 @@ const homePage = () =>
   page({
     title: 'stacknav',
     body: (b) => {
-      b.append(h('p', 'lede', 'A drop-in iOS push/pop transition for any web app. Pages, headers and styling are the app\'s own; the engine only moves them.'));
+      b.append(h('p', 'lede', 'A drop-in native push/pop transition for any web app: the iOS look on iOS and elsewhere, the Android look on Android. Pages, headers and styling are the app\'s own; the engine only moves them.'));
       b.append(h('h2', null, 'How it works'));
       TOPICS.forEach(([t], i) => b.append(link(t, () => nav.push(topicPage(i)))));
       b.append(h('h2', null, 'Try'));

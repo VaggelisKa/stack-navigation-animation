@@ -2,7 +2,8 @@ import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeElement, installGlobals } from './dom-stub.ts';
 import { NavigationStack } from '../src/navigation-stack.ts';
-import { attachBrowserHistory, isIOSBrowser } from '../src/history-adapter.ts';
+import { attachBrowserHistory } from '../src/history-adapter.ts';
+import { isIOSBrowser } from '../src/platform.ts';
 
 installGlobals();
 

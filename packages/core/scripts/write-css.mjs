@@ -4,12 +4,14 @@
 // with the tuning variables documented on top.
 import { mkdir, writeFile } from 'node:fs/promises';
 const { STACKNAV_CSS } = await import('../dist/styles.js');
-const { IOS_TRANSITION_CSS_VARS } = await import('../dist/ios-transition.js');
+const { NATIVE_TRANSITION_CSS_VARS } = await import('../dist/native-transition.js');
 
 const DOCS = {
   duration: ['500ms', 'push/pop length'],
-  ease: ['cubic-bezier(0.32, 0.72, 0, 1)', 'its curve: a cubic-bezier, a keyword, or ios'],
+  ease: ['cubic-bezier(0.32, 0.72, 0, 1)', 'its curve: a cubic-bezier, linear(), a keyword, ios or android'],
+  travel: ['100%', 'how far the incoming page travels'],
   parallax: ['30%', 'how far the page beneath travels'],
+  fade: ['1', 'the incoming page opacity when closed; 0 fades it in'],
   dimColor: ['#000', 'overlay on the page beneath'],
   dimMax: ['10%', 'its opacity at full open'],
   shadow: ['-3px 0 14px rgba(0,0,0,0.16)', 'on the incoming page; none to remove it'],
@@ -19,11 +21,11 @@ const DOCS = {
   settleVelocityFloor: ['900', 'px/s assumed when the pointer was slower'],
   timeScale: ['1', 'multiplies every duration'],
 };
-const vars = Object.entries(IOS_TRANSITION_CSS_VARS).map(([option, name]) => {
+const vars = Object.entries(NATIVE_TRANSITION_CSS_VARS).map(([option, name]) => {
   const [value, note] = DOCS[option];
   return `     ${`${name}: ${value};`.padEnd(45)}${note}`.trimEnd();
 });
-const header = ['/* Tune the iOS transition by setting these on .sn-container or any ancestor:', ...vars.slice(0, -1), vars.at(-1) + ' */'].join('\n');
+const header = ['/* Tune the transition by setting these on .sn-container or any ancestor (the values shown are the iOS preset):', ...vars.slice(0, -1), vars.at(-1) + ' */'].join('\n');
 
 /** Expands the minified source, including nested at-rules such as media queries. */
 const formatCSS = (css) => {

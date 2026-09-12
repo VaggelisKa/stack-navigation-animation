@@ -32,13 +32,13 @@ import {
   type RouterOutletContract,
 } from '@angular/router';
 import {
-  createIOSStack,
+  createNativeStack,
   injectStyles,
   segmentsOf,
   type Direction,
   type EdgePanGestureOptions,
-  type IOSStack,
-  type IOSTransitionOptions,
+  type NativeStack,
+  type NativeTransitionOptions,
   type NavigationSource,
   type RouteRef,
   type StackEntry,
@@ -82,7 +82,7 @@ export interface StackNavActivation {
 
 /**
  * A router outlet (`RouterOutletContract`) that keeps a stack of pages and moves
- * between them with the iOS push/pop transition. Use it where you would use
+ * between them with the platform's native push/pop transition. Use it where you would use
  * `<router-outlet>`. The router drives it the same way:
  *
  * ```html
@@ -104,7 +104,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
   /** Outlet name, as on `router-outlet`. Static. */
   @Input() name: string = PRIMARY_OUTLET;
   /** Per-outlet transition options, merged over `provideStackNav({ transition })`. */
-  @Input() transition: Partial<IOSTransitionOptions> | undefined;
+  @Input() transition: Partial<NativeTransitionOptions> | undefined;
   /** Per-outlet gesture options, merged over `provideStackNav({ gesture })`. `false` disables the swipe. */
   @Input() gesture: Partial<EdgePanGestureOptions> | false | undefined;
   /** Same as on `router-outlet`: available to pages through `ROUTER_OUTLET_DATA`. */
@@ -136,7 +136,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
    * `sn-page-upper` / `sn-page-lower` classes; subscribe to `progress` when
    * you need the number itself.
    */
-  stack!: IOSStack;
+  stack!: NativeStack;
   /** The direction of the last activation. */
   lastDirection: Direction | null = null;
 
@@ -159,7 +159,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
   // ------------------------------------------------------------- lifecycle
   ngOnInit(): void {
     const gesture = this.gesture === false || this.config.gesture === false ? false : { ...(this.config.gesture || {}), ...(this.gesture || {}) };
-    this.stack = createIOSStack({
+    this.stack = createNativeStack({
       container: this.host,
       transition: { ...this.config.transition, ...(this.transition || {}) },
       gesture: gesture || {},

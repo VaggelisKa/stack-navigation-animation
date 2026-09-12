@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cubicBezier, easings, tween } from '../src/animate.ts';
+import { cubicBezier, easings, linearEasing, tween } from '../src/animate.ts';
 
 test('cubicBezier is clamped and passes through the endpoints', () => {
   const f = cubicBezier(0.32, 0.72, 0, 1);
@@ -23,6 +23,49 @@ test('the iOS curve is monotonic and front-loaded', () => {
     prev = y;
   }
   assert.ok(easings.ios(0.5) > 0.5, 'more than half the distance is covered by half time');
+});
+
+/** AOSP's fast_out_extra_slow_in, solved exactly: two cubic segments, the second starting where the first ends. */
+const fastOutExtraSlowIn = (x: number): number => {
+  const segs = [
+    [[0, 0], [0.05, 0], [0.133333, 0.06], [0.166666, 0.4]],
+    [[0.166666, 0.4], [0.208333, 0.82], [0.25, 1], [1, 1]],
+  ];
+  const [p0, p1, p2, p3] = segs[x < 0.166666 ? 0 : 1];
+  const at = (t: number, k: 0 | 1) => (1 - t) ** 3 * p0[k] + 3 * (1 - t) ** 2 * t * p1[k] + 3 * (1 - t) * t * t * p2[k] + t ** 3 * p3[k];
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 40; i++) at((lo + hi) / 2, 0) < x ? (lo = (lo + hi) / 2) : (hi = (lo + hi) / 2);
+  return at((lo + hi) / 2, 1);
+};
+
+test('the Android curve follows fast_out_extra_slow_in and is spelled as linear()', () => {
+  const f = easings.android;
+  assert.equal(f(0), 0);
+  assert.equal(f(1), 1);
+  for (let i = 1; i < 100; i++) {
+    const x = i / 100;
+    assert.ok(Math.abs(f(x) - fastOutExtraSlowIn(x)) < 0.01, `f(${x}) = ${f(x)}, the path gives ${fastOutExtraSlowIn(x)}`);
+  }
+  assert.ok(f(0.1) < 0.1, 'a slow start, unlike the iOS curve');
+  assert.ok(f(0.25) > 0.75, 'then most of the way by a quarter of the time');
+  let prev = 0;
+  for (let i = 1; i <= 40; i++) {
+    const y = f(i / 40);
+    assert.ok(y >= prev, 'monotonic');
+    prev = y;
+  }
+  assert.match(f.css!, /^linear\(0 0%, .*1 100%\)$/);
+});
+
+test('linearEasing joins its points with straight lines', () => {
+  const f = linearEasing([[0, 0], [0.5, 1], [1, 0]]);
+  assert.equal(f(0.25), 0.5);
+  assert.equal(f(0.5), 1);
+  assert.equal(f(0.75), 0.5);
+  assert.equal(f(-1), 0);
+  assert.equal(f(2), 0);
+  assert.equal(f.css, 'linear(0 0%, 1 50%, 0 100%)');
+  assert.equal(linearEasing([[0, 0], [1, 1]], 'linear').css, 'linear', 'a spelling of its own is kept');
 });
 
 test('tween with zero duration jumps to the end synchronously', async () => {

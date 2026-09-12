@@ -10,7 +10,7 @@ export const ITEMS = Array.from({ length: 40 }, (_, i) => ({ id: i + 1, name: `I
     <div class="page">
       <header class="hdr"><span class="spacer"></span><h1>stacknav</h1><span class="spacer"></span></header>
       <div class="body">
-        <p class="lede">An Angular router outlet with the iOS push/pop transition. Pages stay alive beneath the top: scroll down, open something, swipe back.</p>
+        <p class="lede">An Angular router outlet with the native push/pop transition: the iOS look on iOS and elsewhere, the Android look on Android. Pages stay alive beneath the top: scroll down, open something, swipe back.</p>
         <h2>Demo apps</h2>
         @for (d of demos; track d.path) {
           <a class="item" [routerLink]="d.path"><span>{{ d.name }}</span><small>{{ d.note }}</small><i>›</i></a>

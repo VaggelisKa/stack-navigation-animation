@@ -7,7 +7,7 @@ import {
   type DirectionResolver,
   type DirectionStrategy,
   type EdgePanGestureOptions,
-  type IOSTransitionOptions,
+  type NativeTransitionOptions,
 } from '@stacknav/core';
 
 /** Everything `provideStackNav()` accepts. All optional. */
@@ -39,7 +39,7 @@ export interface StackNavConfig {
    */
   infoKey?: string;
   /** Defaults for every outlet's transition. An outlet's `transition` input overrides these per key. */
-  transition?: Partial<IOSTransitionOptions>;
+  transition?: Partial<NativeTransitionOptions>;
   /** Defaults for every outlet's swipe-back gesture. `false` disables it. */
   gesture?: Partial<EdgePanGestureOptions> | false;
   /**
@@ -58,7 +58,7 @@ export interface ResolvedStackNavConfig {
   levelOf: (snapshot: ActivatedRouteSnapshot) => number | null | undefined;
   keyOf: (snapshot: ActivatedRouteSnapshot) => string;
   infoKey: string;
-  transition: Partial<IOSTransitionOptions>;
+  transition: Partial<NativeTransitionOptions>;
   gesture: Partial<EdgePanGestureOptions> | false;
   detachInactiveViews: boolean;
   injectStyles: boolean;

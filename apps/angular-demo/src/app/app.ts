@@ -2,6 +2,7 @@ import { Component, afterRenderEffect, computed, inject, viewChild } from '@angu
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationCancel, NavigationEnd, NavigationError, NavigationSkipped, NavigationStart, Router } from '@angular/router';
 import { StackNavOutlet } from '@stacknav/angular';
+import { detectPlatform, nativeTransitionPreset } from '@stacknav/core';
 import { filter, map } from 'rxjs';
 import { FakeApi } from './demos/fake-api';
 import { DemoPrefs } from './demos/shared';
@@ -36,7 +37,13 @@ export class App {
     // The Lab's settings are applied directly to the engine the outlet created.
     afterRenderEffect(() => {
       const { stack } = this.outlet();
+      // The platform is chosen once when a transition is created, so switching it
+      // means putting the other preset's values into the live options.
+      const chosen = this.prefs.platform();
+      const platform = chosen === 'auto' ? detectPlatform() : chosen;
+      Object.assign(stack.transition.options, nativeTransitionPreset(platform), { platform });
       stack.transition.options.timeScale = this.prefs.slow() ? 4 : 1;
+      stack.transition.refresh();
       stack.gesture.options.anywhere = this.prefs.anywhere();
       stack.gesture.refresh();
     });

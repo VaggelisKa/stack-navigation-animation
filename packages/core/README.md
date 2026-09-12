@@ -1,10 +1,14 @@
 # @stacknav/core
 
-An iOS push/pop navigation transition for any web app. Pages, headers and
-styling stay the app's own; the engine only moves them.
+A native push/pop navigation transition for any web app: the iOS one, or
+Android's own on an Android browser. Pages, headers and styling stay the
+app's own; the engine only moves them.
 
-- **Push / pop** with the UIKit curve, parallax and dim on the page beneath, and
-  a shadow on the leading edge of the incoming page.
+- **Push / pop** the way the platform does it. On iOS: the UIKit curve, parallax
+  and dim on the page beneath, and a shadow on the leading edge of the incoming
+  page. On Android: the framework's activity transition, a short slide of both
+  pages with a fade, on its own interpolator. The platform is detected from the
+  browser and falls back to iOS; either look can be forced.
 - **Interactive pop**: drag from the leading edge (or from anywhere, if
   configured) and the page follows the pointer. Release past half the width or
   with a flick to complete; a flick back cancels.
@@ -31,10 +35,10 @@ styling stay the app's own; the engine only moves them.
 ```html
 <div id="app"></div>
 <script type="module">
-  import { createIOSStack, attachBrowserHistory, injectStyles } from '@stacknav/core';
+  import { createNativeStack, attachBrowserHistory, injectStyles } from '@stacknav/core';
 
   injectStyles(); // or <link rel="stylesheet" href="@stacknav/core/stacknav.css">
-  const nav = createIOSStack({ container: document.getElementById('app') });
+  const nav = createNativeStack({ container: document.getElementById('app') });
   await nav.push(homePage(), { animated: false });
   attachBrowserHistory(nav);
 
@@ -62,10 +66,10 @@ So a 500 ms push costs about a dozen style writes in total rather than one per p
 
 ## API
 
-### `createIOSStack({ container, transition?, gesture? })`
+### `createNativeStack({ container, transition?, gesture? })`
 
-Builds a `NavigationStack` with the iOS transition and the edge-pan gesture
-attached. `transition` and `gesture` are option objects for the two factories
+Builds a `NavigationStack` with the platform's native transition and the
+edge-pan gesture attached. `transition` and `gesture` are option objects for the two factories
 below. The gesture is exposed as `stack.gesture`; `stack.destroy()` detaches it.
 
 ### `NavigationStack`
@@ -114,21 +118,43 @@ A strategy is
 numbers or unrelated siblings mean (default `replace`). `segmentsOf(url)` splits
 a path into `segments`.
 
-### `createIOSTransition(options)`
+### `createNativeTransition(options)`
 
-| Option | CSS variable | Default | Description |
-| --- | --- | --- | --- |
-| `duration` | `--sn-duration` | `500` | ms for a programmatic push/pop |
-| `ease` | `--sn-easing` | `cubic-bezier(0.32, 0.72, 0, 1)` | the curve push/pop runs on |
-| `parallax` | `--sn-parallax` | `0.3` | fraction of the width the lower page travels |
-| `dimColor`, `dimMax` | `--sn-dim-color`, `--sn-dim-max` | `"#000"`, `0.1` | overlay on the lower page at full open (`0.35` suits dark UIs) |
-| `shadow` | `--sn-shadow` | `-3px 0 14px rgba(0,0,0,0.16)` | box-shadow on the incoming page |
-| `settleMin`, `settleMax` | `--sn-settle-min`, `--sn-settle-max` | `120`, `400` | ms bounds when finishing an interactive pop |
-| `settleEase` | `--sn-settle-easing` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | the curve a released swipe finishes on |
-| `settleVelocityFloor` | `--sn-settle-velocity-floor` | `900` | px/s assumed when the pointer was slower |
-| `timeScale` | `--sn-time-scale` | `1` | multiplies every duration (slow motion, tests) |
+| Option | CSS variable | iOS | Android | Description |
+| --- | --- | --- | --- | --- |
+| `platform` | | `'auto'` | | `'ios'`, `'android'`, or `'auto'` to ask the browser (see below) |
+| `duration` | `--sn-duration` | `500` | `450` | ms for a programmatic push/pop |
+| `ease` | `--sn-easing` | `cubic-bezier(0.32, 0.72, 0, 1)` | `fast_out_extra_slow_in` as `linear()` | the curve push/pop runs on |
+| `travel` | `--sn-travel` | `1` | `0.25` | fraction of the width the upper page travels |
+| `parallax` | `--sn-parallax` | `0.3` | `0.25` | fraction of the width the lower page travels |
+| `fade` | `--sn-fade` | `1` | `0` | opacity of the upper page when closed (`1` = no fade) |
+| `dimColor`, `dimMax` | `--sn-dim-color`, `--sn-dim-max` | `"#000"`, `0.1` | `"#000"`, `0` | overlay on the lower page at full open (`0.35` suits dark UIs) |
+| `shadow` | `--sn-shadow` | `-3px 0 14px rgba(0,0,0,0.16)` | `none` | box-shadow on the incoming page |
+| `settleMin`, `settleMax` | `--sn-settle-min`, `--sn-settle-max` | `120`, `400` | same | ms bounds when finishing an interactive pop |
+| `settleEase` | `--sn-settle-easing` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | `cubic-bezier(0, 0, 0, 1)` | the curve a released swipe finishes on |
+| `settleVelocityFloor` | `--sn-settle-velocity-floor` | `900` | same | px/s assumed when the pointer was slower |
+| `timeScale` | `--sn-time-scale` | `1` | same | multiplies every duration (slow motion, tests) |
 
 `prefers-reduced-motion` sets every duration to 0.
+
+#### Platforms
+
+The two columns are the two presets, `nativeTransitionPreset('ios' | 'android')`.
+They are what each system animates: UIKit's navigation push, and the Android
+framework's activity open/close (`activity_open_enter.xml` and friends since
+Android 13: both pages slide 96 dp, about a quarter of a phone, over 450 ms on
+`fast_out_extra_slow_in`, while the incoming page fades in). The Android curve
+is a path of two cubics, so it reaches CSS as `linear()`; a browser without
+`linear()` (Chrome < 113, Safari < 17.2, Firefox < 112) runs `ease` instead.
+
+`platform: 'auto'`, the default, calls `detectPlatform()`: `android` when the
+browser says it is one (client hints first, then the user agent), otherwise
+`ios`, which is also what a desktop browser gets. `isIOSBrowser()` and
+`isAndroidBrowser()` are exported too. The choice is made once, when the
+transition is created; an option you pass wins over the preset, and a CSS
+variable wins over both, so `{ platform: 'android', duration: 300 }` is the
+Android look at your speed. `transition.options.platform` and
+`transition.resolved.platform` tell you which one is in force.
 
 #### Tuning from CSS
 
@@ -138,7 +164,7 @@ the container, under a theme class, or inside a media query.
 
 ```css
 :root {
-  --sn-duration: 340ms;              /* snappier than iOS */
+  --sn-duration: 340ms;              /* snappier than either platform */
   --sn-easing: cubic-bezier(0.4, 0, 0.2, 1);
 }
 .theme-flat {
@@ -154,8 +180,9 @@ the container, under a theme class, or inside a media query.
 Durations accept `ms`, `s` or a bare number of milliseconds. Fractions accept
 `0.3` or `30%`. Easings accept `linear`, `ease`, `ease-in`, `ease-out`,
 `ease-in-out`, `cubic-bezier(…)` with x coordinates within `[0, 1]` as CSS
-requires, or `ios` / `ios-settle` for the two defaults. The `step` and `linear()`
-timing functions are not supported.
+requires, `linear(…)` with percentage stops, or `ios`, `ios-settle`, `android`
+and `android-settle` for the presets' curves. The `steps()` timing function is
+not supported.
 
 Precedence:
 
@@ -173,7 +200,7 @@ Precedence:
 Values are re-read at the start of every transition, which covers media queries
 and class changes. `transition.refresh()` re-reads them on demand, for example
 after changing `transition.options` mid-animation. `transition.resolved` is what
-is currently in force, and `IOS_TRANSITION_CSS_VARS` maps each option to its
+is currently in force, and `NATIVE_TRANSITION_CSS_VARS` maps each option to its
 variable name.
 
 A transition is just
@@ -183,7 +210,7 @@ can write a different one (a fade, a vertical sheet) and pass it to
 write, not a frame: the stack calls it once at each end of a phase and lets CSS
 interpolate between them, so keep it to `transform` and `opacity` and the
 browser keeps it off the main thread. `ease` is sampled to report `progress`,
-but its `css` property is what drives the pixels — `cubicBezier()` and
+but its `css` property is what drives the pixels — `cubicBezier()`, `linearEasing()` and
 `parseEasing()` set one, and a bare `(t) => number` of your own does not, so
 such a curve runs `linear` on screen unless you give it a `css` property too. `cssVars()` and the
 `parseTime` / `parseNumber` / `parseRatio` / `parseEasing` helpers are exported
@@ -248,12 +275,12 @@ Plain ES modules, no dependencies, no work at module load: a bundler keeps only 
 
 | You import | Costs |
 | --- | --- |
-| `createIOSStack` (stack, iOS look, swipe back) | ~4.5 kB |
-| `NavigationStack` with your own transition | ~2.4 kB |
+| `createNativeStack` (stack, native look, swipe back) | ~5.5 kB |
+| `NavigationStack` with your own transition | ~2.2 kB |
 | the direction strategies | ~0.6 kB |
 | `attachBrowserHistory` | ~0.5 kB |
 | `injectStyles` | ~0.5 kB |
-| everything | ~5.9 kB |
+| everything | ~6.9 kB |
 
 ## Develop
 
@@ -268,12 +295,13 @@ src/
   animate.ts            curves CSS and JS can both read, the tween, the waits
   css-vars.ts           reading and parsing the engine's custom properties
   navigation-stack.ts   the stack: mounting, ordering, transition lifecycle, queueing
-  ios-transition.ts     the look: the endpoints, the settle timing, the variables
+  native-transition.ts  the look: the presets, the endpoints, the settle timing, the variables
+  platform.ts           which platform the browser is, for the default preset
   edge-pan-gesture.ts   pointer-event recognizer that drives the interactive pop
   direction.ts          push / pop / replace strategies and the resolver
   history-adapter.ts    history.state mirroring for apps without a router
   styles.ts             the CSS the engine needs, motion included, and injectStyles()
-  index.ts              exports + createIOSStack()
+  index.ts              exports + createNativeStack()
 ```
 
 ### Animation implementation notes
@@ -288,3 +316,7 @@ to these variables take effect during a transition without `refresh()`. The JS
 options remain their fallbacks. `resolved` remains a snapshot taken by
 `begin()` or `refresh()`; numeric options still use that snapshot, including
 support for percentage ratios and bare millisecond values.
+
+The iOS look writes only `transform`; the Android look writes `opacity` on the
+upper page as well, and clears it when the transition ends, so a page keeps
+whatever opacity of its own it had.

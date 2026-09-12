@@ -10,8 +10,8 @@ const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 // relative path whatever characters the checkout's directory contains.
 const CASES = [
   ['everything', `export * from './index.js';`],
-  ['createIOSStack (stack + iOS look + swipe)', `export { createIOSStack } from './index.js';`],
-  ['createIOSStack + injectStyles', `export { createIOSStack, injectStyles } from './index.js';`],
+  ['createNativeStack (stack + native look + swipe)', `export { createNativeStack } from './index.js';`],
+  ['createNativeStack + injectStyles', `export { createNativeStack, injectStyles } from './index.js';`],
   ['NavigationStack + your own transition', `export { NavigationStack } from './index.js';`],
   ['direction strategies only', `export { createDirectionResolver, defaultStrategies, segmentsOf } from './index.js';`],
   ['attachBrowserHistory only', `export { attachBrowserHistory } from './index.js';`],
