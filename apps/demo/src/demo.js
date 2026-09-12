@@ -6,9 +6,11 @@ const nav = createNativeStack({ container });
 // Let pages clean up (timers, subscriptions) when they leave the stack.
 nav.on('pop', ({ removed }) => removed.forEach((e) => e.el.dispatchEvent(new Event('sn:destroyed'))));
 
-const prefs = { swipeBack: 'custom', anywhere: false, slow: false, gentle: false };
+// Starts on the library default: the browser's own gesture. The storage key is
+// versioned so a stored 'custom' from an earlier visit does not survive it.
+const prefs = { swipeBack: 'browser', anywhere: false, slow: false, gentle: false };
 try {
-  Object.assign(prefs, JSON.parse(localStorage.getItem('stacknav-demo') || '{}'));
+  Object.assign(prefs, JSON.parse(localStorage.getItem('stacknav-demo-v2') || '{}'));
 } catch (e) {
   /* storage may be unavailable */
 }
@@ -21,7 +23,7 @@ function applyPrefs() {
   container.style.setProperty('--sn-time-scale', prefs.slow ? '4' : '1');
   container.classList.toggle('gentle', prefs.gentle);
   try {
-    localStorage.setItem('stacknav-demo', JSON.stringify(prefs));
+    localStorage.setItem('stacknav-demo-v2', JSON.stringify(prefs));
   } catch (e) {
     /* ignore */
   }
@@ -138,7 +140,7 @@ const optionsPage = () =>
         row.append(radio, document.createTextNode(label));
         modes.append(row);
       }
-      b.append(modes, status, h('p', 'note', 'This demo starts in Custom; Browser is the library default. Custom and Disabled request browser swipe suppression, which depends on the browser and OS. Back buttons still work. Select a mode and swipe this page back.'));
+      b.append(modes, status, h('p', 'note', 'This demo starts in Browser, the library default. Custom and Disabled request browser swipe suppression, which depends on the browser and OS — Safari keeps its own edge swipe, so Custom runs next to it there. Back buttons still work. Select a mode and swipe this page back.'));
 
       b.append(
         toggle('Swipe back from anywhere', prefs.anywhere, (v) => {

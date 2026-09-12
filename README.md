@@ -28,7 +28,7 @@ Existing consumers wanting the previous custom gesture default should explicitly
 set `swipeBack: 'custom'`.
 
 Try all three in **Lab → Swipe back** in the Angular demo or **Options → Swipe
-back** in the vanilla demo. The demos explicitly start in custom mode.
+back** in the vanilla demo. Both demos start on the default, browser mode.
 
 ## How it works
 

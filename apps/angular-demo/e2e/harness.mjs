@@ -10,7 +10,7 @@ const ROOT = new URL('../dist/browser/', import.meta.url).pathname;
 const SHOTS = new URL('./shots/', import.meta.url).pathname;
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.map': 'application/json' };
 
-export async function launch({ width = 420, height = 800 } = {}) {
+export async function launch({ width = 420, height = 800, swipeBack: swipeBackMode = 'custom' } = {}) {
   const server = createServer(async (req, res) => {
     const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     let file = join(ROOT, path);
@@ -24,6 +24,9 @@ export async function launch({ width = 420, height = 800 } = {}) {
   const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
   const browser = await chromium.launch({ executablePath });
   const page = await browser.newPage({ viewport: { width, height } });
+  // The demo starts in browser mode, like the library. These suites exercise our
+  // own recognizer, so they ask the demo for it before the app boots.
+  await page.addInitScript((mode) => (globalThis.__snSwipeBack = mode), swipeBackMode);
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));

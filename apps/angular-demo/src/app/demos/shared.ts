@@ -8,8 +8,12 @@ import { initials } from './fake-api';
 /** Settings the Lab page changes. The App applies them to the outlet. */
 @Injectable({ providedIn: 'root' })
 export class DemoPrefs {
-  /** This demo explicitly opts into custom gestures; the library default is browser. */
-  readonly swipeBack = signal<SwipeBackMode>('custom');
+  /**
+   * Starts on the library default, the browser's own gesture; Lab switches it.
+   * The e2e suites drive the custom recognizer, so they preset this global
+   * before the app boots rather than clicking through Lab first.
+   */
+  readonly swipeBack = signal<SwipeBackMode>((globalThis as { __snSwipeBack?: SwipeBackMode }).__snSwipeBack ?? 'browser');
   /** 4x slower transitions, for inspecting a transition mid-flight. */
   readonly slow = signal(false);
   /** Start the back gesture from anywhere on the page, not only the leading edge. */

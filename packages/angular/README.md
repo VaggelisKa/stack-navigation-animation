@@ -89,7 +89,7 @@ cancel an explicit `disabled` suppression request.
 
 **Migration:** gestures used to be enabled by default. Add `swipeBack: 'custom'`
 to keep that behavior. Gesture tuning alone no longer enables swiping.
-The demos explicitly opt into custom mode and let you try all three options
+The demos start on the default (browser) and let you try all three options
 in **Lab → Swipe back** (Angular) or **Options → Swipe back** (vanilla).
 
 Browser suppression uses `overscroll-behavior-x: contain` on the document root.

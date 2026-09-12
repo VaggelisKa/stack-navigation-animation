@@ -35,7 +35,7 @@ import { BackButton, DEMO_UI, DemoNav, DemoPrefs } from '../shared';
               </label>
             }
           </fieldset>
-          <p id="swipe-help" class="muted">This demo starts in Custom. Browser is the library default. Browser gesture suppression depends on your browser and OS; Back buttons work in every mode.</p>
+          <p id="swipe-help" class="muted">This demo starts in Browser, the library default. Suppression depends on your browser and OS — Safari keeps its edge swipe, so Custom runs next to it there. Back buttons work in every mode.</p>
           <p class="muted" role="status">Active mode: {{ prefs.swipeBack() }}. Applies immediately to the main demo outlet.</p>
           <a class="item" routerLink="/lab/deep/1"><span>Try the selected mode</span><small>Open a page, then swipe back or use Back</small><i>›</i></a>
         </section>
