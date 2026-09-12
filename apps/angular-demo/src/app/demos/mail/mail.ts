@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, resource, signal, untracked } from '@angular/core';
+import { Component, type WritableSignal, computed, effect, inject, input, resource, signal, untracked } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { useBack } from '../../back';
 import { FakeApi } from '../fake-api';
@@ -126,8 +126,8 @@ export class MailThread {
         <demo-error [error]="e" (retry)="send()" />
       }
       <form class="mail-form" (submit)="$event.preventDefault(); send()">
-        <label><span>To</span><input name="to" [value]="to()" (input)="to.set($any($event.target).value)" autocomplete="off" /></label>
-        <label><span>Subject</span><input name="subject" [value]="subject()" (input)="subject.set($any($event.target).value)" autocomplete="off" /></label>
+        <label><span>To</span><input name="to" [value]="to()" (input)="edit(to, $any($event.target).value)" autocomplete="off" /></label>
+        <label><span>Subject</span><input name="subject" [value]="subject()" (input)="edit(subject, $any($event.target).value)" autocomplete="off" /></label>
         <textarea name="text" rows="10" placeholder="Write something…" [value]="text()" (input)="text.set($any($event.target).value)"></textarea>
       </form>
     </div>
@@ -144,6 +144,8 @@ export class MailCompose {
   readonly to = signal('');
   readonly subject = signal('');
   readonly text = signal('');
+  /** Fields the user has typed into, which the prefill must leave alone, even when cleared. */
+  private readonly touched = new Set<WritableSignal<string>>();
   readonly sending = signal(false);
   /** A failed send: shown above the form, the draft kept. */
   readonly error = signal<unknown>(null);
@@ -156,10 +158,15 @@ export class MailCompose {
       if (!this.original.hasValue()) return;
       const m = this.original.value();
       untracked(() => {
-        if (this.to() === '') this.to.set(`${m.from.handle}@example.com`);
-        if (this.subject() === '') this.subject.set(`Re: ${m.subject}`);
+        if (!this.touched.has(this.to)) this.to.set(`${m.from.handle}@example.com`);
+        if (!this.touched.has(this.subject)) this.subject.set(`Re: ${m.subject}`);
       });
     });
+  }
+
+  edit(field: WritableSignal<string>, value: string): void {
+    this.touched.add(field);
+    field.set(value);
   }
 
   async send(): Promise<void> {

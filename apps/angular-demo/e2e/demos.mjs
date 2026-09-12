@@ -349,9 +349,11 @@ s = await state();
 eq(s.pages.join(','), 'app-home,mail-folder,mail-thread,mail-compose', 'Thread => Compose pushed (siblings the tree would replace)');
 eq(s.title, 'Reply', 'the composer knows it is a reply from the query param');
 await page.fill('.sn-page-visible input[name=to]', 'someone@example.com'); // typed before the original arrives
+await page.fill('.sn-page-visible input[name=to]', ''); // and cleared again: still the user's choice
 await page.waitForFunction(() => document.querySelector('.sn-page-visible input[name=subject]')?.value.startsWith('Re: '));
 check(true, 'subject prefilled from the message');
-eq(await page.inputValue('.sn-page-visible input[name=to]'), 'someone@example.com', 'a field typed into while loading is left alone');
+eq(await page.inputValue('.sn-page-visible input[name=to]'), '', 'a field edited while loading is left alone, even when cleared');
+await page.fill('.sn-page-visible input[name=to]', 'mira@example.com');
 await page.fill('.sn-page-visible textarea', 'Sounds good.');
 await transitioned(() => page.click('.sn-page-visible .mail-action:has-text("Send")'), 'mail-sent-back', { timeout: 4000 });
 s = await state();
