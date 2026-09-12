@@ -1,5 +1,5 @@
-import { Component, DestroyRef, computed, effect, inject, input, resource, signal, untracked } from '@angular/core';
-import { ActivatedRoute, RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, computed, effect, inject, input, resource, signal, untracked } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { useBack } from '../../back';
 import { FakeApi } from '../fake-api';
 import { BackButton, DEMO_UI } from '../shared';
@@ -137,21 +137,19 @@ export class MailCompose {
   /** `?re=<id>`: a reply to that message, bound from the query param. */
   readonly re = input<string>();
   private readonly api = inject(FakeApi);
+  private readonly router = inject(Router);
   private readonly back = useBack();
   /** The message being replied to, if any. Its arrival prefills the fields below. */
   private readonly original = resource({ params: () => Number(this.re()) || undefined, loader: ({ params }) => this.api.email(params) });
   readonly to = signal('');
   readonly subject = signal('');
   readonly text = signal('');
-  /** True once the page was popped; a send that completes afterwards must not navigate again. */
-  private destroyed = false;
   readonly sending = signal(false);
   /** A failed send: shown above the form, the draft kept. */
   readonly error = signal<unknown>(null);
   readonly canSend = computed(() => this.to().trim() !== '' && this.subject().trim() !== '');
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => (this.destroyed = true));
     // Prefill from the original message once it arrives, but only fields the
     // user has not typed into meanwhile.
     effect(() => {
@@ -170,8 +168,9 @@ export class MailCompose {
     this.error.set(null);
     try {
       await this.api.sendMail({ to: this.to(), subject: this.subject(), text: this.text() });
-      // A browser Back during the request already popped this page.
-      if (!this.destroyed) this.back(['/mail']);
+      // A browser Back during the request already left this page. The component
+      // lives on until the pop animation ends, so ask the router, not the lifecycle.
+      if (this.router.isActive('/mail/compose', { paths: 'exact', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' })) this.back(['/mail']);
     } catch (e) {
       this.error.set(e);
     } finally {
