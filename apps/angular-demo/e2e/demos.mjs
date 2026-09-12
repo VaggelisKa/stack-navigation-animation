@@ -373,6 +373,7 @@ await page.fill('.sn-page-visible input[name=subject]', 'Left early');
 await page.click('.sn-page-visible .mail-action:has-text("Send")');
 await flush();
 check(await page.locator('.sn-page-visible .back:has-text("Cancel")').isDisabled(), 'Cancel is disabled while sending');
+check(await page.locator('.sn-page-visible input[name=subject]').isDisabled(), 'and so is the draft');
 await transitioned(() => page.goBack(), 'mail-send-then-back');
 await page.waitForTimeout(1500);
 eq((await state()).pages.join(','), 'app-home,mail-folder', 'a send that completes after a browser Back does not pop a second page');

@@ -126,9 +126,12 @@ export class MailThread {
         <demo-error [error]="e" (retry)="send()" />
       }
       <form class="mail-form" (submit)="$event.preventDefault(); send()">
+        <!-- Frozen while the request is out: it carries the draft as it was when Send was pressed. -->
+        <fieldset [disabled]="sending()">
         <label><span>To</span><input name="to" [value]="to()" (input)="edit(to, $any($event.target).value)" autocomplete="off" /></label>
         <label><span>Subject</span><input name="subject" [value]="subject()" (input)="edit(subject, $any($event.target).value)" autocomplete="off" /></label>
         <textarea name="text" rows="10" placeholder="Write something…" [value]="text()" (input)="text.set($any($event.target).value)"></textarea>
+        </fieldset>
       </form>
     </div>
   `,
