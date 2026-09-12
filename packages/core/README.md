@@ -9,9 +9,10 @@ app's own; the engine only moves them.
   page. On Android: the framework's activity transition, a short slide of both
   pages with a fade, on its own interpolator. The platform is detected from the
   browser and falls back to iOS; either look can be forced.
-- **Interactive pop**: drag from the leading edge (or from anywhere, if
-  configured) and the page follows the pointer. Release past half the width or
-  with a flick to complete; a flick back cancels.
+- **Interactive pop**: `beginInteractivePop()` sets the transition from a number
+  you supply, so a pointer of your own can drag the page and release into a
+  settle. The library ships no recognizer: in a browser tab the browser owns the
+  edge (see [Swipe-back policy](#swipe-back-policy)).
 - **Scroll and state are preserved.** Pages beneath the top stay mounted and
   hidden. Only `transform` is written, so scroll offsets, form state and focus
   survive.
@@ -70,38 +71,41 @@ So a 500 ms push costs about a dozen style writes in total rather than one per p
 
 ```js
 const stack = createNativeStack({ container, swipeBack: 'browser' });
-stack.setSwipeBack('custom');   // interactive drag; request browser suppression
-stack.setSwipeBack('disabled'); // no custom drag; request browser suppression
-stack.setSwipeBack('browser');  // no custom drag; release our suppression request
+stack.setSwipeBack('disabled'); // request browser swipe suppression
+stack.setSwipeBack('browser');  // release our suppression request (the default)
 console.log(stack.swipeBack);
 ```
 
-`SwipeBackMode` is exported as a type. Mode changes preserve the stack and history
-and cancel any active custom drag. Destroying the stack releases its policy.
+`SwipeBackMode` is `'browser' | 'disabled'` and is exported as a type. Mode changes
+preserve the stack and history. Destroying the stack releases its policy.
 Destruction is terminal: queued and subsequent navigation promises reject with
 `AbortError`, so callers should handle cancellation when tearing down a stack.
-Gesture options tune `custom` mode; they do not enable it.
 
-**Migration:** custom swiping was previously enabled by default. Pass
-`swipeBack: 'custom'` to retain it. A standalone `createEdgePanGesture()` remains
-an explicit custom recognizer and does not manage browser suppression.
+**There is no gesture recognizer here, on purpose.** Browser suppression uses
+`overscroll-behavior-x: contain` on the document root, which Safari ignores for
+its edge swipe ([WebKit #240183](https://bugs.webkit.org/show_bug.cgi?id=240183)).
+In a browser tab the browser keeps the edge whatever we ask for, so a recognizer
+of ours next to it reads as two backs at once. An app that owns the edge -- an
+installed PWA, a native webview -- can drive [`beginInteractivePop()`](#navigationstack)
+from its own pointer handling instead, which is the same API the recognizer used.
 
-Browser suppression is **best effort and document-wide**, using
-`overscroll-behavior-x: contain` on the document root. Safari and OS gestures may
-still navigate. Back/Forward buttons and keyboard navigation continue to work.
-Multiple stacks share suppression; `browser` releases only that stack's request.
-The original inline value and priority are restored when the last request ends,
-unless the application has replaced our declaration in the meantime.
-See [CSS overscroll behavior](https://drafts.csswg.org/css-overscroll/) and
-[WebKit's limitation](https://bugs.webkit.org/show_bug.cgi?id=240183).
+**Migration:** `swipeBack: 'custom'`, the `gesture` option and `createEdgePanGesture()`
+were removed. `'custom'` now throws; `'disabled'` keeps the suppression half of it.
+
+Suppression is **best effort and document-wide**. OS gestures may still navigate.
+Back/Forward buttons and keyboard navigation continue to work. Multiple stacks
+share suppression; `browser` releases only that stack's request. The original
+inline value and priority are restored when the last request ends, unless the
+application has replaced our declaration in the meantime.
+See [CSS overscroll behavior](https://drafts.csswg.org/css-overscroll/).
 Page retention and transition effects work in every mode.
 
-### `createNativeStack({ container, transition?, gesture?, swipeBack? })`
+### `createNativeStack({ container, transition?, swipeBack? })`
 
 Builds a `NavigationStack` with the platform's native transition. Set
-`swipeBack: 'custom'` to attach the edge-pan gesture. The default is `browser`.
-`transition` and `gesture` are option objects for the two factories
-below. The gesture is exposed as `stack.gesture`; `stack.destroy()` detaches it.
+`swipeBack: 'disabled'` to request browser swipe suppression; the default is
+`browser`. `transition` is the option object for the factory below.
+`stack.destroy()` releases the policy.
 
 ### `NavigationStack`
 
@@ -115,7 +119,7 @@ below. The gesture is exposed as `stack.gesture`; `stack.destroy()` detaches it.
 | `present(el, direction, opts)` | `push`, `pop` (via `popWith`) or `replace`, for callers that already resolved the direction. |
 | `remove(el)` | Drops a page wherever it sits, no animation. |
 | `reset(elements)` | Replaces the whole stack, no animation. |
-| `beginInteractivePop()` | Returns `{ update(p), finish({ complete, velocity }) }` or `null`. Used by the gesture, and usable by a custom recognizer. |
+| `beginInteractivePop()` | Returns `{ update(p), finish({ complete, velocity }) }` or `null`. Drive it from your own pointer handling: `update(p)` while the finger is down, `finish({ complete, velocity })` on release. Pops it emits carry `source: 'gesture'`. |
 | `depth`, `top`, `entries`, `busy`, `canPop()`, `entryOf(el \| key)` | State. |
 | `on(event, fn)` | Events: `push`, `pop`, `replace`, `reset`, `transitionstart`, `progress`, `transitionend`. Returns an unsubscribe function. |
 | `destroy()` | Unmounts everything. |
@@ -162,7 +166,7 @@ a path into `segments`.
 | `dimColor`, `dimMax` | `--sn-dim-color`, `--sn-dim-max` | `"#000"`, `0.1` | `"#000"`, `0` | overlay on the lower page at full open (`0.35` suits dark UIs) |
 | `shadow` | `--sn-shadow` | `-3px 0 14px rgba(0,0,0,0.16)` | `none` | box-shadow on the incoming page |
 | `settleMin`, `settleMax` | `--sn-settle-min`, `--sn-settle-max` | `120`, `400` | same | ms bounds when finishing an interactive pop |
-| `settleEase` | `--sn-settle-easing` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | `cubic-bezier(0, 0, 0, 1)` | the curve a released swipe finishes on |
+| `settleEase` | `--sn-settle-easing` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | `cubic-bezier(0, 0, 0, 1)` | the curve a released pop finishes on |
 | `settleVelocityFloor` | `--sn-settle-velocity-floor` | `900` | same | px/s assumed when the pointer was slower |
 | `timeScale` | `--sn-time-scale` | `1` | same | multiplies every duration (slow motion, tests) |
 
@@ -249,26 +253,6 @@ so a custom transition can read variables the same way. Each returns `undefined`
 rather than `NaN` for anything it cannot parse, so `?? yourDefault` is all the
 handling a value needs.
 
-### `createEdgePanGesture(options)`
-
-| Option | Default | Description |
-| --- | --- | --- |
-| `edgeWidth` | `28` | px strip on the leading edge that starts the gesture |
-| `anywhere` | `false` | recognize the drag from anywhere on the page |
-| `startSlop` | `6` | px of horizontal travel before the drag begins |
-| `verticalCancelSlop` | `10` | px of vertical travel that hands the touch to scrolling |
-| `completeThreshold` | `0.5` | fraction of the width that completes on a slow release |
-| `completeVelocity` | `500` | px/s toward the trailing edge that completes regardless |
-| `cancelVelocity` | `-500` | px/s back toward the leading edge that cancels regardless |
-
-Call `gesture.refresh()` after changing options at runtime.
-
-The leading edge is whichever edge the container reads from, so in a
-right-to-left container the strip sits on the right and back is a drag to the
-left. The recognizer and the transition both take that from `--sn-dir`, which
-the stylesheet sets under `:dir(rtl)`, falling back to the container's computed
-`direction`; set `--sn-dir: -1` yourself to flip both without an RTL document.
-
 ### `attachBrowserHistory(stack, { key = "snDepth", animateHistoryPop, onForward })`
 
 For apps without a router. Mirrors stack depth into `history.state`. Returns a
@@ -300,18 +284,24 @@ on the container, `--sn-t` and `--sn-e`, and marks the two pages taking part
 `sn-page-upper` and `sn-page-lower`. Anything of yours that should move with
 them can transition off the same four.
 
+Reading direction is a CSS question, not a JS one: the stylesheet sets
+`--sn-dir: -1` on a right-to-left container and the transform the engine writes
+is signed by it, so back is a drag to the left there. Pointer handling of your
+own should read the same variable, so it and the transition cannot disagree
+about which edge is the back edge.
+
 ## Footprint
 
 Plain ES modules, no dependencies, no work at module load: a bundler keeps only what you import, whether or not it honours the package's `sideEffects` flag (the tests bundle each entry point with that flag switched off and check what survives). Minified and gzipped, as measured by `pnpm size`:
 
 | You import | Costs |
 | --- | --- |
-| `createNativeStack` (stack, native look, swipe back) | ~5.5 kB |
+| `createNativeStack` (stack, native look, swipe policy) | ~5.1 kB |
 | `NavigationStack` with your own transition | ~2.2 kB |
 | the direction strategies | ~0.6 kB |
 | `attachBrowserHistory` | ~0.5 kB |
 | `injectStyles` | ~0.5 kB |
-| everything | ~6.9 kB |
+| everything | ~6.5 kB |
 
 ## Develop
 
@@ -328,7 +318,6 @@ src/
   navigation-stack.ts   the stack: mounting, ordering, transition lifecycle, queueing
   native-transition.ts  the look: the presets, the endpoints, the settle timing, the variables
   platform.ts           which platform the browser is, for the default preset
-  edge-pan-gesture.ts   pointer-event recognizer that drives the interactive pop
   direction.ts          push / pop / replace strategies and the resolver
   history-adapter.ts    history.state mirroring for apps without a router
   styles.ts             the CSS the engine needs, motion included, and injectStyles()

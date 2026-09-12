@@ -8,12 +8,10 @@ import { initials } from './fake-api';
 /** Settings the Lab page changes. The App applies them to the outlet. */
 @Injectable({ providedIn: 'root' })
 export class DemoPrefs {
-  /** This demo explicitly opts into custom gestures; the library default is browser. */
-  readonly swipeBack = signal<SwipeBackMode>('custom');
+  /** Who handles the back gesture. The browser does, unless Lab asks for suppression. */
+  readonly swipeBack = signal<SwipeBackMode>('browser');
   /** 4x slower transitions, for inspecting a transition mid-flight. */
   readonly slow = signal(false);
-  /** Start the back gesture from anywhere on the page, not only the leading edge. */
-  readonly anywhere = signal(false);
   /** Which platform's push/pop to run: the detected one, or either forced. */
   readonly platform = signal<'auto' | 'ios' | 'android'>('auto');
 }

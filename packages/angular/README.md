@@ -16,9 +16,10 @@ beneath the new one and the change is animated. Interactive edge swiping is opt-
 - **Pages stay alive.** The page you came from is kept beneath the top one,
   hidden. Its scroll position, form state, signals and subscriptions are intact
   when you pop back, with nothing to restore.
-- **Optional swipe back.** With `swipeBack: 'custom'`, drag from the leading edge and the page follows the pointer;
-  the router follows the gesture, through `history.back()` when that lands on the
-  right page. A `canDeactivate` guard that rejects puts the page back.
+- **Interactive pop, if you drive it.** The outlet ships no gesture: in a browser tab the browser owns
+  the edge. An app that owns it can drive `outlet.stack.beginInteractivePop()`, and the router follows,
+  through `history.back()` when that lands on the right page. A `canDeactivate` guard that rejects puts
+  the page back.
 - **Configurable direction.** Whether a navigation is a push, a pop or a replace
   comes from strategies you order: an explicit hint, the browser's back/forward,
   the kept stack, numbers on your routes, or the route tree.
@@ -70,27 +71,34 @@ the browser landed on.
 ## Swipe-back modes
 
 ```ts
-provideStackNav({ swipeBack: 'browser' }); // default
-provideStackNav({ swipeBack: 'custom', gesture: { edgeWidth: 28 } });
-provideStackNav({ swipeBack: 'disabled' });
+provideStackNav({ swipeBack: 'browser' });  // default: leave browser gestures alone
+provideStackNav({ swipeBack: 'disabled' }); // request browser swipe suppression
 ```
 
-| `swipeBack` | Our gesture | Browser gesture |
-| --- | --- | --- |
-| `browser` (default) | Off | Leave browser defaults alone |
-| `custom` | Interactive page preview | Request suppression where supported |
-| `disabled` | Off | Request suppression where supported |
+Change a single outlet live with `<sn-outlet [swipeBack]="mode()" />`. Changing
+modes preserves the pages, URL and history.
 
-Change a single outlet live with `<sn-outlet [swipeBack]="mode()" />`.
-Changing modes preserves the pages, URL and history; an active custom drag is
-cancelled. `gesture` tunes custom mode. Existing `gesture: false` prevents the
-custom recognizer from attaching: it maps `custom` to `browser`, but does not
-cancel an explicit `disabled` suppression request.
+**There is no gesture of our own to choose.** Suppression cannot stop Safari's
+edge swipe, so a recognizer next to it reads as two backs at once. An app that
+owns the edge -- an installed PWA, a native webview -- can drive the stack's
+`beginInteractivePop()` from its own pointer handling; the outlet treats the
+resulting pop exactly as it treated the old gesture's, syncing the router and
+restoring the page if a guard refuses.
 
-**Migration:** gestures used to be enabled by default. Add `swipeBack: 'custom'`
-to keep that behavior. Gesture tuning alone no longer enables swiping.
-The demos explicitly opt into custom mode and let you try all three options
-in **Lab → Swipe back** (Angular) or **Options → Swipe back** (vanilla).
+```ts
+readonly outlet = viewChild.required(StackNavOutlet);
+// on your own pointerdown/pointermove/pointerup
+const pop = this.outlet().stack.beginInteractivePop();
+pop?.update(1 - dx / width);
+void pop?.finish({ complete: dx > width / 2, velocity });
+```
+
+**Migration:** `swipeBack: 'custom'` and the `gesture` option (on both
+`provideStackNav()` and `<sn-outlet />`) were removed. `'custom'` now throws;
+`'disabled'` keeps the suppression half of what it did.
+
+The demos let you try both modes in **Lab → Swipe back** (Angular) or
+**Options → Swipe back** (vanilla).
 
 Browser suppression uses `overscroll-behavior-x: contain` on the document root.
 It is **document-wide and best effort**, not a guarantee against Safari edge
@@ -101,7 +109,7 @@ when the rest of the document should retain native swipe navigation.
 See the [CSS specification](https://drafts.csswg.org/css-overscroll/) and
 [WebKit's history navigation limitation](https://bugs.webkit.org/show_bug.cgi?id=240183).
 Browser Back/Forward buttons, keyboard navigation, router guards, page retention
-and push/pop animation are independent of this gesture policy.
+and push/pop animation are independent of this policy.
 
 ## Deciding the direction
 
@@ -198,13 +206,12 @@ the primary pointer is coarse, and not where it is a mouse. It is asked before
 every navigation, so a tablet that gets docked to a trackpad is handled too.
 
 ```ts
-provideStackNav({ animated: 'touch', gesture: isTouchPrimary() ? {} : false });
+provideStackNav({ animated: 'touch' });
 ```
 
-The swipe back is a separate decision, and a static one — the gesture is attached
-when the outlet is created — so it reads the same media query directly;
-`isTouchPrimary()` comes from `@stacknav/core`. A mouse can drag from the edge,
-which some apps want and some do not.
+`isTouchPrimary()` is exported from `@stacknav/core` for the same decision made
+once rather than per navigation — pointer handling of your own, for instance,
+if you only want it where the pointer is coarse.
 
 Pass a function instead of `'touch'` to decide it yourself, e.g. from a user
 setting or the window's width:
@@ -230,15 +237,14 @@ it.
 | `keyOf(snapshot)` | the route's URL path | identity of a page |
 | `infoKey` | `'stacknav'` | key in `NavigationExtras.info` for hints |
 | `transition` | `{}` | `createNativeTransition` options for every outlet: `platform` (`'auto'`, `'ios'`, `'android'`), duration, curve and the rest. The same options are CSS variables (`--sn-duration`, `--sn-easing`, `--sn-parallax`, `--sn-dim-max`, `--sn-shadow`, …) read off the outlet, so a stylesheet can retune them. See the [core README](../core#tuning-from-css) |
-| `swipeBack` | `browser` | `browser`, `custom`, or `disabled`; see the browser suppression limitations above |
-| `gesture` | `{}` | Custom gesture tuning; `false` disables our recognizer |
+| `swipeBack` | `browser` | `browser` or `disabled`; see the browser suppression limitations above |
 | `detachInactiveViews` | `false` | detach change detection from hidden pages |
 | `injectStyles` | `true` | insert the core stylesheet at runtime |
 | `animated` | `true` | animate at all. `'touch'` only on a coarse pointer, or a predicate asked before every navigation; see [Mobile only](#mobile-only) |
 
 ### `<sn-outlet>` (`StackNavOutlet`)
 
-Inputs: `name`, `transition`, `gesture`, `swipeBack`, `routerOutletData`.
+Inputs: `name`, `transition`, `swipeBack`, `routerOutletData`.
 
 Outputs: `activate`, `deactivate`, `attach`, `detach` (as on `router-outlet`) and
 `navigated` with `{ view, direction, animated, reused }`.

@@ -1,11 +1,11 @@
 // Drives the demo apps (feed, shop, messages, gallery, forms, search,
 // dashboard, mail, lab) through the outlet: pushes and pops across different layouts,
 // content arriving before, during and after a transition, resolvers, replaced
-// pages, a nested outlet, and the swipe gesture on all of them.
+// pages, a nested outlet, and an interactive pop on all of them.
 // Run `ng build` first.
 import { launch } from './harness.mjs';
 
-const { page, base, check, eq, section, flush, state, busy, settled, transitioned, scrollTop, setScroll, swipeBack, finish } = await launch();
+const { page, base, check, eq, section, flush, state, busy, settled, transitioned, scrollTop, setScroll, interactivePop, finish } = await launch();
 const count = async (sel) => (await flush(), page.locator(sel).count());
 const waitCount = (sel, n) => page.waitForFunction(([sel, n]) => document.querySelectorAll(sel).length >= n, [sel, n], { timeout: 8000 });
 const text = async (sel) => (await flush(), page.locator(sel).first().textContent().then((t) => t?.trim()));
@@ -167,7 +167,7 @@ await page.goto(base + '/');
 await page.waitForSelector('app-home');
 
 // ============================================================ lab + gallery
-section('gallery in slow motion: dark page, data arriving mid-transition, sibling replace, filmstrip, swipe');
+section('gallery in slow motion: dark page, data arriving mid-transition, sibling replace, filmstrip, interactive pop');
 // A deep link renders that page alone, so come back to the demos list first.
 await page.goto(base + '/');
 await page.waitForSelector('app-home');
@@ -197,17 +197,17 @@ s = await state();
 eq(s.pages.length, before + 1, '"Next" pushed instead');
 eq(s.url, '/gallery/8', 'url after next');
 const hist = await page.evaluate(() => history.length);
-await swipeBack({
+await interactivePop({
   mid: async () => {
     const m = await state();
-    eq(m.visible.join(','), 'gallery-photo,gallery-photo', 'both dark pages visible mid-swipe');
+    eq(m.visible.join(','), 'gallery-photo,gallery-photo', 'both dark pages visible mid-pop');
     await page.screenshot({ path: new URL('./shots/gallery-swipe-mid.png', import.meta.url).pathname });
   },
 });
 await page.waitForFunction(() => location.pathname === '/gallery/7');
 s = await state();
-eq(s.pages.length, before, 'swipe popped the pushed photo');
-eq(await page.evaluate(() => history.length), hist, 'swipe went back through history');
+eq(s.pages.length, before, 'the pop removed the pushed photo');
+eq(await page.evaluate(() => history.length), hist, 'the pop went back through history');
 await page.click('.sn-page-visible .gal-strip a[aria-label="Photo 9"]');
 await settled();
 eq((await state()).url, '/gallery/9', 'filmstrip still works on the revealed page');
@@ -438,14 +438,14 @@ await transitioned(() => page.goBack(), 'slow-back');
 await transitioned(() => page.click('.sn-page-visible a.item:has-text("Heavy page")'), 'heavy');
 eq(await count('.lab-stress-row'), 600, '600 rows mounted');
 await setScroll(3000);
-await swipeBack();
+await interactivePop();
 await page.waitForFunction(() => location.pathname === '/lab');
-eq((await state()).pages.join(','), 'app-home,lab-home', 'swiped the heavy page away');
+eq((await state()).pages.join(','), 'app-home,lab-home', 'popped the heavy page away');
 await transitioned(() => page.click('.sn-page-visible a.item:has-text("Wide content")'), 'wide');
 await page.locator('.sn-page-visible .lab-scroller').first().evaluate((el) => (el.scrollLeft = 200));
-await swipeBack();
+await interactivePop();
 await page.waitForFunction(() => location.pathname === '/lab');
-eq((await state()).pages.join(','), 'app-home,lab-home', 'edge swipe still pops a page full of horizontal scrollers');
+eq((await state()).pages.join(','), 'app-home,lab-home', 'an interactive pop still works on a page full of horizontal scrollers');
 await page.click('.sn-page-visible label:has-text("Every request fails")');
 await transitioned(() => page.goBack(), 'lab-home-2');
 await openDemo('Feed');

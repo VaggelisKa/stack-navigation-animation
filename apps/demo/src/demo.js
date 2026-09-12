@@ -6,22 +6,22 @@ const nav = createNativeStack({ container });
 // Let pages clean up (timers, subscriptions) when they leave the stack.
 nav.on('pop', ({ removed }) => removed.forEach((e) => e.el.dispatchEvent(new Event('sn:destroyed'))));
 
-const prefs = { swipeBack: 'custom', anywhere: false, slow: false, gentle: false };
+// The browser keeps the back gesture; 'disabled' asks it not to. The storage key
+// is versioned so a stored 'custom' from an earlier visit does not survive it.
+const prefs = { swipeBack: 'browser', slow: false, gentle: false };
 try {
-  Object.assign(prefs, JSON.parse(localStorage.getItem('stacknav-demo') || '{}'));
+  Object.assign(prefs, JSON.parse(localStorage.getItem('stacknav-demo-v2') || '{}'));
 } catch (e) {
   /* storage may be unavailable */
 }
 function applyPrefs() {
-  nav.setSwipeBack(['custom', 'browser', 'disabled'].includes(prefs.swipeBack) ? prefs.swipeBack : 'browser');
-  nav.gesture.options.anywhere = prefs.anywhere;
-  nav.gesture.refresh();
+  nav.setSwipeBack(prefs.swipeBack === 'disabled' ? 'disabled' : 'browser');
   // Both of these tune the transition from CSS alone: a variable on the
   // container and a class that sets a few of them at once (see demo.css).
   container.style.setProperty('--sn-time-scale', prefs.slow ? '4' : '1');
   container.classList.toggle('gentle', prefs.gentle);
   try {
-    localStorage.setItem('stacknav-demo', JSON.stringify(prefs));
+    localStorage.setItem('stacknav-demo-v2', JSON.stringify(prefs));
   } catch (e) {
     /* ignore */
   }
@@ -31,8 +31,8 @@ const TOPICS = [
   ['Push', 'The incoming page slides in from the trailing edge over 500 ms on cubic-bezier(0.32, 0.72, 0, 1). The page beneath slides 30 % of the width toward the leading edge and dims to 10 % black. A soft shadow rides the incoming page\'s leading edge so the two read as stacked.'],
   ['Who animates', 'Not this script. The engine writes where each page should end up and puts that phase\'s duration and curve in --sn-t and --sn-e on the container; the frames in between belong to CSS, and to the compositor. A whole 500 ms push costs about a dozen style writes, so a busy main thread cannot stutter it. The travel is a share of the page rather than a pixel count, so nothing measures layout and a resize mid-transition stays honest. Which way forward is comes from --sn-dir, flipped for right-to-left.'],
   ['Pop', 'The exact reverse. Because both movements are expressed as one number, p, how much of the upper page is showing, pop is push run backwards and nothing is duplicated.'],
-  ['Interactive pop', 'A drag from the leading edge sets p directly from the finger: p = 1 − dx / width. While the finger is down --sn-t is 0s, so nothing is animated; the page is simply where the finger says it is.'],
-  ['Release', 'Past half the width, or a flick faster than 500 px/s toward the trailing edge, completes. A flick back faster than 500 px/s cancels. Otherwise it snaps back. The remaining distance runs an ease-out whose duration comes from distance ÷ velocity, clamped to 120–400 ms, so a fast flick finishes fast and a slow release finishes slow. That number is handed to CSS and the browser runs it out.'],
+  ['Interactive pop', 'beginInteractivePop() lets an app that owns the edge -- an installed PWA, a native webview -- set p directly from the finger: p = 1 − dx / width. While the finger is down --sn-t is 0s, so nothing is animated; the page is simply where the finger says it is. The library ships no recognizer of its own: in a browser tab the browser already owns the edge.'],
+  ['Release', 'finish({ complete }) settles the rest of the way. Past half the width, or a flick faster than 500 px/s toward the trailing edge, an app would complete. A flick back faster than 500 px/s cancels. Otherwise it snaps back. The remaining distance runs an ease-out whose duration comes from distance ÷ velocity, clamped to 120–400 ms, so a fast flick finishes fast and a slow release finishes slow. That number is handed to CSS and the browser runs it out.'],
   ['Scroll', 'Pages beneath the top stay in the DOM, hidden. The transition writes only transform, so a page\'s scroll offset, form state and focus are untouched when you come back to it. No restoration logic exists because none is needed.'],
   ['Your chrome', 'A fixed header or a tab bar can read --sn-t and --sn-e and the sn-page-upper / sn-page-lower classes and move in lockstep with the pages, on the compositor, from CSS alone. For chrome that needs the number, the stack still emits progress events with (lower, upper, p) — and only runs a frame loop while something is listening.'],
   ['Tuning', 'The look is a set of CSS custom properties on the container: --sn-duration, --sn-easing, --sn-parallax, --sn-dim-color, --sn-dim-max, --sn-shadow, the three --sn-settle-* knobs and --sn-time-scale. They are read when a transition starts, so a media query, a theme class or one inline style is enough to slow the animation down or soften it. Unset ones keep the defaults. The Options page below changes nothing but CSS.'],
@@ -79,7 +79,7 @@ const homePage = () =>
       b.append(h('h2', null, 'How it works'));
       TOPICS.forEach(([t], i) => b.append(link(t, () => nav.push(topicPage(i)))));
       b.append(h('h2', null, 'Try'));
-      b.append(link('Options', () => nav.push(optionsPage()), 'gesture zone, speed, feel'));
+      b.append(link('Options', () => nav.push(optionsPage()), 'swipe policy, speed, feel'));
       b.append(link('Deep stack', () => nav.push(depthPage(2)), 'push, push, push, then swipe back'));
       b.append(h('h2', null, 'Scroll down, go in, come back'));
       FILLER.forEach((r, i) => b.append(link(r, () => nav.push(topicPage(i % TOPICS.length)))));
@@ -123,7 +123,7 @@ const optionsPage = () =>
       modes.append(h('legend', '', 'Swipe back'));
       const status = h('p', 'note', '');
       status.setAttribute('role', 'status');
-      for (const [value, label] of [['custom', 'Custom — interactive page preview'], ['browser', 'Browser — use browser defaults'], ['disabled', 'Disabled — suppress swipes where supported']]) {
+      for (const [value, label] of [['browser', 'Browser — use browser defaults'], ['disabled', 'Disabled — suppress swipes where supported']]) {
         const row = h('label', 'item', '');
         const radio = document.createElement('input');
         radio.type = 'radio';
@@ -138,15 +138,8 @@ const optionsPage = () =>
         row.append(radio, document.createTextNode(label));
         modes.append(row);
       }
-      b.append(modes, status, h('p', 'note', 'This demo starts in Custom; Browser is the library default. Custom and Disabled request browser swipe suppression, which depends on the browser and OS. Back buttons still work. Select a mode and swipe this page back.'));
+      b.append(modes, status, h('p', 'note', 'The library has no back gesture of its own: in a browser tab the browser owns the edge, and a second recognizer reads as two backs at once. Disabled asks the browser to suppress its gesture, which depends on the browser and OS. Back buttons work in both modes.'));
 
-      b.append(
-        toggle('Swipe back from anywhere', prefs.anywhere, (v) => {
-          prefs.anywhere = v;
-          applyPrefs();
-        }),
-      );
-      b.append(h('p', 'note', 'The engine recognizes the gesture from a 28 px leading-edge strip, as iOS does. Mobile browsers often claim that edge for their own back gesture; turn this on to test the interactive pop from anywhere on the page.'));
       b.append(
         toggle('Slow motion (×4)', prefs.slow, (v) => {
           prefs.slow = v;

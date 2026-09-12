@@ -15,8 +15,8 @@ bootstrapApplication(App, {
     // routes that name themselves in `data.animation`, as the Mail demo's do,
     // get their direction from a transition table.
     provideStackNav({
-      // Opt in for this interactive demo; the library defaults to browser.
-      swipeBack: 'custom',
+      // No `swipeBack` here: the browser keeps the gesture, which is both the
+      // library default and the only thing it offers. Lab switches to `disabled`.
       direction: [fromHint(), fromHistory(), fromStack(), fromAnimationData(MAIL_TRANSITIONS), fromLevel(), fromTree()],
     }),
     // Opt in: /items/1 → /items/2 becomes a new page instead of a reused component.

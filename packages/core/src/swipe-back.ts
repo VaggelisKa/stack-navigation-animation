@@ -1,5 +1,5 @@
 /** Browser suppression is best effort; browser buttons and OS gestures remain available. */
-export type SwipeBackMode = 'custom' | 'browser' | 'disabled';
+export type SwipeBackMode = 'browser' | 'disabled';
 
 interface Suppression {
   count: number;

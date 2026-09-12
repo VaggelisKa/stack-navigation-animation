@@ -7,7 +7,6 @@ import {
   type Direction,
   type DirectionResolver,
   type DirectionStrategy,
-  type EdgePanGestureOptions,
   type NativeTransitionOptions,
   type SwipeBackMode,
 } from '@stacknav/core';
@@ -42,10 +41,8 @@ export interface StackNavConfig {
   infoKey?: string;
   /** Defaults for every outlet's transition. An outlet's `transition` input overrides these per key. */
   transition?: Partial<NativeTransitionOptions>;
-  /** Default browser. Custom/disabled request document-wide browser gesture suppression where supported. */
+  /** Default browser. `disabled` requests document-wide browser gesture suppression where supported. */
   swipeBack?: SwipeBackMode;
-  /** Custom gesture tuning. `false` disables our gesture, without suppressing browser gestures on its own. */
-  gesture?: Partial<EdgePanGestureOptions> | false;
   /**
    * Detaches change detection from pages hidden beneath the top and reattaches
    * it when they are shown again. Saves work on deep stacks. Off by default.
@@ -76,7 +73,6 @@ export interface ResolvedStackNavConfig {
   keyOf: (snapshot: ActivatedRouteSnapshot) => string;
   infoKey: string;
   transition: Partial<NativeTransitionOptions>;
-  gesture: Partial<EdgePanGestureOptions> | false;
   swipeBack: SwipeBackMode;
   detachInactiveViews: boolean;
   injectStyles: boolean;
@@ -112,7 +108,6 @@ export function resolveConfig(c: StackNavConfig): ResolvedStackNavConfig {
     keyOf: c.keyOf ?? defaultKeyOf,
     infoKey: c.infoKey ?? 'stacknav',
     transition: c.transition ?? {},
-    gesture: c.gesture ?? {},
     swipeBack: c.swipeBack ?? 'browser',
     detachInactiveViews: c.detachInactiveViews ?? false,
     injectStyles: c.injectStyles ?? true,

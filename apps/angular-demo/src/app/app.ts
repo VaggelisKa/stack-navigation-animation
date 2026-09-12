@@ -44,8 +44,9 @@ export class App {
       Object.assign(stack.transition.options, nativeTransitionPreset(platform), { platform });
       stack.transition.options.timeScale = this.prefs.slow() ? 4 : 1;
       stack.transition.refresh();
-      stack.gesture.options.anywhere = this.prefs.anywhere();
-      stack.gesture.refresh();
+      // The library ships no recognizer. This is the handle an app that owns the
+      // edge would drive from its own pointer handling; the e2e suites use it.
+      (globalThis as { __snStack?: typeof stack }).__snStack = stack;
     });
   }
 }
