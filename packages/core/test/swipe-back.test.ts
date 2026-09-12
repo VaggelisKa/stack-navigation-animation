@@ -12,27 +12,29 @@ function setup(root = makeElement('html')) {
   return { root, container, stack };
 }
 
-test('browser is the default; live modes install and remove only our gesture', async () => {
-  const { root, container, stack } = setup();
+test('browser is the default; live modes only request and release suppression', async () => {
+  const { root, stack } = setup();
   root.style.setProperty(property, 'auto');
   await stack.push(makeElement(), { animated: false });
   await stack.push(makeElement(), { animated: false });
   const pages = stack.entries.slice();
   assert.equal(stack.swipeBack, 'browser');
-  assert.equal(container.children.some((el) => el.className === 'sn-edge'), false);
+  assert.equal(root.style.getPropertyValue(property), 'auto', 'browser mode leaves the document alone');
   for (let i = 0; i < 2; i++) {
-    stack.setSwipeBack('custom');
-    stack.setSwipeBack('custom');
-    assert.equal(container.children.filter((el) => el.className === 'sn-edge').length, 1);
-    assert.equal(root.style.getPropertyValue(property), 'contain');
     stack.setSwipeBack('disabled');
-    assert.equal(container.children.some((el) => el.className === 'sn-edge'), false);
-    assert.equal(container.classList.contains('sn-swipe-custom'), false);
+    stack.setSwipeBack('disabled');
     assert.equal(root.style.getPropertyValue(property), 'contain');
     stack.setSwipeBack('browser');
     assert.equal(root.style.getPropertyValue(property), 'auto');
-    assert.deepEqual(stack.entries, pages);
+    assert.deepEqual(stack.entries, pages, 'switching modes keeps the pages');
   }
+  stack.destroy();
+});
+
+test('custom is no longer a mode', () => {
+  const { stack } = setup();
+  assert.throws(() => (stack.setSwipeBack as (mode: string) => void)('custom'), { name: 'TypeError' });
+  assert.equal(stack.swipeBack, 'browser', 'a refused mode leaves the policy as it was');
   stack.destroy();
 });
 
@@ -41,14 +43,14 @@ test('shared suppression lasts until the last stack releases it, restoring inlin
   root.style.setProperty(property, 'none', 'important');
   const { stack: b } = setup(root);
   a.setSwipeBack('disabled');
-  b.setSwipeBack('custom');
+  b.setSwipeBack('disabled');
   a.setSwipeBack('browser');
   assert.equal(root.style.getPropertyValue(property), 'contain');
   a.destroy();
   b.destroy();
   assert.equal(root.style.getPropertyValue(property), 'none');
   assert.equal(root.style.getPropertyPriority(property), 'important');
-  b.setSwipeBack('custom');
+  b.setSwipeBack('disabled');
   assert.equal(root.style.getPropertyValue(property), 'none', 'destroyed stack cannot reacquire suppression');
 });
 
@@ -63,34 +65,14 @@ test('cleanup removes its own declaration but preserves newer application styles
   assert.equal(root.style.getPropertyValue(property), 'none');
 });
 
-test('changing mode during a drag cancels it without popping or leaving the stack busy', async () => {
+test('destroy during an app-driven interactive pop cancels queued navigation instead of remounting pages', async () => {
   const { stack, container } = setup();
   await stack.push(makeElement(), { animated: false });
   await stack.push(makeElement(), { animated: false });
-  stack.setSwipeBack('custom');
-  const strip = container.children.find((el) => el.className === 'sn-edge');
-  const pointer = (x) => ({ bubbles: true, pointerId: 1, pointerType: 'touch', clientX: x, clientY: 0 });
-  strip.dispatch('pointerdown', pointer(5));
-  strip.dispatch('pointermove', pointer(250));
-  assert.equal(stack.busy, true);
-  stack.setSwipeBack('browser');
-  await new Promise((resolve) => setTimeout(resolve, 20));
-  assert.equal(stack.depth, 2);
-  assert.equal(stack.busy, false);
-  stack.setSwipeBack('custom');
-  assert.equal(container.children.filter((el) => el.className === 'sn-edge').length, 1);
-  stack.destroy();
-});
-
-test('destroy during a drag cancels queued navigation instead of remounting pages', async () => {
-  const { stack, container } = setup();
-  await stack.push(makeElement(), { animated: false });
-  await stack.push(makeElement(), { animated: false });
-  stack.setSwipeBack('custom');
-  const strip = container.children.find((el) => el.className === 'sn-edge');
-  const pointer = (x) => ({ bubbles: true, pointerId: 1, pointerType: 'touch', clientX: x, clientY: 0 });
-  strip.dispatch('pointerdown', pointer(5));
-  strip.dispatch('pointermove', pointer(250));
+  // What an app that owns the edge does with its own pointer handling.
+  const handle = stack.beginInteractivePop();
+  assert.ok(handle);
+  handle.update(0.4);
   assert.equal(stack.busy, true);
   const pages = stack.entries.slice();
   let factoryCalls = 0;
@@ -103,6 +85,8 @@ test('destroy during a drag cancels queued navigation instead of remounting page
   ]);
   stack.destroy();
   const results = await pending;
+  // A drag released after destruction must not resurrect the page it was popping.
+  await handle.finish({ complete: true });
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(factoryCalls, 0, 'queued factories never execute after destruction');
   assert.deepEqual(results.map((r) => r.status), ['rejected', 'rejected']);

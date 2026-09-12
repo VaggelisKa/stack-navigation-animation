@@ -19,7 +19,7 @@ import { build, type Plugin } from 'esbuild';
 const SRC = fileURLToPath(new URL('../src/', import.meta.url));
 
 /** Every module of the package, by file name without the extension. */
-const ALL = ['animate', 'css-vars', 'direction', 'edge-pan-gesture', 'history-adapter', 'index', 'native-transition', 'navigation-stack', 'platform', 'styles', 'swipe-back'];
+const ALL = ['animate', 'css-vars', 'direction', 'history-adapter', 'index', 'native-transition', 'navigation-stack', 'platform', 'styles', 'swipe-back'];
 
 const everythingHasSideEffects: Plugin = {
   name: 'every-module-has-side-effects',
@@ -64,10 +64,10 @@ test('the history adapter alone brings in only the platform check', async () => 
   assert.deepEqual(await survivors(`export { attachBrowserHistory } from './index.ts';`), ['history-adapter', 'platform']);
 });
 
-test('NavigationStack with a custom transition leaves out the iOS look, the gesture and the parsers', async () => {
+test('NavigationStack with a custom transition leaves out the iOS look and the parsers', async () => {
   assert.deepEqual(await survivors(`export { NavigationStack } from './index.ts';`), ['animate', 'navigation-stack']);
 });
 
 test('createNativeStack leaves out direction resolution, the history adapter and the stylesheet', async () => {
-  assert.deepEqual(await survivors(`export { createNativeStack } from './index.ts';`), ['animate', 'css-vars', 'edge-pan-gesture', 'index', 'native-transition', 'navigation-stack', 'platform', 'swipe-back']);
+  assert.deepEqual(await survivors(`export { createNativeStack } from './index.ts';`), ['animate', 'css-vars', 'index', 'native-transition', 'navigation-stack', 'platform', 'swipe-back']);
 });

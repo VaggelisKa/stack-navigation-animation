@@ -38,7 +38,6 @@ import {
   injectStyles,
   segmentsOf,
   type Direction,
-  type EdgePanGestureOptions,
   type NativeStack,
   type NativeTransitionOptions,
   type NavigationSource,
@@ -71,7 +70,7 @@ interface View extends StackNavView {
   routeRef: StackNavRouteRef;
   proxy: StackNavActivatedRoute | null;
   savedContexts: Map<string, OutletContext> | null;
-  /** popped by the swipe gesture, waiting for the router to catch up */
+  /** popped by an interactive pop, waiting for the router to catch up */
   pendingRemoval: boolean;
   inputs: Subscription | null;
 }
@@ -93,8 +92,8 @@ export interface StackNavActivation {
  * ```
  *
  * Pages beneath the top stay alive, keeping scroll position, form state and
- * subscriptions. A swipe from the leading edge pops interactively, and the
- * direction of every navigation is decided by the strategies configured in
+ * subscriptions, and the direction of every navigation is decided by the
+ * strategies configured in
  * `provideStackNav()`. The element needs a height; it is the pages' scroll
  * container.
  */
@@ -108,8 +107,6 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
   @Input() name: string = PRIMARY_OUTLET;
   /** Per-outlet transition options, merged over `provideStackNav({ transition })`. */
   @Input() transition: Partial<NativeTransitionOptions> | undefined;
-  /** Per-outlet gesture options, merged over `provideStackNav({ gesture })`. `false` disables the swipe. */
-  @Input() gesture: Partial<EdgePanGestureOptions> | false | undefined;
   /** Live per-outlet override of the configured swipe policy. */
   readonly swipeBack = input<SwipeBackMode>();
   /** Same as on `router-outlet`: available to pages through `ROUTER_OUTLET_DATA`. */
@@ -161,25 +158,18 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
 
   constructor() {
     effect(() => {
-      const mode = this.swipeMode();
+      const mode = this.swipeBack() ?? this.config.swipeBack;
       this.stack?.setSwipeBack(mode);
     });
     if (this.router.componentInputBindingEnabled) this.supportsBindingToComponentInputs = true;
   }
 
-  private swipeMode(): SwipeBackMode {
-    const mode = this.swipeBack() ?? this.config.swipeBack;
-    return mode === 'custom' && (this.gesture === false || this.config.gesture === false) ? 'browser' : mode;
-  }
-
   // ------------------------------------------------------------- lifecycle
   ngOnInit(): void {
-    const gesture = this.gesture === false || this.config.gesture === false ? false : { ...(this.config.gesture || {}), ...(this.gesture || {}) };
     this.stack = createNativeStack({
       container: this.host,
       transition: { ...this.config.transition, ...(this.transition || {}) },
-      gesture: gesture || {},
-      swipeBack: this.swipeMode(),
+      swipeBack: this.swipeBack() ?? this.config.swipeBack,
     });
     if (this.config.injectStyles) injectStyles(this.document);
 
@@ -437,7 +427,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
     }
   }
 
-  /** The swipe already revealed the page beneath. Bring the router in line with it. */
+  /** The interactive pop already revealed the page beneath. Bring the router in line with it. */
   private navigateBackAfterGesture(): void {
     const lower = this.views[this.views.length - 1];
     if (!lower) return;
@@ -454,7 +444,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
     return norm(a) === norm(b);
   }
 
-  /** The router refused the navigation the swipe asked for, so put the page back. */
+  /** The router refused the navigation the pop asked for, so put the page back. */
   private restorePending(): void {
     for (const view of this.byEl.values()) {
       if (!view.pendingRemoval) continue;

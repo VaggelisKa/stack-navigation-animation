@@ -20,8 +20,7 @@
  * - `.sn-container:dir(rtl)`: reading direction is a CSS question, so the
  *   transform the engine writes is signed by `--sn-dir` rather than by JS.
  * - `.sn-page`: absolutely fills the container and is its own scroll container.
- *   `touch-action: pan-y` in custom swipe mode keeps vertical scrolling native while horizontal
- *   drags reach the gesture; `visibility: hidden` keeps pages beneath the top
+ *   `visibility: hidden` keeps pages beneath the top
  *   mounted (scroll position, form state) but out of sight and out of the
  *   accessibility tree. The identity transform is the resting state, and the
  *   containing block the dim overlay is positioned against.
@@ -35,10 +34,6 @@
  *   starts no transition.
  * - `.sn-dim`: the overlay the lower page dims behind. CSS resolves its colour;
  *   the transition supplies a fallback colour and writes its opacity.
- * - `.sn-edge`: the strip the swipe-back gesture listens on. `inset-inline-start`
- *   puts it on the leading edge in either reading direction; its width is the
- *   gesture's `edgeWidth` option, and whether it is shown at all follows from
- *   the container's classes.
  * - `.sn-busy`: no clicks land on a page that is mid-transition, and a drag
  *   does not select the text under it.
  * - `prefers-reduced-motion`: forces the phase duration to zero in CSS. The
@@ -49,12 +44,9 @@ export const STACKNAV_CSS =
   '.sn-container{position:relative;overflow:hidden}' +
   '.sn-container:dir(rtl){--sn-dir:-1}' +
   '.sn-page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;visibility:hidden;transform:translate3d(0,0,0)}' +
-  '.sn-swipe-custom > .sn-page{touch-action:pan-y}' +
   '.sn-page-visible{visibility:visible}' +
   '.sn-page-upper,.sn-page-lower{will-change:transform;transition-property:transform,opacity;transition-duration:var(--sn-t,0s);transition-timing-function:var(--sn-e,linear)}' +
   '.sn-dim{position:fixed;inset:0;z-index:2147483647;pointer-events:none;background:var(--sn-dim-color,var(--sn-dim-fallback,#000));opacity:0;transition:opacity var(--sn-t,0s) var(--sn-e,linear)}' +
-  '.sn-edge{position:absolute;inset-block:0;inset-inline-start:0;z-index:10;touch-action:none}' +
-  '.sn-container:not(.sn-can-pop) .sn-edge,.sn-container.sn-anywhere .sn-edge{display:none}' +
   '.sn-busy{user-select:none;-webkit-user-select:none}' +
   '.sn-busy .sn-page{pointer-events:none}' +
   '@media(prefers-reduced-motion:reduce){.sn-container{--sn-t:0s!important}}';

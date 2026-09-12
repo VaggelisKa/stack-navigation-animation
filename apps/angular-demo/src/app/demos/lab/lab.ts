@@ -22,12 +22,11 @@ import { BackButton, DEMO_UI, DemoNav, DemoPrefs } from '../shared';
             </select>
           </label>
           <label class="switch"><span>Slow motion (4×)</span><input type="checkbox" [checked]="prefs.slow()" (change)="prefs.slow.set($any($event.target).checked)" /><i></i></label>
-          <label class="switch"><span>Swipe back from anywhere</span><input type="checkbox" [disabled]="prefs.swipeBack() !== 'custom'" [checked]="prefs.anywhere()" (change)="prefs.anywhere.set($any($event.target).checked)" /><i></i></label>
         </div>
         <section aria-labelledby="swipe-title">
           <h2 id="swipe-title">Swipe back</h2>
           <fieldset class="swipe-modes" aria-describedby="swipe-help">
-            <legend>Choose who handles the gesture</legend>
+            <legend>Choose what happens to the browser's gesture</legend>
             @for (mode of swipeModes; track mode.value) {
               <label class="swipe-mode">
                 <input type="radio" name="swipe-back" [value]="mode.value" [checked]="prefs.swipeBack() === mode.value" (change)="prefs.swipeBack.set(mode.value)" />
@@ -35,9 +34,9 @@ import { BackButton, DEMO_UI, DemoNav, DemoPrefs } from '../shared';
               </label>
             }
           </fieldset>
-          <p id="swipe-help" class="muted">This demo starts in Browser, the library default. Suppression depends on your browser and OS — Safari keeps its edge swipe, so Custom runs next to it there. Back buttons work in every mode.</p>
+          <p id="swipe-help" class="muted">The library has no gesture of its own: in a browser tab the browser owns the edge, and a second recognizer reads as two backs at once. Suppression is best effort and depends on your browser and OS. Back buttons work in both modes.</p>
           <p class="muted" role="status">Active mode: {{ prefs.swipeBack() }}. Applies immediately to the main demo outlet.</p>
-          <a class="item" routerLink="/lab/deep/1"><span>Try the selected mode</span><small>Open a page, then swipe back or use Back</small><i>›</i></a>
+          <a class="item" routerLink="/lab/deep/1"><span>Try the selected mode</span><small>Open a page, then go back however your browser does it</small><i>›</i></a>
         </section>
         <h2>Fake backend</h2>
         <div class="frm-group">
@@ -49,16 +48,15 @@ import { BackButton, DEMO_UI, DemoNav, DemoPrefs } from '../shared';
         <a class="item" routerLink="/lab/stress"><span>Heavy page</span><small>600 rows, gradients, blur</small><i>›</i></a>
         <a class="item" routerLink="/lab/deep/1"><span>Deep stack</span><small>push without end, pop to root</small><i>›</i></a>
         <a class="item" routerLink="/lab/slow"><span>Slow page</span><small>a resolver that takes 2 s</small><i>›</i></a>
-        <a class="item" routerLink="/lab/wide"><span>Wide content</span><small>horizontal scrollers vs the edge swipe</small><i>›</i></a>
+        <a class="item" routerLink="/lab/wide"><span>Wide content</span><small>horizontal scrollers vs the browser gesture</small><i>›</i></a>
       </div>
     </div>
   `,
 })
 export class LabHome {
   readonly swipeModes = [
-    { value: 'custom', label: 'Custom', description: 'Drag the page with our interactive preview. Requests browser swipe suppression.' },
-    { value: 'browser', label: 'Browser', description: 'Our gesture is off. Use your browser’s normal back gesture.' },
-    { value: 'disabled', label: 'Disabled', description: 'Our gesture is off. Requests browser swipe suppression where supported.' },
+    { value: 'browser', label: 'Browser', description: 'The default. Use your browser’s normal back gesture.' },
+    { value: 'disabled', label: 'Disabled', description: 'Requests browser swipe suppression where supported. Back buttons still work.' },
   ] as const;
   readonly prefs = inject(DemoPrefs);
   readonly api = inject(FakeApi);
@@ -140,7 +138,7 @@ export class LabSlow {
     <div class="page lab">
       <header class="hdr"><button type="button" class="back" snBack="/lab">‹ Lab</button><h1>Wide content</h1><span class="spacer"></span></header>
       <div class="body">
-        <p class="lede">Horizontal scrollers start at the page's left edge. The swipe wins inside the edge strip; the scroller wins everywhere else.</p>
+        <p class="lede">Horizontal scrollers start at the page's left edge, where the browser's back gesture also lives. Disabled mode asks the browser to leave them alone; how well that works is the browser's call.</p>
         @for (row of rows; track row) {
           <h2>Row {{ row }}</h2>
           <div class="lab-scroller">

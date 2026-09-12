@@ -7,8 +7,8 @@ replacing it.
 
 | Package | Description |
 | --- | --- |
-| [`@stacknav/core`](packages/core) | The engine: a stack of page elements, the platform's native transition (iOS: slide, parallax, dim, shadow; Android: short slide and fade), an opt-in interactive edge-swipe pop, direction resolution, and a `history.state` adapter for apps without a router. No dependencies. |
-| [`@stacknav/angular`](packages/angular) | `<sn-outlet />`, a router outlet for Angular Router that keeps pages alive beneath the top one, animates every navigation, and supports swipe-back. It adds no navigation API of its own: the router, `routerLink` and `Location` handle navigation. |
+| [`@stacknav/core`](packages/core) | The engine: a stack of page elements, the platform's native transition (iOS: slide, parallax, dim, shadow; Android: short slide and fade), an interactive pop you can drive from a gesture of your own, direction resolution, and a `history.state` adapter for apps without a router. No dependencies. |
+| [`@stacknav/angular`](packages/angular) | `<sn-outlet />`, a router outlet for Angular Router that keeps pages alive beneath the top one, animates every navigation, and leaves the back gesture to the browser. It adds no navigation API of its own: the router, `routerLink` and `Location` handle navigation. |
 | `@stacknav/react` | Planned. |
 
 Demos: [`apps/demo`](apps/demo) (vanilla, no router) and
@@ -16,24 +16,28 @@ Demos: [`apps/demo`](apps/demo) (vanilla, no router) and
 
 ## Swipe-back modes
 
-Browser gestures are the default. Choose `swipeBack: 'custom'` for our interactive
-preview, `'browser'` to leave browser gestures alone, or `'disabled'` to disable
-ours and request browser swipe suppression where supported. Browser suppression
-is document-wide and cannot guarantee blocking Safari or OS gestures. Back buttons
-continue to work in every mode.
+The library has no back gesture of its own. In a browser tab the browser already
+owns the edge and will not give it up -- `overscroll-behavior-x` does not stop
+Safari's edge swipe ([WebKit #240183](https://bugs.webkit.org/show_bug.cgi?id=240183))
+-- so a second recognizer next to it reads as two backs at once.
+
+`swipeBack: 'browser'` (the default) leaves browser gestures alone.
+`'disabled'` requests browser swipe suppression where supported; it is
+document-wide, best effort, and cannot guarantee blocking Safari or OS gestures.
+Back buttons keep working in both.
 
 Configure this in `createNativeStack()` or `provideStackNav()`. Change it live with
-`stack.setSwipeBack(mode)` or `<sn-outlet [swipeBack]="mode()" />`.
-Existing consumers wanting the previous custom gesture default should explicitly
-set `swipeBack: 'custom'`.
+`stack.setSwipeBack(mode)` or `<sn-outlet [swipeBack]="mode()" />`. Try both in
+**Lab → Swipe back** in the Angular demo or **Options → Swipe back** in the vanilla one.
 
-Try all three in **Lab → Swipe back** in the Angular demo or **Options → Swipe
-back** in the vanilla demo. Both demos start on the default, browser mode.
+An app that *does* own the edge -- an installed PWA, a native webview -- can drive
+[`beginInteractivePop()`](packages/core#navigationstack) from its own pointer
+handling and get the same finger-tracking pop the transition is built for.
 
 ## How it works
 
 The transition is a function of one number, `p`: how much of the upper page is
-visible. Push runs `p` from 0 to 1, pop from 1 to 0, and a swipe sets `p`
+visible. Push runs `p` from 0 to 1, pop from 1 to 0, and an interactive pop sets `p`
 directly from the pointer position.
 
 Pages below the top stay mounted and hidden, so scroll position, form state and
@@ -102,7 +106,7 @@ the transition while content is loading, arriving mid-transition, or failing.
 | Search | search field in the header | debounced requests cancelled in flight, the query in the URL, results that push pages of other demos |
 | Dashboard | segmented tabs, stat tiles, bar chart, wide table | a nested `<router-outlet>` inside a kept page, tabs that replace their history entry |
 | Mail | folders, message, composer | direction from `data.animation`, the route names Angular's own route-transition recipe uses, looked up in a `transition('A => B')`-style table by an app-side strategy |
-| Lab | controls and stress pages | iOS or Android look, slow motion, swipe from anywhere, API latency and failures, a 600-row page, a stack five siblings deep, a 2 s resolver, horizontal scrollers under the edge swipe |
+| Lab | controls and stress pages | iOS or Android look, slow motion, swipe-back policy, API latency and failures, a 600-row page, a stack five siblings deep, a 2 s resolver, horizontal scrollers under the browser gesture |
 
 `pnpm e2e` builds the demo and drives it in Chromium: `e2e/run.mjs` covers the
 mechanics, `e2e/demos.mjs` covers the demo apps.

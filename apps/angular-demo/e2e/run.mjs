@@ -5,7 +5,7 @@
 import { join } from 'node:path';
 import { launch } from './harness.mjs';
 
-const { page, base, check, eq, section, state, settled, transitioned, swipeBack, scrollTop, shots, finish } = await launch();
+const { page, base, check, eq, section, state, settled, transitioned, interactivePop, scrollTop, shots, finish } = await launch();
 
 // A deep link from elsewhere: about:blank first, so no same-origin entry sits behind it.
 const deepLink = async (path) => {
@@ -64,19 +64,14 @@ mid = await transitioned(() => page.click('.sn-page-visible a:has-text("Reviews"
 s = await state();
 eq(s.pages.join(','), 'app-home,app-item,app-reviews', 'three pages kept');
 eq(s.url, '/items/3/reviews', 'url after second push');
-// a canDeactivate guard refuses the swipe, so the page must come back
+// a canDeactivate guard refuses the pop, so the page must come back
 await page.click('.sn-page-visible input[type=checkbox]');
-const box0 = await page.locator('sn-outlet').boundingBox();
-await page.mouse.move(box0.x + 6, box0.y + 300);
-await page.mouse.down();
-for (let x = 20; x <= 340; x += 40) await page.mouse.move(box0.x + x, box0.y + 300);
-await page.mouse.up();
-await settled();
+await interactivePop();
 await page.waitForTimeout(300);
 s = await state();
-eq(s.pages.join(','), 'app-home,app-item,app-reviews', 'guard refused the swipe: page restored');
+eq(s.pages.join(','), 'app-home,app-item,app-reviews', 'guard refused the pop: page restored');
 eq(s.visible.join(','), 'app-reviews', 'restored page is the visible one');
-eq(s.url, '/items/3/reviews', 'url unchanged after the refused swipe');
+eq(s.url, '/items/3/reviews', 'url unchanged after the refused pop');
 await page.click('.sn-page-visible input[type=checkbox]');
 mid = await transitioned(() => page.click('.sn-page-visible button:has-text("Item 3")'), '04-pop-reviews');
 check(mid.busy && mid.pages.length === 3, 'pop animates before the page is destroyed');
@@ -92,24 +87,20 @@ eq(s.url, '/', 'url after browser back');
 eq(await scrollTop(), homeScroll, 'home scroll position survived');
 eq(await page.textContent('.counter b'), '2', 'home component state survived');
 
-// ---- 5. swipe back from the leading edge -----------------------------------
+// ---- 5. an app-driven interactive pop --------------------------------------
 await transitioned(() => page.click('.sn-page-visible a:has-text("Item 5")'), '06-push-item5');
-const box = await page.locator('sn-outlet').boundingBox();
-const y = box.y + box.height / 2;
-await page.mouse.move(box.x + 6, y);
-await page.mouse.down();
-for (let x = 20; x <= 120; x += 20) await page.mouse.move(box.x + x, y);
-await page.screenshot({ path: join(shots, '07-swipe-mid.png') });
-s = await state();
-eq(s.visible.join(','), 'app-home,app-item', 'both pages visible mid-swipe');
-for (let x = 140; x <= 320; x += 30) await page.mouse.move(box.x + x, y);
-await page.mouse.up();
-await settled();
+await interactivePop({
+  mid: async () => {
+    await page.screenshot({ path: join(shots, '07-swipe-mid.png') });
+    const m = await state();
+    eq(m.visible.join(','), 'app-home,app-item', 'both pages visible mid-pop');
+  },
+});
 await page.waitForFunction(() => location.pathname === '/');
 s = await state();
-eq(s.pages.join(','), 'app-home', 'swipe popped the page');
-eq(s.url, '/', 'router followed the swipe (history back)');
-eq(await page.evaluate(() => history.length), 3, 'swipe used history.back(), not a new entry');
+eq(s.pages.join(','), 'app-home', 'the pop removed the page');
+eq(s.url, '/', 'router followed the pop (history back)');
+eq(await page.evaluate(() => history.length), 3, 'the pop used history.back(), not a new entry');
 eq(await scrollTop(), homeScroll, 'home scroll position still intact');
 
 // ---- 6. numbered screens: settings (2) -> about (3) -> settings -> home ----
@@ -134,16 +125,11 @@ await page.click('.sn-page-visible button:has-text("About, as a replace")');
 await settled();
 s = await state();
 eq(s.pages.join(','), 'app-home,app-about', 'about replaced settings above home');
-const box2 = await page.locator('sn-outlet').boundingBox();
-await page.mouse.move(box2.x + 6, box2.y + 300);
-await page.mouse.down();
-for (let x = 20; x <= 340; x += 40) await page.mouse.move(box2.x + x, box2.y + 300);
-await page.mouse.up();
-await settled();
+await interactivePop();
 await page.waitForFunction(() => location.pathname === '/');
 await page.waitForTimeout(600);
 s = await state();
-eq(s.pages.join(','), 'app-home', 'swipe revealed home, not the replaced settings entry');
+eq(s.pages.join(','), 'app-home', 'the pop revealed home, not the replaced settings entry');
 eq(s.url, '/', 'router navigated to home rather than back to /settings');
 eq(await page.textContent('.counter b'), '2', 'the kept home survived');
 
@@ -282,7 +268,7 @@ eq(run.rest.inline, '|', 'no inline transform survives');
 eq(run.rest.promoted, 0, 'no page is left promoted at rest');
 eq(run.rest.top, 0, 'the resting page sits at the origin, from CSS');
 
-// The pointer sets p directly; only the release is a run CSS owns.
+// The app sets p directly; only the release is a run CSS owns.
 const dragged = [];
 const readDrag = () =>
   page.evaluate(() => {
@@ -293,7 +279,7 @@ const readDrag = () =>
       x: upper ? new DOMMatrixReadOnly(getComputedStyle(upper).transform).m41 : null,
     };
   });
-await swipeBack({ until: 0.8, mid: async () => {
+await interactivePop({ until: 0.8, mid: async () => {
   dragged.push(await readDrag());
   const colors = await page.evaluate(() => {
     const outlet = document.querySelector('sn-outlet');
@@ -308,11 +294,11 @@ await swipeBack({ until: 0.8, mid: async () => {
     return result;
   });
   eq(colors.fallback, 'rgb(0, 0, 0)', 'the dim uses the default JS colour as a CSS fallback');
-  eq(colors.dim, 'rgb(12, 34, 56)', 'CSS colour changes apply during a drag without refresh');
-  eq(colors.shadow, 'none', 'CSS shadow changes apply during a drag without refresh');
+  eq(colors.dim, 'rgb(12, 34, 56)', 'CSS colour changes apply mid-pop without refresh');
+  eq(colors.shadow, 'none', 'CSS shadow changes apply mid-pop without refresh');
 } });
-eq(dragged[0]?.duration, '0s', 'while the pointer is down nothing animates');
-check(dragged[0]?.x > 20, `the page tracks the pointer (${Math.round(dragged[0]?.x)}px)`);
+eq(dragged[0]?.duration, '0s', 'while the app is setting p nothing animates');
+check(dragged[0]?.x > 20, `the page follows p (${Math.round(dragged[0]?.x)}px)`);
 s = await state();
 eq(s.pages.join(','), 'app-home', 'the settle ran and the page was popped');
 
@@ -329,33 +315,38 @@ const policy = () => page.evaluate(() => ({
   url: location.pathname,
 }));
 const initial = await policy();
-await mode('browser').check();
-await page.waitForFunction(() => !document.querySelector('sn-outlet > .sn-edge'));
-eq((await policy()).touch, 'auto', 'browser mode restores native touch handling');
-eq((await policy()).overscroll, 'auto', 'browser mode releases viewport suppression');
-await swipeBack();
-eq((await state()).url, '/lab', 'mouse drag does not invoke a custom pop in browser mode');
+eq(initial.strip, 0, 'the library ships no edge strip');
+eq(initial.touch, 'auto', 'no mode claims the page’s touch handling');
+eq(initial.overscroll, 'auto', 'browser mode leaves the document alone');
+// The mode custom code used to ask for is gone from the API, not just the UI.
+eq(
+  await page.evaluate(() => {
+    try { globalThis.__snStack.setSwipeBack('custom'); return 'accepted'; } catch (e) { return e.name; }
+  }),
+  'TypeError',
+  'custom is no longer a mode',
+);
+eq((await policy()).overscroll, 'auto', 'a refused mode leaves the policy as it was');
 await mode('disabled').check();
 await page.waitForFunction(() => getComputedStyle(document.documentElement).overscrollBehaviorX === 'contain');
-eq((await policy()).strip, 0, 'disabled mode has no custom recognizer');
-await swipeBack();
-eq((await state()).url, '/lab', 'disabled mode ignores custom drags');
 eq((await policy()).historyLength, initial.historyLength, 'switching modes does not rewrite history');
 await page.screenshot({ path: join(shots, 'swipe-back-modes.png'), fullPage: true });
+// Suppressing the browser gesture must not touch any other way back.
 await transitioned(() => page.locator('lab-home a').filter({ hasText: 'Try the selected mode' }).click());
 await transitioned(() => page.locator('lab-deep button.back').click());
-eq((await state()).url, '/lab', 'Back button works with gestures disabled');
+eq((await state()).url, '/lab', 'Back button works with browser gestures suppressed');
 await transitioned(() => page.goBack());
-eq((await state()).url, '/', 'browser history Back works with gestures disabled');
+eq((await state()).url, '/', 'browser history Back works with browser gestures suppressed');
 await transitioned(() => page.goForward());
 eq((await state()).url, '/lab', 'browser history Forward still works');
-await mode('browser').check();
-await mode('browser').focus();
+// An app that owns the edge can still drive a pop, whatever the policy says.
+await transitioned(() => page.locator('lab-home a').filter({ hasText: 'Try the selected mode' }).click());
+await interactivePop();
+eq((await state()).url, '/lab', 'an app-driven interactive pop works in disabled mode');
+await mode('disabled').focus();
 await page.keyboard.press('ArrowUp');
-await page.waitForFunction(() => document.querySelector('lab-home input[value="custom"]').checked);
-await page.waitForSelector('sn-outlet > .sn-edge');
-eq((await policy()).touch, 'pan-y', 'keyboard selection enables custom touch handling');
-await swipeBack();
-eq((await state()).url, '/', 'custom mode still completes an interactive pop after mode changes');
+await page.waitForFunction(() => document.querySelector('lab-home input[value="browser"]').checked);
+await page.waitForFunction(() => getComputedStyle(document.documentElement).overscrollBehaviorX === 'auto');
+eq((await policy()).overscroll, 'auto', 'keyboard selection releases viewport suppression');
 
 await finish();

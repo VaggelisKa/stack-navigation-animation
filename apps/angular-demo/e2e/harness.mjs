@@ -10,7 +10,7 @@ const ROOT = new URL('../dist/browser/', import.meta.url).pathname;
 const SHOTS = new URL('./shots/', import.meta.url).pathname;
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.map': 'application/json' };
 
-export async function launch({ width = 420, height = 800, swipeBack: swipeBackMode = 'custom' } = {}) {
+export async function launch({ width = 420, height = 800 } = {}) {
   const server = createServer(async (req, res) => {
     const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     let file = join(ROOT, path);
@@ -24,9 +24,6 @@ export async function launch({ width = 420, height = 800, swipeBack: swipeBackMo
   const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
   const browser = await chromium.launch({ executablePath });
   const page = await browser.newPage({ viewport: { width, height } });
-  // The demo starts in browser mode, like the library. These suites exercise our
-  // own recognizer, so they ask the demo for it before the app boots.
-  await page.addInitScript((mode) => (globalThis.__snSwipeBack = mode), swipeBackMode);
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
@@ -70,19 +67,30 @@ export async function launch({ width = 420, height = 800, swipeBack: swipeBackMo
   const top = () => page.locator('sn-outlet > .sn-page-visible').last();
   const scrollTop = () => page.evaluate(() => document.querySelector('sn-outlet > .sn-page-visible').scrollTop);
   const setScroll = (y) => page.evaluate((y) => (document.querySelector('sn-outlet > .sn-page-visible').scrollTop = y), y);
-  /** Drags from the leading edge. `until` is how far across (0–1) to drag before releasing; `mid` runs at the halfway point. */
-  const swipeBack = async ({ until = 0.8, y: yFrac = 0.5, mid } = {}) => {
-    const box = await page.locator('sn-outlet').boundingBox();
-    const y = box.y + box.height * yFrac;
-    const end = box.width * until;
-    await page.mouse.move(box.x + 6, y);
-    await page.mouse.down();
-    let x = 20;
-    for (; x <= end / 2; x += 30) await page.mouse.move(box.x + x, y);
+  /**
+   * The library ships no gesture recognizer: in a browser tab the browser owns
+   * the edge. This drives `beginInteractivePop()` the way an app that does own
+   * the edge would, through the stack the demo exposes for exactly this.
+   * `until` is how far across (0–1) to drag before releasing; `mid` runs at the
+   * halfway point; `complete` is what the app would decide from distance and
+   * velocity on release.
+   */
+  const interactivePop = async ({ until = 0.8, mid, complete = true } = {}) => {
+    const began = await page.evaluate(() => {
+      globalThis.__snPop = globalThis.__snStack?.beginInteractivePop();
+      return !!globalThis.__snPop;
+    });
+    if (!began) return false;
+    const to = (p) => page.evaluate((v) => globalThis.__snPop.update(v), p);
+    const half = until / 2;
+    for (let d = 0.05; d < half; d += 0.1) await to(1 - d);
+    await to(1 - half);
     if (mid) await mid();
-    for (; x <= end; x += 30) await page.mouse.move(box.x + x, y);
-    await page.mouse.up();
+    for (let d = half; d < until; d += 0.1) await to(1 - d);
+    await to(1 - until);
+    await page.evaluate((c) => globalThis.__snPop.finish({ complete: c, velocity: 0 }), complete);
     await settled();
+    return true;
   };
 
   const finish = async () => {
@@ -96,5 +104,5 @@ export async function launch({ width = 420, height = 800, swipeBack: swipeBackMo
     process.exit(failures ? 1 : 0);
   };
 
-  return { page, base, browser, server, errors, check, eq, section, flush, state, busy, settled, transitioned, top, scrollTop, setScroll, swipeBack, shots: SHOTS, finish };
+  return { page, base, browser, server, errors, check, eq, section, flush, state, busy, settled, transitioned, top, scrollTop, setScroll, interactivePop, shots: SHOTS, finish };
 }
