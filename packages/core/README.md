@@ -11,6 +11,9 @@ styling stay the app's own; the engine only moves them.
 - **Scroll and state are preserved.** Pages beneath the top stay mounted and
   hidden. Only `transform` is written, so scroll offsets, form state and focus
   survive.
+- **CSS runs the animation.** The engine writes where the pages should end up
+  and hands the browser that phase's duration and curve; the frames in between
+  are the compositor's, not the main thread's.
 - **Direction resolution** for router-driven apps: composable strategies decide
   push / pop / replace.
 - **Browser back** for apps without a router, through an optional history
@@ -19,8 +22,8 @@ styling stay the app's own; the engine only moves them.
 - **Tunable from CSS.** Duration, curve, parallax, dim and shadow are custom
   properties on the container, so a media query or theme class can retune the
   animation without touching the app's JS.
-- **Custom chrome.** Subscribe to `progress` events and drive a fixed header or
-  tab bar from the same `p`.
+- **Custom chrome.** Move a header or a tab bar in step with the pages from CSS,
+  or subscribe to `progress` events and drive it from the same `p`.
 - No dependencies. Plain ES modules with type declarations.
 
 ## Use
@@ -44,6 +47,18 @@ styling stay the app's own; the engine only moves them.
 The container needs a height; it becomes `position: relative; overflow: hidden`.
 Each page is an element you create. The stack gives it
 `position: absolute; inset: 0; overflow-y: auto` and manages its visibility.
+
+## How it moves
+
+The engine does not animate anything. For each phase it writes two custom properties on the container — `--sn-t` and `--sn-e`, the duration and curve in force — and then writes where the pages should end up. CSS does the rest:
+
+| Phase | `--sn-t` | What is written |
+| --- | --- | --- |
+| push / pop | the transition's `duration` | the far endpoint, once |
+| a finger on the screen | `0s` | the current `p`, per pointer move |
+| the release | `settle()`'s duration | the endpoint it is settling to, once |
+
+So a 500 ms push costs about a dozen style writes in total rather than one per page per frame, the travel is a percentage of the page (no layout is ever measured), and `transform` and `opacity` stay on the compositor — a busy main thread no longer stutters the transition. `prefers-reduced-motion` is a media query in the stylesheet, so it wins even over a duration the engine wrote.
 
 ## API
 
@@ -164,7 +179,13 @@ variable name.
 A transition is just
 `{ duration, ease, settle(), begin?(), apply(lower, upper, p), end?() }`, so you
 can write a different one (a fade, a vertical sheet) and pass it to
-`new NavigationStack({ container, transition })`. `cssVars()` and the
+`new NavigationStack({ container, transition })`. `apply` is a declarative
+write, not a frame: the stack calls it once at each end of a phase and lets CSS
+interpolate between them, so keep it to `transform` and `opacity` and the
+browser keeps it off the main thread. `ease` is sampled to report `progress`,
+but its `css` property is what drives the pixels — `cubicBezier()` and
+`parseEasing()` set one, and a bare `(t) => number` of your own does not, so
+such a curve runs `linear` on screen unless you give it a `css` property too. `cssVars()` and the
 `parseTime` / `parseNumber` / `parseRatio` / `parseEasing` helpers are exported
 so a custom transition can read variables the same way. Each returns `undefined`
 rather than `NaN` for anything it cannot parse, so `?? yourDefault` is all the
@@ -184,6 +205,12 @@ handling a value needs.
 
 Call `gesture.refresh()` after changing options at runtime.
 
+The leading edge is whichever edge the container reads from, so in a
+right-to-left container the strip sits on the right and back is a drag to the
+left. The recognizer and the transition both take that from `--sn-dir`, which
+the stylesheet sets under `:dir(rtl)`, falling back to the container's computed
+`direction`; set `--sn-dir: -1` yourself to flip both without an RTL document.
+
 ### `attachBrowserHistory(stack, { key = "snDepth", animateHistoryPop, onForward })`
 
 For apps without a router. Mirrors stack depth into `history.state`. Returns a
@@ -191,14 +218,29 @@ detach function. `animateHistoryPop` defaults to `false` on iOS browsers and
 `true` elsewhere. Forward navigation has no page to show, so by default it
 bounces back; pass `onForward(targetDepth)` to re-push something instead.
 
+### Your own chrome
+
+A header or tab bar that should move with the pages can read the same state the engine gives CSS — `--sn-t` and `--sn-e` on the container, and the `sn-page-upper` / `sn-page-lower` classes on the two pages taking part — and it will run on the compositor alongside them:
+
+```css
+.my-header { transition: opacity var(--sn-t) var(--sn-e); }
+```
+
+For chrome that needs the number itself, `progress` still fires with `(lower, upper, p)`. It now costs a frame loop, so the engine only runs one while something is subscribed.
+
 ### Styles
 
-`injectStyles()` inserts the engine's four rules once. `STACKNAV_CSS` is the same
+`injectStyles()` inserts the engine's rules once. `STACKNAV_CSS` is the same
 CSS as a string, minified because it rides along in your JS bundle, and
-`@stacknav/core/stacknav.css` is the same CSS as a readable file. It covers
-layout only and declares no custom properties: the tuning variables above are
-listed in a comment in the file rather than set, so that leaving one out means
-"use the default".
+`@stacknav/core/stacknav.css` is the same CSS as a readable file.
+
+It covers layout and the motion itself — the `transition` rules the pages run
+on — and declares none of the tuning variables above: they are listed in a
+comment in the file rather than set, so that leaving one out means "use the
+default". While a phase is in flight the engine writes two properties of its own
+on the container, `--sn-t` and `--sn-e`, and marks the two pages taking part
+`sn-page-upper` and `sn-page-lower`. Anything of yours that should move with
+them can transition off the same four.
 
 ## Footprint
 
@@ -206,12 +248,12 @@ Plain ES modules, no dependencies, no work at module load: a bundler keeps only 
 
 | You import | Costs |
 | --- | --- |
-| `createIOSStack` (stack, iOS look, swipe back) | ~4.1 kB |
-| `NavigationStack` with your own transition | ~2.0 kB |
+| `createIOSStack` (stack, iOS look, swipe back) | ~4.5 kB |
+| `NavigationStack` with your own transition | ~2.4 kB |
 | the direction strategies | ~0.6 kB |
-| `attachBrowserHistory` | ~0.4 kB |
-| `injectStyles` | ~0.3 kB |
-| everything | ~5.4 kB |
+| `attachBrowserHistory` | ~0.5 kB |
+| `injectStyles` | ~0.5 kB |
+| everything | ~5.9 kB |
 
 ## Develop
 
@@ -223,13 +265,13 @@ pnpm size         # what each entry point costs, minified + gzipped (after a bui
 
 ```
 src/
-  animate.ts            cubic-bezier solver, cancellable tween, easings
+  animate.ts            curves CSS and JS can both read, the tween, the waits
   css-vars.ts           reading and parsing the engine's custom properties
   navigation-stack.ts   the stack: mounting, ordering, transition lifecycle, queueing
-  ios-transition.ts     the look: slide, parallax, dim, shadow, settle timing
+  ios-transition.ts     the look: the endpoints, the settle timing, the variables
   edge-pan-gesture.ts   pointer-event recognizer that drives the interactive pop
   direction.ts          push / pop / replace strategies and the resolver
   history-adapter.ts    history.state mirroring for apps without a router
-  styles.ts             the CSS the engine needs, and injectStyles()
+  styles.ts             the CSS the engine needs, motion included, and injectStyles()
   index.ts              exports + createIOSStack()
 ```

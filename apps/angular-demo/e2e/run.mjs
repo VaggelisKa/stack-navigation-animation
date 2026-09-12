@@ -5,7 +5,7 @@
 import { join } from 'node:path';
 import { launch } from './harness.mjs';
 
-const { page, base, check, eq, state, settled, transitioned, scrollTop, shots, finish } = await launch();
+const { page, base, check, eq, section, state, settled, transitioned, swipeBack, scrollTop, shots, finish } = await launch();
 
 // A deep link from elsewhere: about:blank first, so no same-origin entry sits behind it.
 const deepLink = async (path) => {
@@ -182,5 +182,97 @@ await transitioned(() => page.click('.sn-page-visible button:has-text("Back")'),
 s = await state();
 eq(s.pages.join(','), 'app-home', 'Back with no entry behind fell back to home');
 eq(s.url, '/', 'url after falling back');
+
+
+// ---- 12. the browser, not JavaScript, is running the transition -------------
+// Only a real engine can show this, so it is checked here rather than in the
+// core's unit tests: the pages move on a CSS transition the browser owns, the
+// numbers behind the look reach it from the stylesheet, and a whole push costs
+// a handful of style writes instead of one per page per frame.
+section('CSS runs the animation');
+await page.goto(base + '/');
+await page.waitForSelector('app-home');
+const run = await page.evaluate(async () => {
+  const outlet = document.querySelector('sn-outlet');
+  const x = (el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m41;
+  const frames = [];
+  let writes = 0;
+  const obs = new MutationObserver((records) => (writes += records.length));
+  obs.observe(outlet, { attributeFilter: ['style'], subtree: true });
+
+  [...outlet.querySelectorAll('.sn-page-visible a')].find((a) => a.textContent.includes('Item 3')).click();
+  for (let i = 0; i < 6; i++) {
+    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => setTimeout(r, 45));
+    const upper = outlet.querySelector('.sn-page-upper');
+    const lower = outlet.querySelector('.sn-page-lower');
+    const dim = outlet.querySelector('.sn-dim');
+    if (!upper || !lower || !dim) continue;
+    frames.push({
+      duration: getComputedStyle(outlet).getPropertyValue('--sn-t').trim(),
+      ease: getComputedStyle(outlet).getPropertyValue('--sn-e').trim(),
+      upper: x(upper),
+      lower: x(lower),
+      dim: +getComputedStyle(dim).opacity,
+      shadowed: getComputedStyle(upper).boxShadow !== 'none',
+      transitions: getComputedStyle(upper).transitionProperty,
+      owned: upper.getAnimations().map((a) => `${a.transitionProperty}@${a.effect.getTiming().duration}`),
+    });
+  }
+  await new Promise((r) => setTimeout(r, 700));
+  obs.disconnect();
+  const pages = [...outlet.querySelectorAll(':scope > .sn-page')];
+  return {
+    frames,
+    writes,
+    rest: {
+      duration: getComputedStyle(outlet).getPropertyValue('--sn-t').trim(),
+      roles: outlet.querySelectorAll('.sn-page-upper, .sn-page-lower').length,
+      dims: outlet.querySelectorAll('.sn-dim').length,
+      inline: pages.map((p) => p.style.transform).join('|'),
+      promoted: pages.filter((p) => getComputedStyle(p).willChange !== 'auto').length,
+      top: x(pages.at(-1)),
+    },
+  };
+});
+const f = run.frames;
+check(f.length >= 3, `sampled the push mid-flight (${f.length} frames)`);
+check(f[0].owned.includes('transform@500'), `the browser owns the transform run (${f[0].owned.join() || 'none'})`);
+eq(f[0].duration, '500ms', 'the container tells CSS how long the phase is');
+eq(f[0].ease, 'cubic-bezier(0.32, 0.72, 0, 1)', 'and on what curve');
+check(f[0].shadowed, 'the incoming page carries the shadow');
+// A transition of your own may fade a page rather than move it, and the README
+// offers that; the role classes have to cover opacity for the browser to run it.
+check(/transform/.test(f[0].transitions) && /opacity/.test(f[0].transitions), `a moving page transitions transform and opacity (${f[0].transitions})`);
+check(f[0].upper > 50 && f.at(-1).upper < f[0].upper, `the upper page slides in (${f.map((r) => Math.round(r.upper)).join(' \u2192 ')}px)`);
+const parallax = Math.min(...f.map((r) => r.lower));
+check(parallax < -1 && parallax > -420 * 0.31, `the lower page parallaxes by --sn-parallax (${f.map((r) => Math.round(r.lower)).join(' \u2192 ')}px)`);
+const dimmed = Math.max(...f.map((r) => r.dim));
+check(dimmed > 0.02 && dimmed <= 0.1, `the dim rises to --sn-dim-max (${f.map((r) => r.dim.toFixed(3)).join(' \u2192 ')})`);
+check(run.writes <= 20, `a whole 500ms push costs ${run.writes} style writes`);
+eq(run.rest.duration, '0s', 'nothing is animating once it is over');
+eq(run.rest.roles, 0, 'the transition roles are dropped');
+eq(run.rest.dims, 0, 'the dim overlay is gone');
+eq(run.rest.inline, '|', 'no inline transform survives');
+eq(run.rest.promoted, 0, 'no page is left promoted at rest');
+eq(run.rest.top, 0, 'the resting page sits at the origin, from CSS');
+
+// The pointer sets p directly; only the release is a run CSS owns.
+const dragged = [];
+const readDrag = () =>
+  page.evaluate(() => {
+    const outlet = document.querySelector('sn-outlet');
+    const upper = outlet.querySelector('.sn-page-upper');
+    return {
+      duration: getComputedStyle(outlet).getPropertyValue('--sn-t').trim(),
+      x: upper ? new DOMMatrixReadOnly(getComputedStyle(upper).transform).m41 : null,
+    };
+  });
+await swipeBack({ until: 0.8, mid: async () => dragged.push(await readDrag()) });
+eq(dragged[0]?.duration, '0s', 'while the pointer is down nothing animates');
+check(dragged[0]?.x > 20, `the page tracks the pointer (${Math.round(dragged[0]?.x)}px)`);
+s = await state();
+eq(s.pages.join(','), 'app-home', 'the settle ran and the page was popped');
+
 
 await finish();

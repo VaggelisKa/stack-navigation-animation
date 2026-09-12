@@ -32,22 +32,28 @@ test('settle derives duration from distance / velocity, clamped', () => {
   assert.equal(t.settle({ remainingPx: 180, velocity: -2000 }).duration, 120, 'uses |velocity|');
 });
 
-test('apply moves upper by (1-p)·w and lower by -p·parallax·w with dim', () => {
+// The travel is a share of the page, not a pixel count, so the engine never
+// measures the container and CSS keeps the reading direction.
+const shift = (percent: string) => `translate3d(calc(${percent}% * var(--sn-dir,1)),0,0)`;
+
+test('apply moves upper by (1-p) and lower by -p·parallax, with dim', () => {
   const t = createIOSTransition({ parallax: 0.3, dimMax: 0.1 });
   const { lower, upper } = entries();
   t.begin(lower, upper);
   assert.equal(upper.el.style.boxShadow, t.options.shadow);
   t.apply(lower, upper, 0.5);
-  assert.equal(upper.el.style.transform, 'translate3d(200px,0,0)');
-  assert.equal(lower.el.style.transform, 'translate3d(-60px,0,0)');
+  assert.equal(upper.el.style.transform, shift('50'));
+  assert.equal(lower.el.style.transform, shift('-15'));
   const dim = lower.el.children[0];
+  assert.equal(dim.classes.has('sn-dim'), true, 'the overlay is styled by the stylesheet');
   assert.equal(dim.attrs['aria-hidden'], 'true');
   assert.equal(dim.style.opacity, '0.05');
   t.apply(lower, upper, 1);
-  assert.equal(upper.el.style.transform, 'translate3d(0px,0,0)');
+  assert.equal(upper.el.style.transform, shift('0'));
   assert.equal(dim.style.opacity, '0.1');
   t.end(lower, upper);
   assert.equal(upper.el.style.boxShadow, '');
+  assert.equal(upper.el.style.transform, '');
   assert.equal(lower.el.children.length, 0, 'dim overlay removed');
 });
 
@@ -56,8 +62,33 @@ test('apply works with no lower page (first push)', () => {
   const { upper } = entries();
   t.begin(null, upper);
   t.apply(null, upper, 0);
-  assert.equal(upper.el.style.transform, 'translate3d(400px,0,0)');
+  assert.equal(upper.el.style.transform, shift('100'));
   t.end(null, upper);
+});
+
+test('apply reads no layout, so the width never enters JavaScript', () => {
+  const t = createIOSTransition();
+  const { container, lower, upper } = entries();
+  Object.defineProperty(container, 'clientWidth', {
+    get() {
+      throw new Error('the transition measured the container');
+    },
+  });
+  t.begin(lower, upper);
+  t.apply(lower, upper, 0.25);
+  t.end(lower, upper);
+});
+
+test('the curve is handed to CSS, not evaluated for it', () => {
+  const t = createIOSTransition();
+  const { container, lower, upper } = entries();
+  t.begin(lower, upper);
+  assert.equal(t.ease.css, 'cubic-bezier(0.32, 0.72, 0, 1)');
+  assert.equal(t.settle({ remainingPx: 100, velocity: 900 }).ease.css, 'cubic-bezier(0.2, 0.8, 0.2, 1)');
+  container.vars['--sn-easing'] = 'ease-in';
+  t.refresh();
+  assert.equal(t.ease.css, 'cubic-bezier(0.42, 0, 1, 1)', 'a curve parsed from CSS can be spelled back for CSS');
+  t.end(lower, upper);
 });
 
 test('CSS variables on the container override the JS options', () => {
@@ -77,7 +108,7 @@ test('CSS variables on the container override the JS options', () => {
   assert.equal(t.ease(0.25), 0.25, 'linear');
   assert.equal(upper.el.style.boxShadow, 'none');
   t.apply(lower, upper, 0.5);
-  assert.equal(lower.el.style.transform, 'translate3d(-100px,0,0)');
+  assert.equal(lower.el.style.transform, shift('-25'), 'parallax 50% of a half-open page');
   assert.equal(lower.el.children[0].style.opacity, '0.2');
   assert.equal(lower.el.children[0].style.background, '#123456');
   assert.equal(t.options.duration, 500, 'the JS options are left alone');
@@ -92,7 +123,7 @@ test('unset variables fall through to the JS options', () => {
   t.begin(lower, upper);
   assert.equal(t.duration, 300, 'an unparseable value is ignored');
   t.apply(lower, upper, 1);
-  assert.equal(lower.el.style.transform, 'translate3d(-200px,0,0)');
+  assert.equal(lower.el.style.transform, shift('-50'));
   t.end(lower, upper);
 });
 

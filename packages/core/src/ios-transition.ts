@@ -5,7 +5,13 @@ import type { SettleInput, StackEntry, Transition } from './navigation-stack.ts'
 export interface IOSTransitionOptions {
   /** ms, programmatic push/pop */
   duration: number;
-  /** the curve a programmatic push/pop runs on */
+  /**
+   * the curve a programmatic push/pop runs on. CSS runs it, so it has to be
+   * one CSS can spell: everything `cubicBezier()` and `parseEasing()` build
+   * carries a `css` property. A bare `(t) => number` of your own has none, so
+   * the pages would run `linear` while `progress` reported your curve; give it
+   * a `css` property, or write the whole transition yourself.
+   */
   ease: Easing;
   /** fraction of the width the lower page travels */
   parallax: number;
@@ -17,7 +23,7 @@ export interface IOSTransitionOptions {
   /** ms bounds for finishing an interactive pop */
   settleMin: number;
   settleMax: number;
-  /** the curve the remaining distance of an interactive pop runs on */
+  /** the curve the remaining distance of an interactive pop runs on; see `ease` */
   settleEase: Easing;
   /** px/s assumed when the pointer was slower than this */
   settleVelocityFloor: number;
@@ -53,9 +59,6 @@ export interface IOSTransition extends Transition {
   refresh(el?: Element | null): void;
 }
 
-const DIM = /*#__PURE__*/ Symbol('dim');
-type Dimmable = StackEntry & { [DIM]?: HTMLElement };
-
 /**
  * The iOS navigation transition: the upper page slides in from the trailing
  * edge with a shadow on its leading edge, while the lower page parallaxes
@@ -65,6 +68,11 @@ type Dimmable = StackEntry & { [DIM]?: HTMLElement };
  * `IOS_TRANSITION_CSS_VARS`), read when a transition starts. A variable that
  * is set wins over the JS option, so a stylesheet can slow the animation down
  * or restyle it per theme without the app rebuilding the transition.
+ *
+ * p is only ever written at the ends of a phase. The stack puts that phase's
+ * duration and curve in `--sn-t` / `--sn-e` and CSS interpolates between the
+ * two writes, so the animation costs a handful of style writes rather than one
+ * per page per frame, and runs on the compositor rather than the main thread.
  */
 export function createIOSTransition(options: Partial<IOSTransitionOptions> = {}): IOSTransition {
   const o: IOSTransitionOptions = {
@@ -104,18 +112,24 @@ export function createIOSTransition(options: Partial<IOSTransitionOptions> = {})
     };
   };
 
-  const dimOf = (entry: Dimmable): HTMLElement => {
-    let d = entry[DIM];
-    if (!d) {
-      d = document.createElement('div');
-      d.setAttribute('aria-hidden', 'true');
-      Object.assign(d.style, { position: 'fixed', inset: '0', pointerEvents: 'none', opacity: '0', zIndex: '2147483647' });
-      entry[DIM] = d;
+  // One overlay, moved to whichever page is underneath. Everything about it
+  // except its colour and its opacity is a rule in the stylesheet.
+  let dim: HTMLElement | null = null;
+  const dimOf = (lower: StackEntry): HTMLElement => {
+    if (!dim) {
+      dim = document.createElement('div');
+      dim.className = 'sn-dim';
+      dim.setAttribute('aria-hidden', 'true');
     }
-    d.style.background = r.dimColor;
-    if (d.parentElement !== entry.el) entry.el.append(d);
-    return d;
+    dim.style.background = r.dimColor;
+    if (dim.parentElement !== lower.el) lower.el.append(dim);
+    return dim;
   };
+
+  /** Four decimals is well past a subpixel, and keeps the style strings short. */
+  const round = (n: number): number => Math.round(n * 1e4) / 1e4 || 0;
+  /** A share of the page's own width, signed by the stylesheet's reading direction. */
+  const shift = (fraction: number): string => `translate3d(calc(${round(fraction * 100)}% * var(--sn-dir,1)),0,0)`;
 
   return {
     options: o,
@@ -142,22 +156,24 @@ export function createIOSTransition(options: Partial<IOSTransitionOptions> = {})
       upper.el.style.boxShadow = r.shadow;
       if (lower) dimOf(lower);
     },
+    /**
+     * The state at p, written declaratively. Two calls with `--sn-t` set to a
+     * duration make an animation; a call per pointer move with `--sn-t: 0s`
+     * makes a drag. Nothing here measures layout: the travel is a share of the
+     * page, so a resize mid-transition stays honest.
+     */
     apply(lower, upper, p) {
-      const w = upper.el.parentElement?.clientWidth ?? 0;
-      upper.el.style.transform = `translate3d(${(1 - p) * w}px,0,0)`;
+      upper.el.style.transform = shift(1 - p);
       if (lower) {
-        lower.el.style.transform = `translate3d(${-p * r.parallax * w}px,0,0)`;
+        lower.el.style.transform = shift(-p * r.parallax);
         dimOf(lower).style.opacity = String(p * r.dimMax);
       }
     },
     end(lower, upper) {
       upper.el.style.boxShadow = '';
       upper.el.style.transform = '';
-      if (lower) {
-        lower.el.style.transform = '';
-        const d = (lower as Dimmable)[DIM];
-        if (d) d.remove();
-      }
+      if (lower) lower.el.style.transform = '';
+      dim?.remove();
     },
   };
 }

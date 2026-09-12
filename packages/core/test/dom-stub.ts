@@ -1,16 +1,33 @@
 // The minimum DOM the engine needs: classList, style, parent/child, clientWidth,
 // and inherited custom properties for getComputedStyle().
+//
+// Custom properties set through `style.setProperty` land in the same store
+// `getComputedStyle` reads, as they would in a browser, so a test can set a
+// variable the way an author would (`el.vars[name] = value`) and still see
+// what the engine writes. There is no layout and no animation, so
+// `commitStyles` is a no-op and every CSS transition reads as already finished.
+const makeStyle = (vars: Record<string, string>) => {
+  const style: any = {
+    setProperty: (k: string, v: string) => ((k.startsWith('--') ? vars : style)[k] = v),
+    removeProperty: (k: string) => delete (k.startsWith('--') ? vars : style)[k],
+    getPropertyValue: (k: string) => (k.startsWith('--') ? vars[k] : style[k]) ?? '',
+  };
+  return style;
+};
+
 export function makeElement(tag = 'div'): any {
   const classes = new Set();
+  const vars: Record<string, string> = {};
   const el: any = {
     tagName: tag.toUpperCase(),
-    style: {},
-    vars: {},
+    style: makeStyle(vars),
+    vars,
     parentElement: null,
     children: [],
     clientWidth: 400,
     attrs: {},
     listeners: {},
+    classes,
     classList: {
       add: (...cs) => cs.forEach((c) => classes.add(c)),
       remove: (...cs) => cs.forEach((c) => classes.delete(c)),
@@ -48,6 +65,13 @@ export function makeElement(tag = 'div'): any {
     },
     setPointerCapture() {},
   };
+  Object.defineProperty(el, 'className', {
+    get: () => [...classes].join(' '),
+    set: (v: string) => {
+      classes.clear();
+      for (const c of String(v).split(/\s+/).filter(Boolean)) classes.add(c);
+    },
+  });
   return el;
 }
 

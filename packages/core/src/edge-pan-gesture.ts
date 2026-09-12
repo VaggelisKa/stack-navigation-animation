@@ -31,6 +31,8 @@ interface Drag {
   target: EventTarget & { setPointerCapture?(id: number): void };
   x0: number;
   y0: number;
+  /** +1 when back is a drag to the right, -1 when the container reads right-to-left */
+  dir: number;
   handle: InteractivePopHandle | null;
   p: number;
   samples: Array<[number, number]>;
@@ -41,6 +43,9 @@ interface Drag {
  * interactive pop from it. Built on pointer events, so it handles both mouse
  * and touch. Vertical movement early in the gesture hands the touch back to
  * native scrolling.
+ *
+ * "Leading" is whichever edge the container reads from, so in a right-to-left
+ * container the strip sits on the right and back is a drag to the left.
  */
 export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {}): EdgePanGesture {
   const o: EdgePanGestureOptions = {
@@ -57,6 +62,20 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
 
   let stack: NavigationStack;
   let strip: HTMLElement | null = null;
+
+  /**
+   * Which way forward is, read the same way the pages read it: `--sn-dir` when
+   * the stylesheet sets it, the container's reading direction otherwise. Taking
+   * it from one place is what keeps the drag and the transition from disagreeing
+   * about which edge is the back edge.
+   */
+  const direction = (): number => {
+    const style = typeof getComputedStyle === 'function' ? getComputedStyle(stack.container) : null;
+    const declared = Number(style?.getPropertyValue('--sn-dir'));
+    if (declared < 0) return -1;
+    if (declared > 0) return 1;
+    return style?.direction === 'rtl' ? -1 : 1;
+  };
   let drag: Drag | null = null;
   let suppressClick = false;
   let offs: Array<() => void> = [];
@@ -65,12 +84,14 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
     if (drag || !stack.canPop()) return;
     if (ev.pointerType === 'mouse' && ev.button !== 0) return;
     if (ev.currentTarget === stack.container && !o.anywhere) return;
-    drag = { id: ev.pointerId, target: ev.currentTarget as Drag['target'], x0: ev.clientX, y0: ev.clientY, handle: null, p: 1, samples: [[ev.clientX, performance.now()]] };
+    drag = { id: ev.pointerId, target: ev.currentTarget as Drag['target'], x0: ev.clientX, y0: ev.clientY, dir: direction(), handle: null, p: 1, samples: [[ev.clientX, performance.now()]] };
   };
 
   const onMove = (ev: PointerEvent) => {
     if (!drag || ev.pointerId !== drag.id) return;
-    const dx = ev.clientX - drag.x0;
+    // Signed so that "forward along the drag" is always positive, whichever
+    // edge the container calls leading.
+    const dx = (ev.clientX - drag.x0) * drag.dir;
     const dy = ev.clientY - drag.y0;
     if (!drag.handle) {
       if (Math.abs(dy) > o.verticalCancelSlop && Math.abs(dy) > Math.abs(dx)) {
@@ -104,7 +125,7 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
     const s = d.samples;
     const [x1, t1] = s[0];
     const [x2, t2] = s[s.length - 1];
-    const velocity = t2 > t1 ? ((x2 - x1) / (t2 - t1)) * 1000 : 0;
+    const velocity = (t2 > t1 ? ((x2 - x1) / (t2 - t1)) * 1000 : 0) * d.dir;
     const cancelled = ev.type === 'pointercancel';
     const complete = !cancelled && (velocity > o.completeVelocity || (d.p < 1 - o.completeThreshold && velocity > o.cancelVelocity));
     // The click that follows a drag release must not activate whatever is under the pointer.
@@ -126,10 +147,16 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
   const listen = (el: HTMLElement) => Object.entries(EVENTS).forEach(([k, f]) => el.addEventListener(k, f as EventListener));
   const unlisten = (el: HTMLElement) => Object.entries(EVENTS).forEach(([k, f]) => el.removeEventListener(k, f as EventListener));
 
+  /**
+   * Whether the strip is shown at all is a CSS question — the stylesheet hides
+   * it when there is nothing to go back to, or when the whole page is the
+   * target — so this only has to say what is true.
+   */
   const refresh = () => {
     if (!strip) return;
     strip.style.width = o.edgeWidth + 'px';
-    strip.style.display = o.anywhere || stack.entries.length < 2 ? 'none' : '';
+    stack.container.classList.toggle('sn-anywhere', o.anywhere);
+    stack.container.classList.toggle('sn-can-pop', stack.entries.length > 1);
   };
 
   const gesture: EdgePanGesture = {
@@ -138,8 +165,8 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
     attach(s) {
       stack = s;
       strip = document.createElement('div');
+      strip.className = 'sn-edge';
       strip.setAttribute('aria-hidden', 'true');
-      Object.assign(strip.style, { position: 'absolute', left: '0', top: '0', bottom: '0', zIndex: '10', touchAction: 'none' });
       stack.container.append(strip);
       listen(strip);
       listen(stack.container);
@@ -154,6 +181,7 @@ export function createEdgePanGesture(options: Partial<EdgePanGestureOptions> = {
       unlisten(strip);
       unlisten(stack.container);
       stack.container.removeEventListener('click', onClick, true);
+      stack.container.classList.remove('sn-anywhere', 'sn-can-pop');
       strip.remove();
       strip = null;
     },

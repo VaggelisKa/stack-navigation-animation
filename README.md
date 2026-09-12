@@ -22,6 +22,12 @@ directly from the pointer position.
 Pages below the top stay mounted and hidden, so scroll position, form state and
 focus are preserved when you navigate back.
 
+The frames, though, are the browser's. A push writes `p` twice, once at each
+end, and hands CSS that phase's duration and curve; a drag writes it per pointer
+move with the duration pinned at `0s`. Nothing runs per frame and nothing
+measures layout, so the transition stays on the compositor even when the main
+thread is busy.
+
 ### Direction resolution
 
 The engine does not decide whether a navigation is a push or a pop. Apps differ:

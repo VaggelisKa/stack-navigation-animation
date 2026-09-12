@@ -174,6 +174,11 @@ Outputs: `activate`, `deactivate`, `attach`, `detach` (as on `router-outlet`) an
 Properties: `stack` (the core `NavigationStack`, for `progress` events), `pages`
 (kept pages, bottom to top), `canPop`, `lastDirection`.
 
+Chrome that only has to move with the pages does not need `progress` at all: the
+outlet carries `--sn-t` and `--sn-e` while a phase is in flight, and the two
+pages taking part carry `sn-page-upper` and `sn-page-lower`, so a header or a tab
+bar can transition off them and stay on the compositor with them.
+
 Component inputs are bound when the router is configured with
 `withComponentInputBinding()`: query params, params and data, in that order of
 precedence, with unmatched inputs set to `undefined`. The router only binds
