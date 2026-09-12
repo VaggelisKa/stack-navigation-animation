@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, linkedSignal, resource, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, resource, signal, untracked } from '@angular/core';
 import { ActivatedRoute, RouterLink, RouterLinkActive } from '@angular/router';
 import { useBack } from '../../back';
 import { FakeApi } from '../fake-api';
@@ -118,7 +118,7 @@ export class MailThread {
   template: `
     <div class="page mail">
       <header class="hdr mail-hdr">
-        <button type="button" class="back" snBack="/mail">Cancel</button>
+        <button type="button" class="back" snBack="/mail" [disabled]="sending()">Cancel</button>
         <h1>{{ re() ? 'Reply' : 'New message' }}</h1>
         <button type="button" class="mail-action" (click)="send()" [disabled]="!canSend() || sending()">{{ sending() ? '…' : 'Send' }}</button>
       </header>
@@ -140,13 +140,29 @@ export class MailCompose {
   private readonly back = useBack();
   /** The message being replied to, if any. Its arrival prefills the fields below. */
   private readonly original = resource({ params: () => Number(this.re()) || undefined, loader: ({ params }) => this.api.email(params) });
-  readonly to = linkedSignal(() => (this.original.hasValue() ? `${this.original.value().from.handle}@example.com` : ''));
-  readonly subject = linkedSignal(() => (this.original.hasValue() ? `Re: ${this.original.value().subject}` : ''));
+  readonly to = signal('');
+  readonly subject = signal('');
   readonly text = signal('');
+  /** True once the page was popped; a send that completes afterwards must not navigate again. */
+  private destroyed = false;
   readonly sending = signal(false);
   /** A failed send: shown above the form, the draft kept. */
   readonly error = signal<unknown>(null);
   readonly canSend = computed(() => this.to().trim() !== '' && this.subject().trim() !== '');
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => (this.destroyed = true));
+    // Prefill from the original message once it arrives, but only fields the
+    // user has not typed into meanwhile.
+    effect(() => {
+      if (!this.original.hasValue()) return;
+      const m = this.original.value();
+      untracked(() => {
+        if (this.to() === '') this.to.set(`${m.from.handle}@example.com`);
+        if (this.subject() === '') this.subject.set(`Re: ${m.subject}`);
+      });
+    });
+  }
 
   async send(): Promise<void> {
     if (!this.canSend() || this.sending()) return;
@@ -154,7 +170,8 @@ export class MailCompose {
     this.error.set(null);
     try {
       await this.api.sendMail({ to: this.to(), subject: this.subject(), text: this.text() });
-      this.back(['/mail']);
+      // A browser Back during the request already popped this page.
+      if (!this.destroyed) this.back(['/mail']);
     } catch (e) {
       this.error.set(e);
     } finally {

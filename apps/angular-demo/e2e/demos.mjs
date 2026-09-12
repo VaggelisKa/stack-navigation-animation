@@ -348,8 +348,10 @@ await transitioned(() => page.click('.sn-page-visible .mail-message .btn'), 'mai
 s = await state();
 eq(s.pages.join(','), 'app-home,mail-folder,mail-thread,mail-compose', 'Thread => Compose pushed (siblings the tree would replace)');
 eq(s.title, 'Reply', 'the composer knows it is a reply from the query param');
+await page.fill('.sn-page-visible input[name=to]', 'someone@example.com'); // typed before the original arrives
 await page.waitForFunction(() => document.querySelector('.sn-page-visible input[name=subject]')?.value.startsWith('Re: '));
 check(true, 'subject prefilled from the message');
+eq(await page.inputValue('.sn-page-visible input[name=to]'), 'someone@example.com', 'a field typed into while loading is left alone');
 await page.fill('.sn-page-visible textarea', 'Sounds good.');
 await transitioned(() => page.click('.sn-page-visible .mail-action:has-text("Send")'), 'mail-sent-back', { timeout: 4000 });
 s = await state();
@@ -363,6 +365,15 @@ await transitioned(() => page.click('.sn-page-visible .mail-action[aria-label=Co
 eq((await state()).pages.join(','), 'app-home,mail-folder,mail-compose', 'Sent => Compose pushed the composer over a folder too');
 await transitioned(() => page.click('.sn-page-visible .back:has-text("Cancel")'), 'mail-cancel');
 eq((await state()).pages.join(','), 'app-home,mail-folder', 'Cancel popped it');
+await transitioned(() => page.click('.sn-page-visible .mail-action[aria-label=Compose]'), 'mail-compose-2');
+await page.fill('.sn-page-visible input[name=to]', 'ada@example.com');
+await page.fill('.sn-page-visible input[name=subject]', 'Left early');
+await page.click('.sn-page-visible .mail-action:has-text("Send")');
+await flush();
+check(await page.locator('.sn-page-visible .back:has-text("Cancel")').isDisabled(), 'Cancel is disabled while sending');
+await transitioned(() => page.goBack(), 'mail-send-then-back');
+await page.waitForTimeout(1500);
+eq((await state()).pages.join(','), 'app-home,mail-folder', 'a send that completes after a browser Back does not pop a second page');
 await transitioned(() => page.goBack(), 'mail-out');
 eq((await state()).pages.join(','), 'app-home', 'one browser back leaves the demo: the folder switch had replaced its history entry');
 await openDemo('Lab');
