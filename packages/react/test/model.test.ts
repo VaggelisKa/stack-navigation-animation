@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDirectionResolver, segmentsOf, type RouteRef } from '@stacknav/core';
+import { createDirectionResolver, segmentsOf, type RouteRef } from '../../core/src/index.ts';
 import { activate, createModel, dropPending, pending, removed, restore, top, type StackModel } from '../src/model.ts';
 
 const resolve = createDirectionResolver();
