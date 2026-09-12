@@ -1,7 +1,7 @@
 /**
  * The only styles the engine needs. These cover layout and the motion itself,
  * not appearance: the look lives in the transition and is tuned through the
- * `--sn-*` custom properties (see `IOS_TRANSITION_CSS_VARS` and the README).
+ * `--sn-*` custom properties (see `NATIVE_TRANSITION_CSS_VARS` and the README).
  * Those properties are documented but deliberately not declared, because
  * leaving one unset is what makes its JS default apply.
  *
@@ -30,8 +30,9 @@
  *   transition in flight. Only these transition, and only these are promoted,
  *   so a deep stack costs nothing at rest. Both `transform` and `opacity` are
  *   listed, so a transition of your own can fade a page as well as move it and
- *   still be run by the browser; the iOS look only ever changes `transform`,
- *   and a property that does not change starts no transition.
+ *   still be run by the browser; the iOS look only ever changes `transform`
+ *   (the Android look fades as well), and a property that does not change
+ *   starts no transition.
  * - `.sn-dim`: the overlay the lower page dims behind. CSS resolves its colour;
  *   the transition supplies a fallback colour and writes its opacity.
  * - `.sn-edge`: the strip the swipe-back gesture listens on. `inset-inline-start`

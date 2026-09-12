@@ -14,6 +14,8 @@ export class DemoPrefs {
   readonly slow = signal(false);
   /** Start the back gesture from anywhere on the page, not only the leading edge. */
   readonly anywhere = signal(false);
+  /** Which platform's push/pop to run: the detected one, or either forced. */
+  readonly platform = signal<'auto' | 'ios' | 'android'>('auto');
 }
 
 /**

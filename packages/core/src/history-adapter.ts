@@ -1,4 +1,5 @@
 import type { NavigationStack } from './navigation-stack.ts';
+import { isIOSBrowser } from './platform.ts';
 
 export interface BrowserHistoryOptions {
   /** the `history.state` property that carries the depth */
@@ -44,9 +45,4 @@ export function attachBrowserHistory(stack: NavigationStack, { key = 'snDepth', 
     offPop();
     window.removeEventListener('popstate', onPopState);
   };
-}
-
-export function isIOSBrowser(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  return /iP(hone|ad|od)/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }

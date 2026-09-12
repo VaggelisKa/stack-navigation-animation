@@ -260,7 +260,7 @@ export class FormsDone {
   }
 }
 
-/** An iOS-style grouped settings list. Every toggle's state is kept. */
+/** A grouped settings list. Every toggle's state is kept. */
 @Component({
   selector: 'forms-preferences',
   imports: [BackButton],

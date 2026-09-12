@@ -1,7 +1,7 @@
 {
   "name": "stacknav-workspace",
   "private": true,
-  "description": "iOS-style push/pop navigation for the web: a framework-agnostic core plus Angular (and React) ports.",
+  "description": "Native-style (iOS and Android) push/pop navigation for the web: a framework-agnostic core plus Angular (and React) ports.",
   "license": "MIT",
   "packageManager": "pnpm@10.33.0",
   "engines": {

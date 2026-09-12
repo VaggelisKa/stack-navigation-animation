@@ -365,8 +365,8 @@ test('remove drops a page beneath the top silently', async () => {
 test('the stack reads a transition\'s timing only after begin() has run', async () => {
   // The iOS transition resolves its CSS variables in begin(), so a stack that
   // read duration or ease first would apply every variable one transition late.
-  const { createIOSTransition } = await import('../src/ios-transition.ts');
-  const inner = createIOSTransition({ duration: 500 });
+  const { createNativeTransition } = await import('../src/native-transition.ts');
+  const inner = createNativeTransition({ platform: 'ios', duration: 500 });
   const reads = [];
   const spy = {
     begin: (l, u) => (reads.push('begin'), inner.begin(l, u)),

@@ -17,15 +17,17 @@ export type {
   TransitionEvent,
   ProgressEvent,
 } from './navigation-stack.ts';
-export { createIOSTransition, IOS_TRANSITION_CSS_VARS } from './ios-transition.ts';
-export type { IOSTransition, IOSTransitionOptions } from './ios-transition.ts';
+export { createNativeTransition, nativeTransitionPreset, NATIVE_TRANSITION_CSS_VARS } from './native-transition.ts';
+export type { NativeTransition, NativeTransitionOptions, NativeTransitionPreset } from './native-transition.ts';
 export { cssVars, parseTime, parseNumber, parseRatio, parseEasing } from './css-vars.ts';
 export type { CSSVarReader } from './css-vars.ts';
 export { createEdgePanGesture } from './edge-pan-gesture.ts';
 export type { EdgePanGesture, EdgePanGestureOptions } from './edge-pan-gesture.ts';
-export { attachBrowserHistory, isIOSBrowser } from './history-adapter.ts';
+export { attachBrowserHistory } from './history-adapter.ts';
 export type { BrowserHistoryOptions } from './history-adapter.ts';
-export { cubicBezier, easings, cssEasing, cssDuration, tween, commitStyles, animationsFinished, prefersReducedMotion, matchesMedia, isTouchPrimary } from './animate.ts';
+export { detectPlatform, isIOSBrowser, isAndroidBrowser } from './platform.ts';
+export type { Platform } from './platform.ts';
+export { cubicBezier, linearEasing, easings, cssEasing, cssDuration, tween, commitStyles, animationsFinished, prefersReducedMotion, matchesMedia, isTouchPrimary } from './animate.ts';
 export type { Easing, TweenOptions, CancellableTween } from './animate.ts';
 export {
   resolveDirection,
@@ -53,21 +55,21 @@ export type {
 export { STACKNAV_CSS, STACKNAV_STYLE_ID, injectStyles } from './styles.ts';
 
 import { NavigationStack } from './navigation-stack.ts';
-import { createIOSTransition, type IOSTransition, type IOSTransitionOptions } from './ios-transition.ts';
+import { createNativeTransition, type NativeTransition, type NativeTransitionOptions } from './native-transition.ts';
 import { createEdgePanGesture, type EdgePanGesture, type EdgePanGestureOptions } from './edge-pan-gesture.ts';
 
 import { suppressBrowserSwipe, type SwipeBackMode } from './swipe-back.ts';
 
-export interface IOSStackOptions {
+export interface NativeStackOptions {
   container: HTMLElement;
-  transition?: Partial<IOSTransitionOptions>;
+  transition?: Partial<NativeTransitionOptions>;
   gesture?: Partial<EdgePanGestureOptions>;
   /** Default browser. Custom and disabled request document-wide browser swipe suppression. */
   swipeBack?: SwipeBackMode;
 }
 
-export interface IOSStack extends NavigationStack {
-  transition: IOSTransition;
+export interface NativeStack extends NavigationStack {
+  transition: NativeTransition;
   gesture: EdgePanGesture;
   readonly swipeBack: SwipeBackMode;
   /** Changes gesture policy without replacing pages or changing browser history. */
@@ -75,14 +77,15 @@ export interface IOSStack extends NavigationStack {
 }
 
 /**
- * Wires the three pieces together in one call: a stack in `container`, the iOS
- * transition, and an optional edge-pan gesture. Browser mode is the default.
- * The gesture is exposed as `stack.gesture`; destroying releases its policy.
+ * Wires the three pieces together in one call: a stack in `container`, the
+ * platform's native transition, and an optional edge-pan gesture. Browser mode
+ * is the default. The gesture is exposed as `stack.gesture`; destroying
+ * releases its policy.
  */
-export function createIOSStack({ container, transition = {}, gesture = {}, swipeBack = 'browser' }: IOSStackOptions): IOSStack {
-  const t = createIOSTransition(transition);
+export function createNativeStack({ container, transition = {}, gesture = {}, swipeBack = 'browser' }: NativeStackOptions): NativeStack {
+  const t = createNativeTransition(transition);
   const g = createEdgePanGesture(gesture);
-  const stack = new NavigationStack({ container, transition: t }) as IOSStack;
+  const stack = new NavigationStack({ container, transition: t }) as NativeStack;
   stack.gesture = g;
   let mode: SwipeBackMode | undefined;
   let release: (() => void) | undefined;

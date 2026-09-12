@@ -1,12 +1,13 @@
 # stacknav
 
-iOS-style push/pop navigation for the web. A framework-agnostic core plus
+Native-style push/pop navigation for the web: the iOS transition, or Android's
+own on an Android browser. A framework-agnostic core plus
 per-framework ports that sit alongside the framework's router rather than
 replacing it.
 
 | Package | Description |
 | --- | --- |
-| [`@stacknav/core`](packages/core) | The engine: a stack of page elements, the iOS transition (slide, parallax, dim, shadow), an opt-in interactive edge-swipe pop, direction resolution, and a `history.state` adapter for apps without a router. No dependencies. |
+| [`@stacknav/core`](packages/core) | The engine: a stack of page elements, the platform's native transition (iOS: slide, parallax, dim, shadow; Android: short slide and fade), an opt-in interactive edge-swipe pop, direction resolution, and a `history.state` adapter for apps without a router. No dependencies. |
 | [`@stacknav/angular`](packages/angular) | `<sn-outlet />`, a router outlet for Angular Router that keeps pages alive beneath the top one, animates every navigation, and supports swipe-back. It adds no navigation API of its own: the router, `routerLink` and `Location` handle navigation. |
 | `@stacknav/react` | Planned. |
 
@@ -21,7 +22,7 @@ ours and request browser swipe suppression where supported. Browser suppression
 is document-wide and cannot guarantee blocking Safari or OS gestures. Back buttons
 continue to work in every mode.
 
-Configure this in `createIOSStack()` or `provideStackNav()`. Change it live with
+Configure this in `createNativeStack()` or `provideStackNav()`. Change it live with
 `stack.setSwipeBack(mode)` or `<sn-outlet [swipeBack]="mode()" />`.
 Existing consumers wanting the previous custom gesture default should explicitly
 set `swipeBack: 'custom'`.
@@ -79,7 +80,8 @@ rebuilding the engine:
 :root { --sn-duration: 340ms; --sn-easing: cubic-bezier(0.4, 0, 0.2, 1); --sn-parallax: 20%; }
 ```
 
-Every property is optional; unset means the iOS default. The
+Every property is optional; unset means the platform's default (iOS, or Android
+on an Android browser; `platform` forces either). The
 [core README](packages/core#tuning-from-css) lists them all. The same values are
 available as JS options.
 
@@ -96,11 +98,11 @@ the transition while content is loading, arriving mid-transition, or failing.
 | Shop | 2-column grid, full-bleed hero, sticky buy bar | a `resolve` that delays the push until the product loads, a cart, a checkout form whose success page replaces it (both page and history entry), pop to root |
 | Messages | inbox, chat bubbles, composer pinned to the bottom | scroll-to-bottom on a page that is itself the scroll container, replies arriving after you popped away |
 | Gallery | 3-column tiles, dark full-screen viewer, filmstrip | dim over a dark page, siblings replaced in place vs pushed, `@defer`, swiping between dark pages |
-| Forms | iOS grouped settings, long form, wizard | inputs preserved while away, async save, steps ordered by `stackLevel`, a replaced final step, pop to root |
+| Forms | grouped settings, long form, wizard | inputs preserved while away, async save, steps ordered by `stackLevel`, a replaced final step, pop to root |
 | Search | search field in the header | debounced requests cancelled in flight, the query in the URL, results that push pages of other demos |
 | Dashboard | segmented tabs, stat tiles, bar chart, wide table | a nested `<router-outlet>` inside a kept page, tabs that replace their history entry |
 | Mail | folders, message, composer | direction from `data.animation`, the route names Angular's own route-transition recipe uses, looked up in a `transition('A => B')`-style table by an app-side strategy |
-| Lab | controls and stress pages | slow motion, swipe from anywhere, API latency and failures, a 600-row page, a stack five siblings deep, a 2 s resolver, horizontal scrollers under the edge swipe |
+| Lab | controls and stress pages | iOS or Android look, slow motion, swipe from anywhere, API latency and failures, a 600-row page, a stack five siblings deep, a 2 s resolver, horizontal scrollers under the edge swipe |
 
 `pnpm e2e` builds the demo and drives it in Chromium: `e2e/run.mjs` covers the
 mechanics, `e2e/demos.mjs` covers the demo apps.

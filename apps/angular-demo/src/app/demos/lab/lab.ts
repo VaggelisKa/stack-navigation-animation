@@ -1,5 +1,6 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { detectPlatform } from '@stacknav/core';
 import { FakeApi } from '../fake-api';
 import { BackButton, DEMO_UI, DemoNav, DemoPrefs } from '../shared';
 
@@ -13,6 +14,13 @@ import { BackButton, DEMO_UI, DemoNav, DemoPrefs } from '../shared';
       <div class="body">
         <h2>Transition</h2>
         <div class="frm-group">
+          <label class="lab-row"><span>Platform</span>
+            <select [value]="prefs.platform()" (change)="prefs.platform.set($any($event.target).value)">
+              <option value="auto">Auto ({{ detected }})</option>
+              <option value="ios">iOS</option>
+              <option value="android">Android</option>
+            </select>
+          </label>
           <label class="switch"><span>Slow motion (4×)</span><input type="checkbox" [checked]="prefs.slow()" (change)="prefs.slow.set($any($event.target).checked)" /><i></i></label>
           <label class="switch"><span>Swipe back from anywhere</span><input type="checkbox" [disabled]="prefs.swipeBack() !== 'custom'" [checked]="prefs.anywhere()" (change)="prefs.anywhere.set($any($event.target).checked)" /><i></i></label>
         </div>
@@ -54,6 +62,7 @@ export class LabHome {
   ] as const;
   readonly prefs = inject(DemoPrefs);
   readonly api = inject(FakeApi);
+  readonly detected = detectPlatform() === 'android' ? 'Android' : 'iOS';
 }
 
 @Component({

@@ -50,10 +50,40 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Eas
 // `#__PURE__` marks the module-load calls as droppable, so a bundler that does
 // not honour the package's `sideEffects` flag can still leave this module out
 // when nothing here is imported.
-export const easings: { linear: Easing; ios: Easing; easeOut: Easing } = {
+/**
+ * Straight lines through `points` (`[x, y]` pairs, x from 0 to 1 and never
+ * decreasing), the curve CSS `linear()` draws. Spelled for CSS the same way
+ * unless `css` says otherwise. A browser without `linear()` (Chrome < 113,
+ * Safari < 17.2, Firefox < 112) runs its default `ease` instead.
+ */
+export function linearEasing(points: ReadonlyArray<readonly [number, number]>, css?: string): Easing {
+  const f = (t: number): number => {
+    if (t <= points[0][0]) return points[0][1];
+    let i = 1;
+    while (i < points.length - 1 && points[i][0] < t) i++;
+    const [x0, y0] = points[i - 1], [x1, y1] = points[i];
+    return x1 > x0 ? y0 + (y1 - y0) * Math.min(1, (t - x0) / (x1 - x0)) : y1;
+  };
+  return Object.assign(f, { css: css ?? `linear(${points.map(([x, y]) => `${y} ${x * 100}%`).join(', ')})` });
+}
+
+export const easings: { linear: Easing; ios: Easing; easeOut: Easing; android: Easing; androidSettle: Easing } = {
   linear: /*#__PURE__*/ Object.assign((t: number) => t, { css: 'linear' }),
   ios: /*#__PURE__*/ cubicBezier(0.32, 0.72, 0, 1), // the common approximation of UIKit's navigation curve
   easeOut: /*#__PURE__*/ cubicBezier(0.2, 0.8, 0.2, 1),
+  // AOSP's `fast_out_extra_slow_in`, the interpolator behind activity open and
+  // close since Android 13 (frameworks/base, core/res/res/interpolator). It is
+  // a path of two cubics, `M0,0 C0.05,0 0.133,0.06 0.167,0.4 C0.208,0.82 0.25,1
+  // 1,1`, which one `cubic-bezier()` cannot bend into; these stops follow it
+  // to within 0.006 and are what CSS gets.
+  android: /*#__PURE__*/ linearEasing([
+    [0, 0], [0.03125, 0.008], [0.0625, 0.033], [0.09375, 0.08], [0.125, 0.162], [0.140625, 0.225], [0.15625, 0.313],
+    [0.1640625, 0.375], [0.171875, 0.451], [0.1796875, 0.517], [0.1875, 0.571], [0.203125, 0.649], [0.21875, 0.702],
+    [0.25, 0.773], [0.28125, 0.819], [0.3125, 0.853], [0.375, 0.899], [0.5, 0.951], [0.625, 0.977], [0.75, 0.991], [1, 1],
+  ]),
+  // The "standard decelerate" Android's predictive-back guidelines ask for
+  // when a released gesture runs out.
+  androidSettle: /*#__PURE__*/ cubicBezier(0, 0, 0, 1),
 };
 
 /** How an easing should be spelled for CSS. A curve with no spelling runs linearly. */
@@ -81,7 +111,9 @@ export type CancellableTween = Promise<void> & { cancel(): void };
  * The engine does not use this to move pages, CSS does that. It uses it to
  * report `progress` to listeners, and only while someone is listening.
  */
-export function tween({ from, to, duration, ease = easings.linear, onUpdate }: TweenOptions): CancellableTween {
+// The default is spelled out rather than taken from `easings`, so a bundle that
+// only needs the tween does not carry the curves.
+export function tween({ from, to, duration, ease = (t) => t, onUpdate }: TweenOptions): CancellableTween {
   let raf = 0;
   let done = false;
   let finish: () => void;

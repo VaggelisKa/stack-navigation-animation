@@ -1,20 +1,33 @@
 import { easings, prefersReducedMotion, type Easing } from './animate.ts';
 import { cssVars, parseEasing, parseNumber, parseRatio, parseTime } from './css-vars.ts';
 import type { SettleInput, StackEntry, Transition } from './navigation-stack.ts';
+import { detectPlatform, type Platform } from './platform.ts';
 
-export interface IOSTransitionOptions {
+export interface NativeTransitionOptions {
+  /**
+   * Whose push/pop to imitate. `auto` (the default) asks the browser and
+   * falls back to `ios`. It picks the defaults for everything below; an
+   * option given explicitly wins over the platform's, as a CSS variable wins
+   * over both.
+   */
+  platform: Platform | 'auto';
   /** ms, programmatic push/pop */
   duration: number;
   /**
    * the curve a programmatic push/pop runs on. CSS runs it, so it has to be
-   * one CSS can spell: everything `cubicBezier()` and `parseEasing()` build
-   * carries a `css` property. A bare `(t) => number` of your own has none, so
-   * the pages would run `linear` while `progress` reported your curve; give it
-   * a `css` property, or write the whole transition yourself.
+   * one CSS can spell: everything `cubicBezier()`, `bezierPath()` and
+   * `parseEasing()` build carries a `css` property. A bare `(t) => number` of
+   * your own has none, so the pages would run `linear` while `progress`
+   * reported your curve; give it a `css` property, or write the whole
+   * transition yourself.
    */
   ease: Easing;
+  /** fraction of the width the upper page travels (1 = from off-screen; Android slides a short way and fades) */
+  travel: number;
   /** fraction of the width the lower page travels */
   parallax: number;
+  /** opacity of the upper page when fully closed (1 = no fade) */
+  fade: number;
   dimColor: string;
   /** lower-page overlay opacity at p = 1 (≈0.35 suits dark UIs) */
   dimMax: number;
@@ -31,11 +44,33 @@ export interface IOSTransitionOptions {
   timeScale: number;
 }
 
+/** Every option except the platform, which is decided once and has no CSS variable. */
+export type NativeTransitionPreset = Readonly<Omit<NativeTransitionOptions, 'platform'>>;
+
+/**
+ * Each platform's own push/pop, as its system animates it.
+ *
+ * - `ios`: UIKit's navigation push. The upper page slides the full width with
+ *   a shadow on its leading edge, the lower page parallaxes 30% and dims.
+ * - `android`: the framework's activity open/close since Android 13
+ *   (`activity_open_enter.xml` and friends): both pages slide 96 dp, about a
+ *   quarter of a phone, over 450 ms on `fast_out_extra_slow_in`, and the
+ *   upper page fades through the first part of it. No shadow, no dim.
+ */
+export function nativeTransitionPreset(platform: Platform): NativeTransitionPreset {
+  const shared = { settleMin: 120, settleMax: 400, settleVelocityFloor: 900, timeScale: 1, dimColor: '#000' };
+  return platform === 'android'
+    ? { ...shared, duration: 450, ease: easings.android, travel: 0.25, parallax: 0.25, fade: 0, dimMax: 0, shadow: 'none', settleEase: easings.androidSettle }
+    : { ...shared, duration: 500, ease: easings.ios, travel: 1, parallax: 0.3, fade: 1, dimMax: 0.1, shadow: '-3px 0 14px rgba(0,0,0,0.16)', settleEase: easings.easeOut };
+}
+
 /** The CSS custom property behind each option. */
-export const IOS_TRANSITION_CSS_VARS: Readonly<Record<keyof IOSTransitionOptions, string>> = /*#__PURE__*/ Object.freeze({
+export const NATIVE_TRANSITION_CSS_VARS: Readonly<Record<keyof NativeTransitionPreset, string>> = /*#__PURE__*/ Object.freeze({
   duration: '--sn-duration',
   ease: '--sn-easing',
+  travel: '--sn-travel',
   parallax: '--sn-parallax',
+  fade: '--sn-fade',
   dimColor: '--sn-dim-color',
   dimMax: '--sn-dim-max',
   shadow: '--sn-shadow',
@@ -46,11 +81,11 @@ export const IOS_TRANSITION_CSS_VARS: Readonly<Record<keyof IOSTransitionOptions
   timeScale: '--sn-time-scale',
 });
 
-export interface IOSTransition extends Transition {
-  /** The JS options: the defaults with the caller's merged in. Mutable at runtime. */
-  readonly options: IOSTransitionOptions;
+export interface NativeTransition extends Transition {
+  /** The JS options: the platform's preset with the caller's merged in. `platform` is the one chosen. Mutable at runtime. */
+  readonly options: NativeTransitionOptions & { platform: Platform };
   /** The values currently in force: `options` with the CSS variables applied over them. */
-  readonly resolved: Readonly<IOSTransitionOptions>;
+  readonly resolved: Readonly<NativeTransitionOptions & { platform: Platform }>;
   /**
    * Re-reads the CSS variables, from `el` or from the container of the last
    * transition. Called at the start of every transition. Call it directly
@@ -60,47 +95,40 @@ export interface IOSTransition extends Transition {
 }
 
 /**
- * The iOS navigation transition: the upper page slides in from the trailing
- * edge with a shadow on its leading edge, while the lower page parallaxes
- * toward the leading edge and dims. Every value is a function of one number, p.
+ * The platform's navigation transition: the upper page slides in from the
+ * trailing edge while the lower page parallaxes toward the leading edge. On
+ * iOS the upper page travels the full width under a shadow and the lower page
+ * dims; on Android both travel a short way and the upper page fades. Every
+ * value is a function of one number, p.
  *
  * Every option is also a CSS custom property on the container (see
- * `IOS_TRANSITION_CSS_VARS`), read when a transition starts. A variable that
- * is set wins over the JS option, so a stylesheet can slow the animation down
- * or restyle it per theme without the app rebuilding the transition.
+ * `NATIVE_TRANSITION_CSS_VARS`), read when a transition starts. A variable
+ * that is set wins over the JS option, so a stylesheet can slow the animation
+ * down or restyle it per theme without the app rebuilding the transition.
  *
  * p is only ever written at the ends of a phase. The stack puts that phase's
  * duration and curve in `--sn-t` / `--sn-e` and CSS interpolates between the
  * two writes, so the animation costs a handful of style writes rather than one
  * per page per frame, and runs on the compositor rather than the main thread.
  */
-export function createIOSTransition(options: Partial<IOSTransitionOptions> = {}): IOSTransition {
-  const o: IOSTransitionOptions = {
-    duration: 500,
-    ease: easings.ios,
-    parallax: 0.3,
-    dimColor: '#000',
-    dimMax: 0.1,
-    shadow: '-3px 0 14px rgba(0,0,0,0.16)',
-    settleMin: 120,
-    settleMax: 400,
-    settleEase: easings.easeOut,
-    settleVelocityFloor: 900,
-    timeScale: 1,
-    ...options,
-  };
+export function createNativeTransition(options: Partial<NativeTransitionOptions> = {}): NativeTransition {
+  const platform = !options.platform || options.platform === 'auto' ? detectPlatform() : options.platform;
+  const o: NativeTransitionOptions & { platform: Platform } = { ...nativeTransitionPreset(platform), ...options, platform };
 
   let root: Element | null = null;
-  let r: IOSTransitionOptions = { ...o };
+  let r: NativeTransitionOptions & { platform: Platform } = { ...o };
 
   const refresh = (el?: Element | null): void => {
     if (el !== undefined) root = el;
     const read = cssVars(root);
-    const v = IOS_TRANSITION_CSS_VARS;
+    const v = NATIVE_TRANSITION_CSS_VARS;
     r = {
+      platform: o.platform,
       duration: parseTime(read(v.duration)) ?? o.duration,
       ease: parseEasing(read(v.ease)) ?? o.ease,
+      travel: parseRatio(read(v.travel)) ?? o.travel,
       parallax: parseRatio(read(v.parallax)) ?? o.parallax,
+      fade: parseRatio(read(v.fade)) ?? o.fade,
       dimColor: read(v.dimColor) ?? o.dimColor,
       dimMax: parseRatio(read(v.dimMax)) ?? o.dimMax,
       shadow: read(v.shadow) ?? o.shadow,
@@ -134,7 +162,7 @@ export function createIOSTransition(options: Partial<IOSTransitionOptions> = {})
 
   return {
     options: o,
-    get resolved(): Readonly<IOSTransitionOptions> {
+    get resolved(): Readonly<NativeTransitionOptions & { platform: Platform }> {
       return r;
     },
     refresh,
@@ -164,7 +192,10 @@ export function createIOSTransition(options: Partial<IOSTransitionOptions> = {})
      * page, so a resize mid-transition stays honest.
      */
     apply(lower, upper, p) {
-      upper.el.style.transform = shift(1 - p);
+      upper.el.style.transform = shift((1 - p) * r.travel);
+      // Only a look that fades writes opacity: a property that is not written
+      // starts no transition, and a page's own opacity is left alone.
+      if (r.fade < 1) upper.el.style.opacity = String(round(r.fade + (1 - r.fade) * p));
       if (lower) {
         lower.el.style.transform = shift(-p * r.parallax);
         dim!.style.opacity = String(p * r.dimMax);
@@ -173,6 +204,7 @@ export function createIOSTransition(options: Partial<IOSTransitionOptions> = {})
     end(lower, upper) {
       upper.el.style.boxShadow = '';
       upper.el.style.transform = '';
+      upper.el.style.opacity = '';
       if (lower) lower.el.style.transform = '';
       dim?.remove();
     },

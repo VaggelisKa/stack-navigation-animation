@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeElement, installGlobals } from './dom-stub.ts';
-import { createIOSTransition } from '../src/ios-transition.ts';
+import { createNativeTransition } from '../src/native-transition.ts';
 import { easings } from '../src/animate.ts';
 
 installGlobals();
@@ -16,7 +16,7 @@ const entries = () => {
 };
 
 test('duration honours timeScale and reduced motion', () => {
-  const t = createIOSTransition({ duration: 500, timeScale: 2 });
+  const t = createNativeTransition({ platform: 'ios', duration: 500, timeScale: 2 });
   assert.equal(t.duration, 1000);
   globalThis.matchMedia = () => ({ matches: true });
   assert.equal(t.duration, 0);
@@ -24,7 +24,7 @@ test('duration honours timeScale and reduced motion', () => {
 });
 
 test('settle derives duration from distance / velocity, clamped', () => {
-  const t = createIOSTransition({ settleMin: 120, settleMax: 400, settleVelocityFloor: 900 });
+  const t = createNativeTransition({ platform: 'ios', settleMin: 120, settleMax: 400, settleVelocityFloor: 900 });
   assert.equal(t.settle({ remainingPx: 200, velocity: 1000 }).duration, 200);
   assert.equal(t.settle({ remainingPx: 10, velocity: 5000 }).duration, 120, 'floor');
   assert.equal(t.settle({ remainingPx: 5000, velocity: 100 }).duration, 400, 'ceiling');
@@ -37,7 +37,7 @@ test('settle derives duration from distance / velocity, clamped', () => {
 const shift = (percent: string) => `translate3d(calc(${percent}% * var(--sn-dir,1)),0,0)`;
 
 test('apply moves upper by (1-p) and lower by -p·parallax, with dim', () => {
-  const t = createIOSTransition({ parallax: 0.3, dimMax: 0.1 });
+  const t = createNativeTransition({ platform: 'ios', parallax: 0.3, dimMax: 0.1 });
   const { lower, upper } = entries();
   t.begin(lower, upper);
   assert.equal(upper.el.style.boxShadow, `var(--sn-shadow, ${t.options.shadow})`);
@@ -57,8 +57,50 @@ test('apply moves upper by (1-p) and lower by -p·parallax, with dim', () => {
   assert.equal(lower.el.children.length, 0, 'dim overlay removed');
 });
 
+test('the Android look slides a short way and fades, without dim or shadow', () => {
+  const t = createNativeTransition({ platform: 'android' });
+  const { lower, upper } = entries();
+  t.begin(lower, upper);
+  assert.equal(upper.el.style.boxShadow, 'var(--sn-shadow, none)');
+  t.apply(lower, upper, 0);
+  assert.equal(upper.el.style.transform, shift('25'), 'a quarter of the width, not the whole of it');
+  assert.equal(upper.el.style.opacity, '0');
+  t.apply(lower, upper, 0.5);
+  assert.equal(upper.el.style.transform, shift('12.5'));
+  assert.equal(upper.el.style.opacity, '0.5');
+  assert.equal(lower.el.style.transform, shift('-12.5'), 'the page beneath moves the same distance');
+  assert.equal(lower.el.children[0].style.opacity, '0');
+  t.apply(lower, upper, 1);
+  assert.equal(upper.el.style.opacity, '1');
+  t.end(lower, upper);
+  assert.equal(upper.el.style.opacity, '', 'the page gets its own opacity back');
+});
+
+test('the iOS look never writes opacity, so a page keeps its own', () => {
+  const t = createNativeTransition({ platform: 'ios' });
+  const { lower, upper } = entries();
+  upper.el.style.opacity = '0.8';
+  t.begin(lower, upper);
+  t.apply(lower, upper, 0.5);
+  assert.equal(upper.el.style.opacity, '0.8');
+  t.end(lower, upper);
+});
+
+test('travel and fade are CSS variables too', () => {
+  const t = createNativeTransition({ platform: 'ios' });
+  const { container, lower, upper } = entries();
+  Object.assign(container.vars, { '--sn-travel': '50%', '--sn-fade': '0.2' });
+  t.begin(lower, upper);
+  t.apply(lower, upper, 0);
+  assert.equal(upper.el.style.transform, shift('50'));
+  assert.equal(upper.el.style.opacity, '0.2');
+  t.apply(lower, upper, 0.5);
+  assert.equal(upper.el.style.opacity, '0.6');
+  t.end(lower, upper);
+});
+
 test('apply works with no lower page (first push)', () => {
-  const t = createIOSTransition();
+  const t = createNativeTransition({ platform: 'ios' });
   const { upper } = entries();
   t.begin(null, upper);
   t.apply(null, upper, 0);
@@ -67,7 +109,7 @@ test('apply works with no lower page (first push)', () => {
 });
 
 test('apply reads no layout, so the width never enters JavaScript', () => {
-  const t = createIOSTransition();
+  const t = createNativeTransition({ platform: 'ios' });
   const { container, lower, upper } = entries();
   Object.defineProperty(container, 'clientWidth', {
     get() {
@@ -80,7 +122,7 @@ test('apply reads no layout, so the width never enters JavaScript', () => {
 });
 
 test('the curve is handed to CSS, not evaluated for it', () => {
-  const t = createIOSTransition();
+  const t = createNativeTransition({ platform: 'ios' });
   const { container, lower, upper } = entries();
   t.begin(lower, upper);
   assert.equal(t.ease.css, 'cubic-bezier(0.32, 0.72, 0, 1)');
@@ -92,7 +134,7 @@ test('the curve is handed to CSS, not evaluated for it', () => {
 });
 
 test('CSS variables on the container override the JS options', () => {
-  const t = createIOSTransition({ duration: 500, parallax: 0.3, dimMax: 0.1 });
+  const t = createNativeTransition({ platform: 'ios', duration: 500, parallax: 0.3, dimMax: 0.1 });
   const { container, lower, upper } = entries();
   Object.assign(container.vars, {
     '--sn-duration': '0.2s',
@@ -118,7 +160,7 @@ test('CSS variables on the container override the JS options', () => {
 });
 
 test('unset variables fall through to the JS options', () => {
-  const t = createIOSTransition({ duration: 300, parallax: 0.5 });
+  const t = createNativeTransition({ platform: 'ios', duration: 300, parallax: 0.5 });
   const { container, lower, upper } = entries();
   container.vars['--sn-duration'] = 'not-a-time';
   t.begin(lower, upper);
@@ -129,7 +171,7 @@ test('unset variables fall through to the JS options', () => {
 });
 
 test('settle timing and curve come from the variables too', () => {
-  const t = createIOSTransition();
+  const t = createNativeTransition({ platform: 'ios' });
   const { container, lower, upper } = entries();
   Object.assign(container.vars, { '--sn-settle-min': '50ms', '--sn-settle-max': '80ms', '--sn-settle-easing': 'linear' });
   t.begin(lower, upper);
@@ -140,7 +182,7 @@ test('settle timing and curve come from the variables too', () => {
 });
 
 test('refresh re-reads variables changed mid-stack', () => {
-  const t = createIOSTransition();
+  const t = createNativeTransition({ platform: 'ios' });
   const { container, lower, upper } = entries();
   t.begin(lower, upper);
   assert.equal(t.duration, 500);
@@ -151,7 +193,7 @@ test('refresh re-reads variables changed mid-stack', () => {
 });
 
 test('zero is a value, not an absence', () => {
-  const t = createIOSTransition({ parallax: 0.3, dimMax: 0.1, duration: 500 });
+  const t = createNativeTransition({ platform: 'ios', parallax: 0.3, dimMax: 0.1, duration: 500 });
   const { container, lower, upper } = entries();
   Object.assign(container.vars, { '--sn-parallax': '0', '--sn-dim-max': '0', '--sn-duration': '0ms', '--sn-time-scale': '0' });
   t.begin(lower, upper);
@@ -166,7 +208,7 @@ test('zero is a value, not an absence', () => {
 test('ease and settleEase are settable from JS as well', () => {
   const ease = (x: number) => x * x;
   const settleEase = (x: number) => 1 - x;
-  const t = createIOSTransition({ ease, settleEase });
+  const t = createNativeTransition({ platform: 'ios', ease, settleEase });
   const { upper } = entries();
   t.begin(null, upper);
   assert.equal(t.ease, ease);
@@ -175,7 +217,7 @@ test('ease and settleEase are settable from JS as well', () => {
 });
 
 test('an easing the engine cannot read never reaches the tween', () => {
-  const t = createIOSTransition();
+  const t = createNativeTransition({ platform: 'ios' });
   const { container, lower, upper } = entries();
   container.vars['--sn-easing'] = '__proto__';
   t.begin(lower, upper);

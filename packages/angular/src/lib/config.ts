@@ -8,7 +8,7 @@ import {
   type DirectionResolver,
   type DirectionStrategy,
   type EdgePanGestureOptions,
-  type IOSTransitionOptions,
+  type NativeTransitionOptions,
   type SwipeBackMode,
 } from '@stacknav/core';
 
@@ -41,7 +41,7 @@ export interface StackNavConfig {
    */
   infoKey?: string;
   /** Defaults for every outlet's transition. An outlet's `transition` input overrides these per key. */
-  transition?: Partial<IOSTransitionOptions>;
+  transition?: Partial<NativeTransitionOptions>;
   /** Default browser. Custom/disabled request document-wide browser gesture suppression where supported. */
   swipeBack?: SwipeBackMode;
   /** Custom gesture tuning. `false` disables our gesture, without suppressing browser gestures on its own. */
@@ -75,7 +75,7 @@ export interface ResolvedStackNavConfig {
   levelOf: (snapshot: ActivatedRouteSnapshot) => number | null | undefined;
   keyOf: (snapshot: ActivatedRouteSnapshot) => string;
   infoKey: string;
-  transition: Partial<IOSTransitionOptions>;
+  transition: Partial<NativeTransitionOptions>;
   gesture: Partial<EdgePanGestureOptions> | false;
   swipeBack: SwipeBackMode;
   detachInactiveViews: boolean;

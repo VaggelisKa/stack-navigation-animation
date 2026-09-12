@@ -7,7 +7,7 @@
 // NaN, so an unreadable value falls through to its JS option instead of
 // producing an invalid transform.
 
-import { cubicBezier, easings, type Easing } from './animate.ts';
+import { cubicBezier, easings, linearEasing, type Easing } from './animate.ts';
 
 /** Looks a custom property up on an element; `undefined` when it is not set. */
 export type CSSVarReader = (name: string) => string | undefined;
@@ -69,18 +69,57 @@ const easingKeywordsOf = (): Record<string, Easing> =>
     'ease-in-out': cubicBezier(0.42, 0, 0.58, 1),
     ios: easings.ios,
     'ios-settle': easings.easeOut,
+    android: easings.android,
+    'android-settle': easings.androidSettle,
   }));
 
 /**
- * A timing keyword or `cubic-bezier(x1, y1, x2, y2)`. The x coordinates must be
- * within [0, 1], as CSS requires. Outside that range the curve is not a
- * function of time and the solver would not converge.
+ * `linear(y [x%] [x%], …)` as CSS defines it: a stop without a position sits
+ * evenly between its positioned neighbours, the first and last default to 0%
+ * and 100%, positions never go backwards, and two positions make two stops.
+ */
+function parseLinear(body: string): Easing | undefined {
+  const xs: Array<number | undefined> = [], ys: number[] = [];
+  for (const stop of body.split(',')) {
+    const [y, ...positions] = stop.trim().split(/\s+/);
+    const yn = parseNumber(y);
+    if (yn === undefined || positions.length > 2) return undefined;
+    for (const pos of positions.length ? positions : [undefined]) {
+      const xn = pos === undefined ? undefined : pos.endsWith('%') ? parseNumber(pos.slice(0, -1)) : NaN;
+      if (Number.isNaN(xn)) return undefined;
+      xs.push(xn === undefined ? undefined : xn / 100);
+      ys.push(yn);
+    }
+  }
+  if (ys.length < 2) return undefined;
+  xs[0] ??= 0;
+  xs[xs.length - 1] ??= 1;
+  for (let i = 1; i < xs.length; i++) {
+    if (xs[i] !== undefined) continue;
+    let j = i;
+    while (xs[j] === undefined) j++;
+    for (let k = i; k < j; k++) xs[k] = xs[i - 1]! + ((xs[j]! - xs[i - 1]!) * (k - i + 1)) / (j - i + 1);
+  }
+  const x = xs as number[];
+  for (let i = 1; i < x.length; i++) x[i] = Math.max(x[i], x[i - 1]);
+  return linearEasing(
+    x.map((xi, i) => [xi, ys[i]] as const),
+    `linear(${body.trim()})`,
+  );
+}
+
+/**
+ * A timing keyword, `cubic-bezier(x1, y1, x2, y2)` or `linear(…)`. The bezier's
+ * x coordinates must be within [0, 1], as CSS requires. Outside that range the
+ * curve is not a function of time and the solver would not converge.
  */
 export function parseEasing(v: string | undefined): Easing | undefined {
   if (v === undefined) return undefined;
   const s = v.trim().toLowerCase();
   const keyword = easingKeywordsOf()[s];
   if (keyword) return keyword;
+  const l = /^linear\(([^)]*)\)$/.exec(s);
+  if (l) return parseLinear(l[1]);
   const m = /^cubic-bezier\(([^)]*)\)$/.exec(s);
   if (!m) return undefined;
   const n = m[1].split(',').map((part) => parseNumber(part));

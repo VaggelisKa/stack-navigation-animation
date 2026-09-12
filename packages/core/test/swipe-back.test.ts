@@ -1,14 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { installGlobals, makeElement } from './dom-stub.ts';
-import { createIOSStack } from '../src/index.ts';
+import { createNativeStack } from '../src/index.ts';
 
 installGlobals();
 const property = 'overscroll-behavior-x';
 function setup(root = makeElement('html')) {
   const container = makeElement();
   container.ownerDocument = { documentElement: root };
-  const stack = createIOSStack({ container });
+  const stack = createNativeStack({ container });
   return { root, container, stack };
 }
 
