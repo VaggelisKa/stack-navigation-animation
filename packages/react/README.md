@@ -137,7 +137,13 @@ app code using the router and the browser's `navigation.canGoBack`; see
 
 A swipe pops the page and then brings the router in line: `navigate(-1)` when
 the entry behind the current one is the page that was revealed, otherwise a
-`replace` navigation to that page with a `pop` hint.
+`replace` navigation to that page with a `pop` hint. Until the router lands
+somewhere, the popped page stays rendered off screen, so its state is intact if
+the router refuses and it is put back.
+
+`keyOf` defaults to the pathname, so a navigation that changes only the search
+or the hash stays on the same page and does not go through the stack; a hint on
+such a navigation has nothing to apply to.
 
 ## Without React Router
 

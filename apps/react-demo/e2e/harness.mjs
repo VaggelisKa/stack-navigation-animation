@@ -5,9 +5,10 @@ import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { extname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = new URL('../dist/', import.meta.url).pathname;
-const SHOTS = new URL('./shots/', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('../dist/', import.meta.url));
+const SHOTS = fileURLToPath(new URL('./shots/', import.meta.url));
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.map': 'application/json' };
 
 export async function launch({ width = 420, height = 800 } = {}) {

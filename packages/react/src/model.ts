@@ -67,8 +67,6 @@ export interface ActivateOptions<TRoute extends RouteRef> {
   animated: boolean;
   /** the node that renders the page */
   node: ReactNode;
-  /** the node the page that is leaving was last rendered with */
-  previousNode: ReactNode;
   createElement(): HTMLElement;
   /** whether the core stack shows this element on top right now and is idle */
   isOnScreen(el: HTMLElement): boolean;
@@ -89,19 +87,19 @@ export function activate<TRoute extends RouteRef>(model: StackModel<TRoute>, rou
   if (model.lastKey === route.key) return null;
   const views = model.views;
   const from = views[views.length - 1] ?? null;
-  const pending = model.mounted.find((p) => p.pendingRemoval) ?? null;
-  const leftByGesture = pending != null;
+  const waiting = pending(model);
+  const leftByGesture = waiting != null;
 
   // A swipe already took this page off; the router either refused to leave it
   // or came straight back. Put it back where it was, without animating.
-  if (pending && pending.key === route.key) {
-    pending.pendingRemoval = false;
-    pending.route = route;
-    pending.node = o.node;
-    views.push(pending);
+  if (waiting && waiting.key === route.key) {
+    waiting.pendingRemoval = false;
+    waiting.route = route;
+    waiting.node = o.node;
+    views.push(waiting);
     model.lastKey = route.key;
     model.lastDirection = 'push';
-    return { page: pending, direction: 'push', animated: false, reused: true, present: true };
+    return { page: waiting, direction: 'push', animated: false, reused: true, present: true };
   }
 
   const existing = views.find((v) => v.key === route.key) ?? null;
@@ -118,8 +116,9 @@ export function activate<TRoute extends RouteRef>(model: StackModel<TRoute>, rou
   if (leftByGesture && from && direction === 'pop' && !existing) direction = 'replace';
   const animated = o.animated && (navigation?.animated ?? true) && views.length > 0;
 
+  // The page that is leaving keeps the node it was last rendered with: the
+  // component refreshes the top page's node on every render, so it is current.
   const page = existing ?? createPage(model, route, o.createElement());
-  if (from && from !== page) from.node = o.previousNode;
   page.route = route;
   page.node = o.node;
   const reused = existing != null;
@@ -158,6 +157,8 @@ function place<TRoute extends RouteRef>(views: PageModel<TRoute>[], page: PageMo
  */
 export function removed<TRoute extends RouteRef>(model: StackModel<TRoute>, els: readonly HTMLElement[], byGesture: boolean): PageModel<TRoute>[] {
   const gone: PageModel<TRoute>[] = [];
+  // A new swipe supersedes any page an earlier swipe left waiting: the router never came for it.
+  if (byGesture) gone.push(...dropPending(model));
   for (const el of els) {
     const page = model.mounted.find((p) => p.el === el);
     if (!page) continue;
@@ -170,6 +171,11 @@ export function removed<TRoute extends RouteRef>(model: StackModel<TRoute>, els:
     }
   }
   return gone;
+}
+
+/** The page a swipe popped that is still waiting for the router, if any. */
+export function pending<TRoute extends RouteRef>(model: StackModel<TRoute>): PageModel<TRoute> | null {
+  return model.mounted.find((p) => p.pendingRemoval) ?? null;
 }
 
 /** The page a swipe revealed: the top of the kept stack. */

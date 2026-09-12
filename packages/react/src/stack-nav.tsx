@@ -13,7 +13,7 @@ import {
 } from '@stacknav/core';
 import { createContext, forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type ForwardedRef, type ReactElement, type ReactNode, type Ref } from 'react';
 import { createPortal } from 'react-dom';
-import { activate, createModel, dropPending, removed, restore, top, type Activation, type PageModel, type StackNavigation, type StackPage } from './model.ts';
+import { activate, createModel, dropPending, pending, removed, restore, top, type Activation, type PageModel, type StackNavigation, type StackPage } from './model.ts';
 
 export interface StackNavActivation<TRoute extends RouteRef = RouteRef> {
   page: StackPage<TRoute>;
@@ -60,7 +60,9 @@ export interface StackNavProps<TRoute extends RouteRef = RouteRef> {
   /**
    * A swipe popped `popped` and revealed `revealed`. Bring the router in line:
    * usually `history.back()`, which is the default. Return `false` (or a
-   * promise of it) if the router refused, and the page is put back.
+   * promise of it) if the router refused, and the page is put back. The popped
+   * page stays rendered, off screen, until the router lands on another page,
+   * so a handler must either navigate or return `false`.
    */
   onSwipeBack?: (revealed: StackPage<TRoute>, popped: StackPage<TRoute>) => boolean | void | Promise<boolean | void>;
   /** Every activation, with the direction that was resolved for it. */
@@ -127,7 +129,7 @@ function StackNavImpl<TRoute extends RouteRef>(
   const [model] = useState(() => createModel<TRoute>());
   const [version, bump] = useReducer((n: number) => n + 1, 0);
   const opsRef = useRef<Activation<TRoute>[]>([]);
-  const childrenRef = useRef<ReactNode>(null);
+  const defaults = useRef<{ transition: IOSTransitionOptions; gesture: EdgePanGestureOptions } | null>(null);
   const callbacks = useRef({ onSwipeBack, onNavigate });
   callbacks.current = { onSwipeBack, onNavigate };
 
@@ -145,7 +147,6 @@ function StackNavImpl<TRoute extends RouteRef>(
     resolve,
     animated,
     node: children,
-    previousNode: childrenRef.current,
     createElement: () => document.createElement('div'),
     isOnScreen: (el) => {
       const s = stackRef.current;
@@ -153,7 +154,9 @@ function StackNavImpl<TRoute extends RouteRef>(
     },
   });
   if (activation) opsRef.current.push(activation);
-  childrenRef.current = children;
+  // The top page always renders the latest children. Between a swipe and the
+  // router catching up the top is the revealed page and `children` still the
+  // popped one, so the keys are checked rather than assumed.
   const current = top(model);
   if (current && current.key === route.key) {
     current.route = route;
@@ -163,8 +166,10 @@ function StackNavImpl<TRoute extends RouteRef>(
   // ------------------------------------------------------------- the stack
   useLayoutEffect(() => {
     const container = containerRef.current!;
-    const stack = createIOSStack({ container, transition, gesture: gesture || {} });
-    if (gesture === false) stack.gesture.detach();
+    // Built with the defaults; the option effects below apply the props over
+    // them, on mount and whenever they change.
+    const stack = createIOSStack({ container });
+    defaults.current = { transition: { ...stack.transition.options }, gesture: { ...stack.gesture.options } };
     if (injectStyles) injectCoreStyles(container.ownerDocument);
     stackRef.current = stack;
 
@@ -173,7 +178,7 @@ function StackNavImpl<TRoute extends RouteRef>(
       removed(model, els, byGesture);
       bump();
       if (!byGesture) return;
-      const popped = model.mounted.find((p) => p.pendingRemoval);
+      const popped = pending(model);
       const revealed = top(model);
       if (!popped || !revealed) return;
       let outcome: boolean | void | Promise<boolean | void>;
@@ -198,8 +203,10 @@ function StackNavImpl<TRoute extends RouteRef>(
     // Pages activated before the stack existed (the first render, or a remount
     // under StrictMode) are shown as they are, without animating.
     if (model.views.length) {
+      const ops = opsRef.current;
       opsRef.current = [];
       void stack.reset(model.views.map((v) => v.el));
+      for (const op of ops) callbacks.current.onNavigate?.({ page: op.page, direction: op.direction, animated: false, reused: op.reused });
     }
     bump();
     return () => {
@@ -229,23 +236,25 @@ function StackNavImpl<TRoute extends RouteRef>(
   });
 
   // ------------------------------------------------------------- options
+  // Compared by value, so an object literal in JSX does not reapply every render.
+  // Each apply starts from the defaults, so a key that goes away goes back to its default.
   const transitionJson = JSON.stringify(transition ?? {}, (_, v: unknown) => (typeof v === 'function' ? String(v) : v));
   useEffect(() => {
     const stack = stackRef.current;
-    if (!stack || !transition) return;
-    Object.assign(stack.transition.options, transition);
+    if (!stack || !defaults.current) return;
+    Object.assign(stack.transition.options, defaults.current.transition, transition);
     stack.transition.refresh();
   }, [transitionJson]);
 
   const gestureJson = JSON.stringify(gesture);
   useEffect(() => {
     const stack = stackRef.current;
-    if (!stack) return;
+    if (!stack || !defaults.current) return;
     if (gesture === false) {
       stack.gesture.detach();
       return;
     }
-    Object.assign(stack.gesture.options, gesture);
+    Object.assign(stack.gesture.options, defaults.current.gesture, gesture);
     if (!stack.container.querySelector(':scope > .sn-edge')) stack.gesture.attach(stack);
     stack.gesture.refresh();
   }, [gestureJson]);
@@ -264,7 +273,8 @@ function StackNavImpl<TRoute extends RouteRef>(
   );
   useImperativeHandle(ref, () => handle, [handle]);
 
-  const renderPage = useCallback((page: PageModel<TRoute>) => createPortal(page === current ? children : page.node, page.el, String(page.id)), [current, children]);
+  // Every page renders its own node: the top page's is `children` (set above), a kept page's is what it was last shown with.
+  const renderPage = useCallback((page: PageModel<TRoute>) => createPortal(page.node, page.el, String(page.id)), []);
 
   return (
     <StackNavContext.Provider value={handle as StackNavHandle}>

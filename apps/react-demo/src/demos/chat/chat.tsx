@@ -55,7 +55,9 @@ export function ChatInbox() {
 
 /**
  * A thread: message bubbles, a composer pinned to the bottom of the scroll
- * container, and replies that keep arriving after you pop back to the inbox.
+ * container, and a reply that arrives after a delay. Popping back to the inbox
+ * unmounts the page; the reply still lands in the fake backend, so the inbox
+ * shows it on refresh and the thread on its next open.
  */
 export function ChatThread() {
   const { id = '' } = useParams();

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createDirectionResolver, segmentsOf, type RouteRef } from '@stacknav/core';
-import { activate, createModel, dropPending, removed, restore, top, type StackModel } from '../src/model.ts';
+import { activate, createModel, dropPending, pending, removed, restore, top, type StackModel } from '../src/model.ts';
 
 const resolve = createDirectionResolver();
 let n = 0;
@@ -13,7 +13,6 @@ function show(model: StackModel, path: string, opts: { level?: number; nav?: Par
     resolve,
     animated: opts.animated ?? true,
     node: path,
-    previousNode: 'prev',
     createElement: el,
     isOnScreen: () => opts.onScreen ?? false,
   });
@@ -41,11 +40,12 @@ test('activating the same key again does nothing', () => {
 test('a descendant pushes and the leaving page keeps its last node', () => {
   const m = createModel();
   show(m, '/');
+  m.views[0].node = 'home, as last rendered';
   const a = show(m, '/items/3')!;
   assert.equal(a.direction, 'push');
   assert.equal(a.animated, true);
   assert.equal(keys(m), '/,/items/3');
-  assert.equal(m.views[0].node, 'prev');
+  assert.equal(m.views[0].node, 'home, as last rendered');
   assert.equal(m.views[1].node, '/items/3');
 });
 
@@ -176,4 +176,30 @@ test('each page gets a unique id even when keys repeat', () => {
   show(m, '/items/1');
   const ids = m.mounted.map((p) => p.id);
   assert.equal(new Set(ids).size, ids.length);
+});
+
+test('a swipe followed by a navigation elsewhere leaves the revealed page rendering itself', () => {
+  const m = createModel();
+  show(m, '/');
+  show(m, '/items/3');
+  removed(m, [m.views[1].el], true);
+  show(m, '/about');
+  const home = m.mounted.find((p) => p.key === '/')!;
+  assert.equal(home.node, '/', 'the page beneath still renders its own node');
+});
+
+test('a second swipe drops the page an earlier swipe left waiting', () => {
+  const m = createModel();
+  show(m, '/');
+  show(m, '/a');
+  show(m, '/b', { nav: { hint: 'push' } });
+  assert.equal(keys(m), '/,/a,/b');
+  const b = m.views[2];
+  const a = m.views[1];
+  removed(m, [b.el], true);
+  assert.equal(pending(m), b);
+  const gone = removed(m, [a.el], true);
+  assert.deepEqual(gone, [b]);
+  assert.equal(pending(m), a);
+  assert.equal(m.mounted.length, 2);
 });

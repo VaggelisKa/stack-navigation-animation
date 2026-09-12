@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
-    "e2e": "node e2e/run.mjs"
+    "e2e": "node e2e/run.mjs && node e2e/dev-strict.mjs"
   },
   "dependencies": {
     "@stacknav/core": "workspace:*",

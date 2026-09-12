@@ -96,11 +96,14 @@ The same idea on React Router, in declarative mode: the home page demonstrates
 the mechanics (the route tree, numbered screens, hints in the navigation
 `state`, siblings, a deep link and the back button's fallback), and above it
 sit the Feed, Shop, Messages, Gallery and Lab demos from the Angular app, ported
-to React with the same fake API. Where Angular had resolvers and guards, the
+to React with the same fake API (a thread's replies stop when its page is popped,
+since React unmounts it). Where Angular had resolvers and guards, the
 React pages load in place behind skeletons, which is what declarative routing
 does, and the Lab's slow page says so.
 
-`pnpm e2e:react` builds it and drives it in Chromium (`e2e/run.mjs`).
+`pnpm e2e:react` builds it and drives it in Chromium: `e2e/run.mjs` against the
+build, then `e2e/dev-strict.mjs` against the dev server, where StrictMode doubles
+renders and effects.
 
 ## Develop
 

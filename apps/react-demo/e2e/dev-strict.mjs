@@ -1,12 +1,13 @@
 // Drives the Vite dev server, where React runs in StrictMode and doubles
 // renders and effects, to check the stack neither presents a page twice nor
-// logs errors. Not part of `pnpm e2e`; run it by hand: node e2e/dev-strict.mjs
+// logs errors. Runs after run.mjs as part of `pnpm e2e`.
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 
 const PORT = 5199;
-const vite = spawn('pnpm', ['exec', 'vite', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { cwd: new URL('..', import.meta.url).pathname, stdio: ['ignore', 'pipe', 'pipe'] });
+const vite = spawn('pnpm', ['exec', 'vite', '--host', '127.0.0.1', '--port', String(PORT), '--strictPort'], { cwd: fileURLToPath(new URL('..', import.meta.url)), stdio: ['ignore', 'pipe', 'pipe'] });
 process.on('exit', () => vite.kill());
 await new Promise((resolve, reject) => {
   vite.stdout.on('data', (d) => String(d).includes('Local:') && resolve());

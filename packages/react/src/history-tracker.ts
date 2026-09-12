@@ -48,7 +48,10 @@ export function createHistoryTracker(): HistoryTracker {
           last = { trigger: 'history', historyDelta: idx - cursor };
           cursor = idx;
         } else {
-          // an entry from before the app mounted, or one the router did not tell us about
+          // An entry from before the app mounted, or one the router did not
+          // tell us about: start over from here. `previousKey` is null until
+          // the next push, so a swipe back meanwhile navigates by URL instead
+          // of through history.
           entries = [key];
           cursor = 0;
           last = { trigger: 'history', historyDelta: undefined };
