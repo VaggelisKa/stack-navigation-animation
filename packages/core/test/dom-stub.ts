@@ -52,6 +52,7 @@ export function makeElement(tag = 'div'): any {
       const sib = el.parentElement.children;
       sib.splice(sib.indexOf(el), 1);
       el.parentElement = null;
+      el.parentElement = null;
     },
     setAttribute(k, v) {
       el.attrs[k] = v;

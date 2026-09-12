@@ -286,7 +286,11 @@ export class NavigationStack {
     this.busy = false;
     const active = this._activeTransition;
     this._activeTransition = null;
-    if (active) this.transition.end?.(active.lower, active.upper);
+    if (active) {
+      this.transition.end?.(active.lower, active.upper);
+      // During a pop the outgoing page has already left entries.
+      if (!this.entries.includes(active.upper)) this._unmount(active.upper);
+    }
     while (this.entries.length) this._unmount(this.entries.pop()!);
     this.container.classList.remove('sn-container', 'sn-busy');
     this.container.style.removeProperty('--sn-t');
@@ -330,6 +334,7 @@ export class NavigationStack {
     while (this.entries.length > depth) removed.push(this._unmount(this.entries.pop()!)); // intermediate pages: removed without animation
     const lower = this.top;
     await this._transition(lower, upper, 1, 0, animated, 'pop');
+    if (this._destroyed) return upper;
     removed.push(this._unmount(upper));
     this._settle();
     this._emit('pop', { entry: upper, removed, entries: this.entries.slice(), source });
