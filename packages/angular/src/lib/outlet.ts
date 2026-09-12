@@ -345,7 +345,7 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
     // After a swipe the page beneath is already showing and the one that left
     // is gone. A pop onto anything else has nothing to pop, so just show the page.
     if (!leaving && this.stack.top && direction === 'pop' && !reused) direction = 'replace';
-    const animated = this.config.animated && (nav?.animated ?? true) && (this.views.length > 0 || !!leaving);
+    const animated = this.config.animated() && (nav?.animated ?? true) && (this.views.length > 0 || !!leaving);
 
     view.route = activatedRoute;
     view.proxy?.swap(activatedRoute);
