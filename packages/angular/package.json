@@ -1,6 +1,6 @@
 {
   "name": "@stacknav/angular",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Angular router outlet with iOS-style push/pop transitions and interactive swipe back, built on @stacknav/core.",
   "license": "MIT",
   "keywords": [

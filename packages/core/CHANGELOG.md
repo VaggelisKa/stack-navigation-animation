@@ -1,5 +1,13 @@
 # @stacknav/core
 
+## 0.3.1
+
+### Patch Changes
+
+- [#15](https://github.com/VaggelisKa/stack-navigation-animation/pull/15) [`228b6ab`](https://github.com/VaggelisKa/stack-navigation-animation/commit/228b6ab3ff514841e5a3a060a81db835d719eb6e) Thanks [@VaggelisKa](https://github.com/VaggelisKa)! - Disable browser-owned stack transitions when `prefers-reduced-motion: reduce` is active, including when the preference changes during an animation or an inline duration has already been applied.
+
+- [#13](https://github.com/VaggelisKa/stack-navigation-animation/pull/13) [`bbc1b20`](https://github.com/VaggelisKa/stack-navigation-animation/commit/bbc1b20ac9ef4f5b68cbb928e61cd94dd346fbaa) Thanks [@VaggelisKa](https://github.com/VaggelisKa)! - Process bubbling edge gestures once per pointer move, avoid repeated overlay setup and zero-distance animation layout, and resolve dim colour and shadow directly through CSS variables. Fix Bézier progress sampling for flat curves and resolve cancelled tweens without scheduling another frame.
+
 ## 0.3.0
 
 ### Minor Changes
