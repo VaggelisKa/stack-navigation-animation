@@ -1,5 +1,5 @@
 // Drives the demo apps (feed, shop, messages, gallery, forms, search,
-// dashboard, lab) through the outlet: pushes and pops across different layouts,
+// dashboard, mail, lab) through the outlet: pushes and pops across different layouts,
 // content arriving before, during and after a transition, resolvers, replaced
 // pages, a nested outlet, and the swipe gesture on all of them.
 // Run `ng build` first.
@@ -326,6 +326,43 @@ await page.click('.sn-page-visible .dash-filters button:has-text("fail")');
 check((await count('.dash-table tbody tr')) < 40, 'table filter applied');
 await transitioned(() => page.click('.sn-page-visible .back'), 'dash-home');
 eq((await state()).pages.join(','), 'app-home', 'back on the demos: tab switches replaced their history entry, so one Back leaves the dashboard');
+
+// ============================================================ mail
+section('mail: direction from data.animation through a transition table');
+await page.goto(base + '/');
+await page.waitForSelector('app-home');
+await openDemo('Mail');
+await waitCount('a.mail-row', 5);
+eq(await text('.sn-page-visible .mail-about .lede code:last-of-type'), 'Inbox', 'the page reads its own data.animation');
+await transitioned(() => page.click('.sn-page-visible .mail-folders a:has-text("Sent")'), 'mail-sent');
+s = await state();
+eq(s.pages.join(','), 'app-home,mail-folder', 'Inbox => Sent replaced the folder (siblings the tree would push)');
+eq(s.title, 'Sent', 'on the Sent folder');
+eq(s.url, '/mail/sent', 'url after the folder switch');
+await waitCount('a.mail-row', 3);
+await transitioned(() => page.locator('.sn-page-visible a.mail-row').first().click(), 'mail-thread');
+s = await state();
+eq(s.pages.join(','), 'app-home,mail-folder,mail-thread', '* => Thread pushed over the folder');
+await page.waitForSelector('.sn-page-visible .mail-message h2');
+await transitioned(() => page.click('.sn-page-visible .mail-message .btn'), 'mail-reply');
+s = await state();
+eq(s.pages.join(','), 'app-home,mail-folder,mail-thread,mail-compose', 'Thread => Compose pushed (siblings the tree would replace)');
+eq(s.title, 'Reply', 'the composer knows it is a reply from the query param');
+await page.waitForFunction(() => document.querySelector('.sn-page-visible input[name=subject]')?.value.startsWith('Re: '));
+check(true, 'subject prefilled from the message');
+await page.fill('.sn-page-visible textarea', 'Sounds good.');
+await transitioned(() => page.click('.sn-page-visible .mail-action:has-text("Send")'), 'mail-sent-back', { timeout: 4000 });
+s = await state();
+eq(s.pages.join(','), 'app-home,mail-folder,mail-thread', 'Send popped the composer back onto the thread');
+await transitioned(() => page.click('.sn-page-visible .back'), 'mail-thread-back');
+s = await state();
+eq(s.pages.join(','), 'app-home,mail-folder', 'Thread => * popped back to the folder');
+await transitioned(() => page.click('.sn-page-visible .mail-action[aria-label=Compose]'), 'mail-compose');
+eq((await state()).pages.join(','), 'app-home,mail-folder,mail-compose', 'Sent => Compose pushed the composer over a folder too');
+await transitioned(() => page.click('.sn-page-visible .back:has-text("Cancel")'), 'mail-cancel');
+eq((await state()).pages.join(','), 'app-home,mail-folder', 'Cancel popped it');
+await transitioned(() => page.goBack(), 'mail-out');
+eq((await state()).pages.join(','), 'app-home', 'one browser back leaves the demo: the folder switch had replaced its history entry');
 
 // ============================================================ lab
 section('lab: deep stack, slow resolver, heavy page, failing backend');
