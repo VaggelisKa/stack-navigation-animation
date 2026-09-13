@@ -31,11 +31,11 @@ export {
   resolveDirection,
   createDirectionResolver,
   defaultStrategies,
-  fromHint,
-  fromHistory,
-  fromStack,
-  fromLevel,
-  fromTree,
+  byHint,
+  byBrowserHistory,
+  byKeptStack,
+  byRouteNumber,
+  byRouteTree,
   always,
   segmentsOf,
 } from './direction.ts';
@@ -47,8 +47,8 @@ export type {
   NavigationContext,
   NavigationTrigger,
   RouteRef,
-  LevelOptions,
-  TreeOptions,
+  SiblingOptions,
+  DefaultStrategyOptions,
 } from './direction.ts';
 export { STACKNAV_CSS, STACKNAV_STYLE_ID, injectStyles } from './styles.ts';
 

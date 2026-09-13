@@ -53,7 +53,7 @@ test('importing everything keeps every module (so the list above is complete)', 
 });
 
 test('a direction strategy alone brings in nothing else', async () => {
-  assert.deepEqual(await survivors(`export { segmentsOf, fromTree } from './index.ts';`), ['direction']);
+  assert.deepEqual(await survivors(`export { segmentsOf, byRouteTree } from './index.ts';`), ['direction']);
 });
 
 test('injectStyles alone is the stylesheet and nothing else', async () => {
