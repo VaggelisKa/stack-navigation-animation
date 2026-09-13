@@ -31,7 +31,7 @@ const feedScroll = await scrollTop();
 check(feedScroll > 0, `scrolled the feed (${feedScroll}px)`);
 // the first card whose author row is in view, so the click does not scroll the list
 const nth = await page.evaluate(() => {
-  const outlet = document.querySelector('[snStack]').getBoundingClientRect();
+  const outlet = document.querySelector('.sn-container').getBoundingClientRect();
   return [...document.querySelectorAll('.sn-page-visible feed-card .feed-author')].findIndex((a) => a.getBoundingClientRect().top > outlet.top + 60);
 });
 const author = await page.locator('.sn-page-visible feed-card').nth(nth).locator('.feed-author b').textContent();
@@ -138,7 +138,7 @@ s = await state();
 eq(s.pages.join(','), 'app-home,chat-inbox,chat-thread', 'thread over the inbox');
 await page.waitForSelector('.sn-page-visible .chat-bubble');
 const atBottom = await page.evaluate(() => {
-  const el = document.querySelector('[snStack] > .sn-page-visible');
+  const el = document.querySelector('.sn-container > .sn-page-visible');
   return el.scrollHeight - el.scrollTop - el.clientHeight;
 });
 check(atBottom < 2, `thread scrolled to its newest bubble (${atBottom}px from the bottom)`);

@@ -8,7 +8,7 @@ replacing it.
 | Package | Description |
 | --- | --- |
 | [`@stacknav/core`](packages/core) | The engine: a stack of page elements, the platform's native transition (iOS: slide, parallax, dim, shadow; Android: short slide and fade), an interactive pop you can drive from a gesture of your own, direction resolution, and a `history.state` adapter for apps without a router. No dependencies. |
-| [`@stacknav/angular`](packages/angular) | `snStack`, a directive for the element around Angular's own `<router-outlet>`. It keeps pages alive beneath the top one, animates every navigation, and leaves the back gesture to the browser. Nothing is swapped out, and it adds no navigation API of its own: the router, `routerLink` and `Location` handle navigation. |
+| [`@stacknav/angular`](packages/angular) | `stackNav`, a directive for Angular's own `<router-outlet>`. It keeps pages alive beneath the top one, animates every navigation, and leaves the back gesture to the browser. Nothing is swapped out, and it adds no navigation API of its own: the router, `routerLink` and `Location` handle navigation. |
 | `@stacknav/react` | Planned. |
 
 Demos: [`apps/demo`](apps/demo) (vanilla, no router) and
@@ -21,8 +21,9 @@ providers: [provideRouter(routes), provideStackNav()];
 ```
 
 ```html
-<div snStack style="height: 100dvh">
-  <router-outlet />
+<!-- the element around the outlet is the stack; it needs a height -->
+<div style="height: 100dvh">
+  <router-outlet stackNav />
 </div>
 ```
 
@@ -47,7 +48,7 @@ document-wide, best effort, and cannot guarantee blocking Safari or OS gestures.
 Back buttons keep working in both.
 
 Configure this in `createNativeStack()` or `provideStackNav()`. Change it live with
-`stack.setSwipeBack(mode)` or `<div snStack [snSwipeBack]="mode()">`. Try both in
+`stack.setSwipeBack(mode)` or `<router-outlet stackNav [stackNavSwipeBack]="mode()" />`. Try both in
 **Lab → Swipe back** in the Angular demo or **Options → Swipe back** in the vanilla one.
 
 An app that *does* own the edge -- an installed PWA, a native webview -- can drive

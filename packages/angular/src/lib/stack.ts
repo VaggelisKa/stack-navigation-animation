@@ -3,7 +3,6 @@ import {
   Directive,
   ElementRef,
   ErrorHandler,
-  contentChild,
   effect,
   inject,
   input,
@@ -44,7 +43,7 @@ import { Subscription } from 'rxjs';
 import { STACKNAV_CONFIG } from './config';
 import { StackNavHistory } from './history';
 import { StackNavRouteReuseStrategy, type PageKeeper } from './route-reuse-strategy';
-import { checkOutletPlacement, checkSetup, checkStrategy } from './setup-checks';
+import { checkSetup, checkStrategy } from './setup-checks';
 
 declare const ngDevMode: boolean | undefined;
 
@@ -88,12 +87,10 @@ export interface StackNavActivation {
 
 /**
  * Puts the platform's native push/pop transition on Angular's own
- * `<router-outlet>`. Add it to the element around the outlet:
+ * `<router-outlet>`:
  *
  * ```html
- * <div snStack style="height: 100dvh">
- *   <router-outlet />
- * </div>
+ * <router-outlet stackNav />
  * ```
  *
  * The outlet keeps doing everything it does: it creates the page components,
@@ -105,27 +102,28 @@ export interface StackNavActivation {
  * pages beneath the top keep their scroll position, form state and
  * subscriptions.
  *
+ * The router puts every page next to the outlet, so the outlet's parent
+ * element is the stack: the pages' scroll container, which needs a height.
+ *
  * Keeping a page alive is the router's own detach/attach mechanism, driven by
- * `StackNavRouteReuseStrategy`, which `provideStackNav()` installs. The
- * element needs a height; it is the pages' scroll container.
+ * `StackNavRouteReuseStrategy`, which `provideStackNav()` installs.
  */
 @Directive({
-  selector: '[snStack]',
-  exportAs: 'snStack',
+  selector: 'router-outlet[stackNav]',
+  exportAs: 'stackNav',
 })
 export class StackNav implements OnInit, OnDestroy, PageKeeper {
   /** Transition options for this stack, merged over `provideStackNav({ transition })`. */
-  readonly transition = input<Partial<NativeTransitionOptions> | undefined>(undefined, { alias: 'snTransition' });
+  readonly transition = input<Partial<NativeTransitionOptions> | undefined>(undefined, { alias: 'stackNavTransition' });
   /** Live override of the configured swipe policy. */
-  readonly swipeBack = input<SwipeBackMode | undefined>(undefined, { alias: 'snSwipeBack' });
+  readonly swipeBack = input<SwipeBackMode | undefined>(undefined, { alias: 'stackNavSwipeBack' });
   /** Every activation, with the direction that was resolved for it. */
-  readonly navigated = output<StackNavActivation>({ alias: 'snNavigated' });
+  readonly activate = output<StackNavActivation>({ alias: 'stackNavActivate' });
 
-  private readonly outlet = contentChild(RouterOutlet);
-  private readonly outletEl = contentChild(RouterOutlet, { read: ElementRef });
-  /** The container the outlet inserts pages into: the same one, read off the same element. */
-  private readonly outletViews = contentChild(RouterOutlet, { read: ViewContainerRef });
-
+  private readonly outlet = inject(RouterOutlet, { self: true });
+  /** The container the outlet inserts pages into: the same one, injected on the same element. */
+  private readonly outletViews = inject(ViewContainerRef);
+  /** The outlet element; the stack is its parent. */
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly config = inject(STACKNAV_CONFIG);
   private readonly history = inject(StackNavHistory);
@@ -162,22 +160,13 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
       const mode = this.swipeBack() ?? this.config.swipeBack;
       this.stack?.setSwipeBack(mode);
     });
-    // The outlet is content, so it exists after this directive does. Listen to
-    // it once it is there, and adopt whatever it has already activated.
-    effect((onCleanup) => {
-      const outlet = this.outlet();
-      if (!outlet) return;
-      const subs = new Subscription();
-      subs.add(outlet.activateEvents.subscribe(() => this.onActivated(outlet)));
-      subs.add(outlet.attachEvents.subscribe(() => this.onActivated(outlet)));
-      subs.add(outlet.detachEvents.subscribe((instance) => this.onDetached(instance)));
-      subs.add(outlet.deactivateEvents.subscribe((instance) => this.onDeactivated(instance)));
-      untracked(() => {
-        if (typeof ngDevMode === 'undefined' || ngDevMode) checkOutletPlacement(this.host, this.outletEl()?.nativeElement);
-        if (outlet.isActivated) this.onActivated(outlet);
-      });
-      onCleanup(() => subs.unsubscribe());
-    });
+    // Subscribed before the outlet's own ngOnInit can activate anything, so
+    // nothing is missed; whatever it activated already is adopted in ngOnInit.
+    const outlet = this.outlet;
+    this.subs.add(outlet.activateEvents.subscribe(() => this.onActivated()));
+    this.subs.add(outlet.attachEvents.subscribe(() => this.onActivated()));
+    this.subs.add(outlet.detachEvents.subscribe((instance) => this.onDetached(instance)));
+    this.subs.add(outlet.deactivateEvents.subscribe((instance) => this.onDeactivated(instance)));
     // The setup an app has to get right around the stack, said once. Folded
     // away by a production build.
     if (typeof ngDevMode === 'undefined' || ngDevMode) {
@@ -189,6 +178,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   // ------------------------------------------------------------- lifecycle
   ngOnInit(): void {
     this.ensureStack();
+    if (this.outlet.isActivated) this.onActivated();
     this.subs.add(
       this.router.events.subscribe((e) => {
         if (e instanceof NavigationCancel || e instanceof NavigationError || e instanceof NavigationSkipped) this.restorePending();
@@ -225,8 +215,8 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   // --------------------------------------------- what the strategy asks us
   /** @internal The outlet is showing this route, so the router should detach it rather than destroy it. */
   showing(snapshot: ActivatedRouteSnapshot): boolean {
-    const outlet = this.outlet();
-    if (!outlet?.isActivated) return false;
+    const outlet = this.outlet;
+    if (!outlet.isActivated) return false;
     const page = outlet.activatedRoute.snapshot === snapshot ? this.byInstance.get(outlet.component) : null;
     if (!page) return false;
     // The router is about to take the page out of the DOM, which resets every scroll offset in it.
@@ -278,7 +268,8 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
 
   // -------------------------------------------------- what the outlet says
   /** The outlet created a page, or re-attached a kept one. */
-  private onActivated(outlet: RouterOutlet): void {
+  private onActivated(): void {
+    const outlet = this.outlet;
     if (!outlet.isActivated) return;
     const instance = outlet.component;
     if (this.active?.instance === instance) return;
@@ -308,7 +299,8 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     if (page.pendingRemoval) return;
     // Angular took the element out of the DOM. Put it back in the container,
     // where the stack has it hidden, until the router wants it again.
-    if (page.el.parentElement !== this.host) this.host.append(page.el);
+    const container = this.ensureStack().container;
+    if (page.el.parentElement !== container) container.append(page.el);
     restoreScroll(page.scroll);
     // The router detaches before it activates, synchronously. If no
     // activation follows, the outlet is really empty.
@@ -332,8 +324,11 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   // -------------------------------------------------------------- internals
   private ensureStack(): NativeStack {
     if (this.stack) return this.stack;
+    // The router inserts the pages next to the outlet, so its parent is the stack.
+    const container = this.host.parentElement;
+    if (!container) throw new Error('[stacknav] <router-outlet stackNav> needs a parent element: the router puts the pages next to the outlet, and that element is the stack.');
     const stack = (this.stack = createNativeStack({
-      container: this.host,
+      container,
       transition: { ...this.config.transition, ...(untracked(this.transition) || {}) },
       swipeBack: untracked(this.swipeBack) ?? this.config.swipeBack,
     }));
@@ -374,8 +369,8 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
    * directive reads off the same element.
    */
   private elementOf(): HTMLElement | null {
-    const views = this.outletViews();
-    const view = views?.get(views.length - 1) as EmbeddedViewRef<unknown> | null | undefined;
+    const views = this.outletViews;
+    const view = views.get(views.length - 1) as EmbeddedViewRef<unknown> | null;
     return (view?.rootNodes.find((n: Node) => n.nodeType === Node.ELEMENT_NODE) as HTMLElement | undefined) ?? null;
   }
 
@@ -410,7 +405,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     // The router put the kept page back into the DOM just now, at zero.
     if (reused) restoreScroll(page.scroll);
     page.scroll = null;
-    this.navigated.emit({ page, direction, animated, reused });
+    this.activate.emit({ page, direction, animated, reused });
   }
 
   /** Mirrors what the stack will do, synchronously, so `pages` and the next direction stay correct. */
@@ -491,8 +486,8 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
 
   private destroyPage(page: Page): void {
     // A page the outlet still holds is the outlet's to destroy, never ours.
-    const outlet = this.outlet();
-    if (outlet?.isActivated && outlet.component === page.instance) return;
+    const outlet = this.outlet;
+    if (outlet.isActivated && outlet.component === page.instance) return;
     this.forget(page);
     page.ref?.destroy();
   }

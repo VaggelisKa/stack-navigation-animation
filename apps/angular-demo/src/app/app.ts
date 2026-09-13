@@ -11,10 +11,10 @@ import { DemoNav, DemoPrefs } from './demos/shared';
   selector: 'app-root',
   imports: [RouterOutlet, StackNav],
   template: `
-    <!-- The router's own outlet. snStack on the element around it is the whole integration. -->
-    <div class="phone" snStack [snSwipeBack]="prefs.swipeBack()">
+    <!-- The router's own outlet, with stackNav on it. Its parent, the phone, is the stack. -->
+    <div class="phone">
       <div class="progress" [class.on]="busy()" [attr.aria-hidden]="!busy()"></div>
-      <router-outlet />
+      <router-outlet stackNav [stackNavSwipeBack]="prefs.swipeBack()" />
     </div>
   `,
 })

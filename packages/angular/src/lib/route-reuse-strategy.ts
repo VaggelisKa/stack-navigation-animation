@@ -19,7 +19,7 @@ export interface PageKeeper {
 }
 
 /**
- * The `RouteReuseStrategy` behind `snStack`. It does two things a navigation
+ * The `RouteReuseStrategy` behind `stackNav`. It does two things a navigation
  * stack needs from the router.
  *
  * It keeps pages alive. When the router leaves a route a stack is showing, it
@@ -36,7 +36,7 @@ export interface PageKeeper {
  * opt out of that with `data: { reuseRoute: true }`.
  *
  * `provideStackNav()` installs it. An app that provides a strategy of its own
- * must extend this one, or `snStack` has nothing to animate out.
+ * must extend this one, or `stackNav` has nothing to animate out.
  */
 @Injectable()
 export class StackNavRouteReuseStrategy extends BaseRouteReuseStrategy {

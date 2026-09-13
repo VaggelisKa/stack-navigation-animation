@@ -1,15 +1,15 @@
 # @stacknav/angular
 
-`snStack`: the native push/pop transition (iOS, or Android's own on Android)
+`stackNav`: the native push/pop transition (iOS, or Android's own on Android)
 on Angular's own `<router-outlet>`, built on [`@stacknav/core`](../core).
 
 It is a directive, not an outlet. You keep the `<router-outlet>` you have, and
 Angular Router keeps doing everything it does: routes, guards, resolvers,
 `routerLink`, `router.navigate`, lazy loading, component input binding, nested
-outlets and browser history. The directive sits on the element around the
-outlet and only changes what happens when the router activates a route: the
-page that was showing stays alive beneath the new one and the change is
-animated. Interactive edge swiping is opt-in.
+outlets and browser history. The directive sits on the outlet and only changes
+what happens when the router activates a route: the page that was showing stays
+alive beneath the new one and the change is animated. Interactive edge swiping
+is opt-in.
 
 - **Nothing to swap.** The pages are the outlet's own components, in the
   outlet's own elements. The directive never wraps or replaces them; it listens
@@ -43,9 +43,9 @@ bootstrapApplication(App, {
 ```
 
 ```html
-<!-- app.html: the element needs a height; it is the pages' scroll container -->
-<div snStack style="height: 100dvh">
-  <router-outlet />
+<!-- app.html: the element around the outlet is the stack; it needs a height -->
+<div style="height: 100dvh">
+  <router-outlet stackNav />
 </div>
 ```
 
@@ -56,9 +56,10 @@ the direction of every navigation on its own, and installs
 page alive when it leaves it and why `/items/1` → `/items/2` is a page of its
 own rather than a reused component. Everything below is optional.
 
-The `<router-outlet>` must be a direct child of the `snStack` element, because
-the router inserts each page next to its outlet. Anything else in there -- a
-progress bar, a tab bar -- is chrome that sits over the pages.
+The router inserts each page next to its outlet, so the outlet's parent element
+is the stack: it clips and scrolls the pages, and needs a height of its own.
+Anything else in there -- a progress bar, a tab bar -- is chrome that sits over
+the pages.
 
 Two router options are worth adding all the same:
 
@@ -102,8 +103,8 @@ provideStackNav({ swipeBack: 'browser' });  // default: leave browser gestures a
 provideStackNav({ swipeBack: 'disabled' }); // request browser swipe suppression
 ```
 
-Change a single stack live with `<div snStack [snSwipeBack]="mode()">`. Changing
-modes preserves the pages, URL and history.
+Change a single stack live with `<router-outlet stackNav [stackNavSwipeBack]="mode()" />`.
+Changing modes preserves the pages, URL and history.
 
 **There is no gesture of our own to choose.** Suppression cannot stop Safari's
 edge swipe, so a recognizer next to it reads as two backs at once. An app that
@@ -329,16 +330,16 @@ it.
 | `injectStyles` | `true` | insert the core stylesheet at runtime |
 | `animated` | `true` | animate at all. `'touch'` only on a coarse pointer, or a predicate asked before every navigation; see [Mobile only](#mobile-only) |
 
-### `snStack` (`StackNav`)
+### `stackNav` (`StackNav`)
 
-Goes on the element that directly contains the `<router-outlet>`. Exported as
-`snStack` for template references.
+Goes on a `<router-outlet>`; its parent element is the stack. Exported as
+`stackNav` for template references (`#nav="stackNav"`).
 
-Inputs: `snTransition`, `snSwipeBack`.
+Inputs: `stackNavTransition`, `stackNavSwipeBack`.
 
-Outputs: `snNavigated` with `{ page, direction, animated, reused }`. The outlet's
-own `activate`, `deactivate`, `attach` and `detach` outputs keep working, on the
-outlet.
+Outputs: `stackNavActivate` with `{ page, direction, animated, reused }`. The
+outlet's own `activate`, `deactivate`, `attach` and `detach` outputs keep
+working next to it.
 
 Properties: `stack` (the core `NavigationStack`, for `progress` events and
 `beginInteractivePop()`), `pages` (kept pages, bottom to top, each with its
@@ -365,19 +366,18 @@ an app can extend it, and provide the subclass after `provideStackNav()`.
 ### Development-only warnings
 
 A development build checks the things around the stack that fail silently and
-says each once, in the console: an `snStack` element that is 0px tall, a
-`<router-outlet>` that is not its direct child, a `RouteReuseStrategy` that is
-not the library's, and a router left on its default
-`canceledNavigationResolution`. All checks, and their messages, are folded out
-of a production build.
+says each once, in the console: an element around the outlet that is 0px tall,
+a `RouteReuseStrategy` that is not the library's, and a router left on its
+default `canceledNavigationResolution`. All checks, and their messages, are
+folded out of a production build.
 
 ## How it works
 
-The directive queries the `<router-outlet>` in its content and subscribes to
-the outlet's `activate`, `attach`, `detach` and `deactivate` outputs. When the
-router leaves a route, `StackNavRouteReuseStrategy` has it detach the page; the
-directive puts the element back into the stack element, hidden, and resolves the
-direction of the navigation once the outlet activates the next page. It then
+The directive injects the `RouterOutlet` it sits on and subscribes to its
+`activate`, `attach`, `detach` and `deactivate` outputs. When the router
+leaves a route, `StackNavRouteReuseStrategy` has it detach the page; the
+directive puts the element back into the outlet's parent, hidden, and resolves
+the direction of the navigation once the outlet activates the next page. It then
 asks the core stack to push the new page over the kept one, pop onto it, or
 replace it. A page the router has detached is only destroyed once the stack
 drops it. Which page paints on top is decided by `z-index`, so the directive

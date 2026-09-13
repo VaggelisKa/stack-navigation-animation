@@ -46,7 +46,7 @@ export async function launch({ width = 420, height = 800 } = {}) {
     page.evaluate(() => {
       // The router places each page element where it likes, so the stack's own
       // order, not document order, says which page is beneath which.
-      const stack = document.querySelector('[snStack]');
+      const stack = document.querySelector('.sn-container');
       const pages = globalThis.__snStack.entries.map((e) => e.el);
       // A page animating out has already left the entries but is still mounted, on top.
       for (const el of stack.querySelectorAll(':scope > .sn-page')) if (!pages.includes(el)) pages.push(el);
@@ -58,8 +58,8 @@ export async function launch({ width = 420, height = 800 } = {}) {
         title: pages.at(-1)?.querySelector('h1')?.textContent?.trim(),
       };
     }));
-  const busy = (timeout = 2000) => page.waitForFunction(() => document.querySelector('[snStack]').classList.contains('sn-busy'), null, { timeout }).catch(() => {});
-  const settled = () => page.waitForFunction(() => !document.querySelector('[snStack]').classList.contains('sn-busy'));
+  const busy = (timeout = 2000) => page.waitForFunction(() => document.querySelector('.sn-container').classList.contains('sn-busy'), null, { timeout }).catch(() => {});
+  const settled = () => page.waitForFunction(() => !document.querySelector('.sn-container').classList.contains('sn-busy'));
   /** Runs `act`, waits for the transition to start, captures the mid-flight state, then waits for it to end. */
   const transitioned = async (act, name, { timeout = 2000 } = {}) => {
     await act();
@@ -70,9 +70,9 @@ export async function launch({ width = 420, height = 800 } = {}) {
     return mid;
   };
   // At rest only the top page is visible, so a single visible page is the top one.
-  const top = () => page.locator('[snStack] > .sn-page-visible').first();
-  const scrollTop = () => page.evaluate(() => document.querySelector('[snStack] > .sn-page-visible').scrollTop);
-  const setScroll = (y) => page.evaluate((y) => (document.querySelector('[snStack] > .sn-page-visible').scrollTop = y), y);
+  const top = () => page.locator('.sn-container > .sn-page-visible').first();
+  const scrollTop = () => page.evaluate(() => document.querySelector('.sn-container > .sn-page-visible').scrollTop);
+  const setScroll = (y) => page.evaluate((y) => (document.querySelector('.sn-container > .sn-page-visible').scrollTop = y), y);
   /**
    * The library ships no gesture recognizer: in a browser tab the browser owns
    * the edge. This drives `beginInteractivePop()` the way an app that does own

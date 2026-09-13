@@ -72,11 +72,11 @@ export interface StackNavConfig {
    * true. Routes opt out of the second part with `data: { reuseRoute: true }`.
    *
    * Turn it off only to provide a strategy of your own that extends it, after
-   * `provideStackNav()`; without the strategy `snStack` has nothing to keep or
+   * `provideStackNav()`; without the strategy `stackNav` has nothing to keep or
    * animate out.
    */
   routeReuse?: boolean;
-  /** Defaults for every stack's transition. A stack's `snTransition` input overrides these per key. */
+  /** Defaults for every stack's transition. A stack's `stackNavTransition` input overrides these per key. */
   transition?: Partial<NativeTransitionOptions>;
   /** Default browser. `disabled` requests document-wide browser gesture suppression where supported. */
   swipeBack?: SwipeBackMode;
@@ -161,7 +161,7 @@ function resolveAnimated(animated: StackNavConfig['animated']): () => boolean {
 }
 
 /**
- * Configures every `snStack`. Add it next to `provideRouter()`, with no options
+ * Configures every `stackNav` outlet. Add it next to `provideRouter()`, with no options
  * for the usual app. It changes no router configuration; the one provider it
  * adds besides its own is `RouteReuseStrategy`, which is how pages stay alive
  * beneath the top one and how sibling routes become separate pages (see
