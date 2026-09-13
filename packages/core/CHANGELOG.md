@@ -1,5 +1,25 @@
 # @stacknav/core
 
+## 0.5.1
+
+### Patch Changes
+
+- [#27](https://github.com/VaggelisKa/stack-navigation-animation/pull/27) [`15de15d`](https://github.com/VaggelisKa/stack-navigation-animation/commit/15de15d56fe9218c3963758780a55d5c3114768d) Thanks [@VaggelisKa](https://github.com/VaggelisKa)! - Shorten the Android page fade independently of the slide to prevent prolonged content overlap during navigation.
+
+- [#29](https://github.com/VaggelisKa/stack-navigation-animation/pull/29) [`9034db0`](https://github.com/VaggelisKa/stack-navigation-animation/commit/9034db0ef3f8b275869be8771dc8367c02506f25) Thanks [@VaggelisKa](https://github.com/VaggelisKa)! - The upper page of a transition now paints above the lower one by `z-index`
+  (`.sn-page-upper { z-index: 1 }`, inside a container that is its own stacking
+  context via `isolation: isolate`) rather than by document order. A host that
+  lets something else place the page elements -- a framework's router outlet, which
+  inserts each page next to itself -- no longer has to keep them sorted for a push
+  to land on top.
+  
+  The `z-index` changes nothing for a host that appends pages in order. The
+  stacking context is new for every host: chrome placed as a direct child of the
+  container with `position: fixed` and a large `z-index` -- a toast or a sheet
+  next to the pages rather than inside one -- now stacks within the container
+  instead of above everything after it in the document. Page content is not
+  affected; each page was already a stacking context of its own.
+
 ## 0.5.0
 
 ### Minor Changes
