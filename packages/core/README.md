@@ -19,8 +19,9 @@ app's own; the engine only moves them.
 - **CSS runs the animation.** The engine writes where the pages should end up
   and hands the browser that phase's duration and curve; the frames in between
   are the compositor's, not the main thread's.
-- **Direction resolution** for router-driven apps: composable strategies decide
-  push / pop / replace.
+- **Direction resolution** for router-driven apps: an ordered set of small
+  strategies decides push / pop / replace. Hosts get a default order and slot
+  their own rule into it.
 - **Browser back** for apps without a router, through an optional history
   adapter. On iOS browsers the pop is instant, because Safari has already
   animated its own snapshot.
@@ -135,9 +136,9 @@ are detached, not destroyed.
 ### Direction resolution
 
 ```ts
-import { createDirectionResolver, fromHint, fromHistory, fromStack, fromLevel, fromTree, always } from '@stacknav/core';
+import { createDirectionResolver, defaultStrategies } from '@stacknav/core';
 
-const resolve = createDirectionResolver([fromHint(), fromHistory(), fromStack(), fromLevel(), fromTree()], 'push');
+const resolve = createDirectionResolver(defaultStrategies(), 'push');
 
 resolve({
   from: { key: '/items', segments: ['items'] },
@@ -151,9 +152,22 @@ resolve({
 
 A strategy is
 `(ctx: NavigationContext) => 'push' | 'pop' | 'replace' | 'auto' | undefined`.
-`fromLevel({ sameLevel })` and `fromTree({ sameDepth })` configure what equal
-numbers or unrelated siblings mean (default `replace`). `segmentsOf(url)` splits
-a path into `segments`.
+`defaultStrategies()` returns five of them, in this order:
+
+| Strategy | Answers from |
+| --- | --- |
+| `byHint()` | `ctx.hint`, an explicit direction from the caller |
+| `byBrowserHistory()` | a `history` trigger and its delta: back pops, forward pushes |
+| `byKeptStack()` | `ctx.stack`: a target still kept beneath the top pops back to it |
+| `byRouteNumber({ siblings })` | `level` on both pages: higher pushes, lower pops |
+| `byRouteTree({ siblings })` | `segments`: a descendant pushes, an ancestor pops |
+
+`siblings` is what a tie means, the same number or the same depth, and defaults
+to `replace`. `defaultStrategies({ direction, siblings })` takes a rule of the
+host's own, slotted in after `byKeptStack()` and before the two that guess, plus
+a `siblings` handed to those two. That pair is the whole of what a host needs to
+expose. `always(direction)` answers unconditionally, for the end of a list.
+`segmentsOf(url)` splits a path into `segments`.
 
 ### `createNativeTransition(options)`
 

@@ -71,16 +71,16 @@ export function createDirectionResolver(strategies: readonly DirectionStrategy[]
 // ------------------------------------------------------------------ strategies
 
 /** Honors an explicit per-navigation hint, e.g. `{ info: { stacknav: 'pop' } }` in Angular's router. */
-export const fromHint = (): DirectionStrategy => (ctx) => ctx.hint;
+export const byHint = (): DirectionStrategy => (ctx) => ctx.hint;
 
 /** Browser back is a pop, browser forward is a push. No answer for imperative navigations. */
-export const fromHistory = (): DirectionStrategy => (ctx) => {
+export const byBrowserHistory = (): DirectionStrategy => (ctx) => {
   if (ctx.trigger !== 'history' || !ctx.historyDelta) return undefined;
   return ctx.historyDelta < 0 ? 'pop' : 'push';
 };
 
 /** Navigating to a page still kept beneath the current one is a pop back to it. */
-export const fromStack = (): DirectionStrategy => (ctx) => {
+export const byKeptStack = (): DirectionStrategy => (ctx) => {
   const stack = ctx.stack;
   if (!stack || stack.length < 2) return undefined;
   const i = stack.lastIndexOf(ctx.to.key);
@@ -88,50 +88,67 @@ export const fromStack = (): DirectionStrategy => (ctx) => {
   return 'pop';
 };
 
-export interface LevelOptions {
-  /** the direction when both pages carry the same number (default `replace`) */
-  sameLevel?: DirectionOpinion;
+/** Shared by the two strategies that can end up comparing equals. */
+export interface SiblingOptions {
+  /** What a tie means -- the same number, or the same depth (default `replace`). */
+  siblings?: DirectionOpinion;
 }
 
 /**
  * For apps that number their screens (`level: 1`, `level: 2`, …): a higher
  * number pushes, a lower one pops. No answer unless both pages carry a number.
  */
-export const fromLevel = ({ sameLevel = 'replace' }: LevelOptions = {}): DirectionStrategy => (ctx) => {
+export const byRouteNumber = ({ siblings = 'replace' }: SiblingOptions = {}): DirectionStrategy => (ctx) => {
   const a = ctx.from?.level;
   const b = ctx.to.level;
   if (typeof a !== 'number' || typeof b !== 'number') return undefined;
   if (b > a) return 'push';
   if (b < a) return 'pop';
-  return sameLevel;
+  return siblings;
 };
-
-export interface TreeOptions {
-  /** the direction for two unrelated pages at the same depth, e.g. siblings (default `replace`) */
-  sameDepth?: DirectionOpinion;
-}
 
 /**
  * Reads the route tree: a descendant of the current page pushes, an ancestor
  * pops. Otherwise a deeper page pushes and a shallower one pops. Requires
  * `segments` on both pages.
  */
-export const fromTree = ({ sameDepth = 'replace' }: TreeOptions = {}): DirectionStrategy => (ctx) => {
+export const byRouteTree = ({ siblings = 'replace' }: SiblingOptions = {}): DirectionStrategy => (ctx) => {
   const a = ctx.from?.segments;
   const b = ctx.to.segments;
   if (!a || !b) return undefined;
-  if (isPrefix(a, b)) return b.length > a.length ? 'push' : sameDepth;
+  if (isPrefix(a, b)) return b.length > a.length ? 'push' : siblings;
   if (isPrefix(b, a)) return 'pop';
   if (b.length > a.length) return 'push';
   if (b.length < a.length) return 'pop';
-  return sameDepth;
+  return siblings;
 };
 
 /** Always returns the same direction. Useful as the last entry in a list. */
 export const always = (direction: Direction): DirectionStrategy => () => direction;
 
-/** The default order: an explicit hint, then browser history, then the kept stack, then numbering, then the tree. */
-export const defaultStrategies = (): DirectionStrategy[] => [fromHint(), fromHistory(), fromStack(), fromLevel(), fromTree()];
+export interface DefaultStrategyOptions extends SiblingOptions {
+  /**
+   * One rule of your own, asked after the three things the library is sure
+   * about -- an explicit hint, the browser's back/forward button, a page still
+   * kept beneath this one -- and before the two it guesses from: route numbers
+   * and the route tree. Return nothing to fall through to those.
+   */
+  direction?: DirectionStrategy | null;
+}
+
+/**
+ * The standard order: an explicit hint, then the browser's back/forward, then
+ * the kept stack, then `direction` if one was passed, then route numbering,
+ * then the route tree.
+ */
+export const defaultStrategies = ({ direction, siblings }: DefaultStrategyOptions = {}): DirectionStrategy[] => [
+  byHint(),
+  byBrowserHistory(),
+  byKeptStack(),
+  ...(direction ? [direction] : []),
+  byRouteNumber({ siblings }),
+  byRouteTree({ siblings }),
+];
 
 function isPrefix(prefix: readonly string[], of: readonly string[]): boolean {
   if (prefix.length > of.length) return false;

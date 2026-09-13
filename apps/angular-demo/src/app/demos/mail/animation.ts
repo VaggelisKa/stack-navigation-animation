@@ -27,7 +27,7 @@ interface Rule {
 
 const reverse = (d: Direction): Direction => (d === 'push' ? 'pop' : d === 'pop' ? 'push' : 'replace');
 
-export function fromAnimationData(transitions: AnimationTransitions, { key = 'animation' } = {}): DirectionStrategy {
+export function byAnimationData(transitions: AnimationTransitions, { key = 'animation' } = {}): DirectionStrategy {
   const rules: Rule[] = [];
   for (const [pair, direction] of Object.entries(transitions)) {
     const both = pair.includes('<=>');

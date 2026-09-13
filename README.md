@@ -53,26 +53,30 @@ thread is busy.
 
 The engine does not decide whether a navigation is a push or a pop. Apps differ:
 some number their screens, some read the route tree, some rely on the browser's
-back button, some state the direction per navigation. Direction is resolved by an
-ordered list of strategies; the first one with an answer wins.
-
-```ts
-import { fromHint, fromHistory, fromStack, fromLevel, fromTree } from '@stacknav/core';
-
-// the default order
-[fromHint(), fromHistory(), fromStack(), fromLevel(), fromTree()]
-```
+back button, some state the direction per navigation. So five small strategies
+are asked in a fixed order, and the first with an answer wins.
 
 | Strategy | Answers when |
 | --- | --- |
-| `fromHint()` | the navigation carried an explicit `push` / `pop` / `replace` |
-| `fromHistory()` | the browser's back button (pop) or forward button (push) triggered it |
-| `fromStack()` | the target page is still kept beneath the current one: pop back to it |
-| `fromLevel()` | both routes carry a number (`level`): higher pushes, lower pops |
-| `fromTree()` | the target is a descendant (push) or an ancestor (pop) of the current route; otherwise deeper pushes and shallower pops |
+| `byHint()` | the navigation carried an explicit `push` / `pop` / `replace` |
+| `byBrowserHistory()` | the browser's back button (pop) or forward button (push) triggered it |
+| `byKeptStack()` | the target page is still kept beneath the current one: pop back to it |
+| `byRouteNumber()` | both routes carry a number (`level`): higher pushes, lower pops |
+| `byRouteTree()` | the target is a descendant (push) or an ancestor (pop) of the current route; otherwise deeper pushes and shallower pops |
 
-A custom strategy is a function `(ctx) => 'push' | 'pop' | 'replace' | undefined`
-placed anywhere in the list.
+That order needs no configuring, so an app does not spell it out. What it can do
+is add one rule of its own, asked after the first three -- the ones the library
+is sure about -- and before the last two, which guess:
+
+```ts
+provideStackNav({
+  direction: ({ from, to }) => (to.data?.['tab'] ? 'replace' : undefined),  // undefined: fall through
+  siblings: 'push',                                                      // what a tie means. default 'replace'
+});
+```
+
+The strategies are exported all the same, for an app that wants to compose an
+order of its own and hand over the whole resolver.
 
 ### Styling
 

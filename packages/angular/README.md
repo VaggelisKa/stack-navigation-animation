@@ -20,9 +20,10 @@ beneath the new one and the change is animated. Interactive edge swiping is opt-
   the edge. An app that owns it can drive `outlet.stack.beginInteractivePop()`, and the router follows,
   through `history.back()` when that lands on the right page. A `canDeactivate` guard that rejects puts
   the page back.
-- **Configurable direction.** Whether a navigation is a push, a pop or a replace
-  comes from strategies you order: an explicit hint, the browser's back/forward,
-  the kept stack, numbers on your routes, or the route tree.
+- **Direction it works out itself.** Whether a navigation is a push, a pop or a
+  replace comes from an explicit hint, the browser's back/forward, the kept
+  stack, numbers on your routes, or the route tree -- in that order, with
+  nothing to configure. Add one rule of your own when they get it wrong.
 
 ## Use
 
@@ -143,10 +144,20 @@ router.navigate(['/login'], { info: { stacknav: 'replace' } });                 
 router.navigate(['/x'], { info: { stacknav: { direction: 'pop', animated: false } } });   // no animation
 ```
 
-### The full order
+### The order
 
-The defaults are
-`[fromHint(), fromHistory(), fromStack(), fromLevel(), fromTree()]`, which give:
+You do not order anything. Five questions are asked, and the first with an
+answer wins:
+
+| # | Question | Answer |
+| --- | --- | --- |
+| 1 | Did the navigation say so? | the hint, e.g. `{ info: { stacknav: 'pop' } }` |
+| 2 | Was it the browser's back or forward button? | pop / push |
+| 3 | Is the target still alive beneath this page? | pop back to it |
+| 4 | Does your own rule have an opinion? | whatever it returns |
+| 5 | Do the routes carry numbers, or say so by their URLs? | higher / deeper pushes, lower / shallower pops |
+
+Nothing left at all: `push`, or `fallbackDirection`. So, out of the box:
 
 | Navigation | Direction | Because |
 | --- | --- | --- |
@@ -158,25 +169,59 @@ The defaults are
 | `/items/1` → `/items/2` via `routerLink` | replace | siblings, once `StackNavRouteReuseStrategy` is provided (see below) |
 | `router.navigate(['/items', 2], { info: { stacknav: 'push' } })` | push | explicit hint |
 
-Change the order, drop a strategy, or add your own:
+### Two knobs
+
+If siblings should push rather than swap in place -- a wizard's steps, a feed
+that keeps opening posts -- say so once:
+
+```ts
+provideStackNav({ siblings: 'push' });
+```
+
+That covers both ties: two routes at the same depth, and two carrying the same
+`stackLevel`.
+
+For anything the five questions cannot know, add one rule of your own. It is
+asked at step 4, so it overrides the guesses without ever fighting an explicit
+hint or the browser's back button:
 
 ```ts
 provideStackNav({
-  direction: [fromHint(), fromHistory(), myTabStrategy, fromTree({ sameDepth: 'push' })],
-  levelOf: (snapshot) => snapshot.data['order'],   // where numbers live (default data.stackLevel)
-  keyOf: (snapshot) => snapshot.data['pageId'] ?? defaultKeyOf(snapshot), // what identifies a page
+  direction: ({ from, to }) => (to.data?.['tab'] ? 'replace' : undefined),  // undefined: let the library decide
 });
 ```
 
-A strategy receives `{ from, to, trigger, historyDelta, hint, stack }`, where
-`from` and `to` carry `{ key, segments, level, data, snapshot }`.
-
-Because `data` is the route's own data, a strategy can work off metadata your
-routes already carry. An app that names its routes the way Angular's
-route-transition recipe does (`data: { animation: 'Thread' }`) keeps those names
-and adds one strategy that looks the from/to pair up in a
-`transition('Inbox => Thread')`-style table; see the Mail demo's
+A rule receives `{ from, to, trigger, historyDelta, hint, stack }`, where `from`
+and `to` carry `{ key, segments, level, data, snapshot }`. Because `data` is the
+route's own data, a rule can work off metadata your routes already carry. An app
+that names its routes the way Angular's route-transition recipe does
+(`data: { animation: 'Thread' }`) keeps those names and looks the from/to pair up
+in a `transition('Inbox => Thread')`-style table; see the Mail demo's
 [`animation.ts`](../../apps/angular-demo/src/app/demos/mail/animation.ts).
+
+Where the numbers and the identity of a page come from is configurable too:
+
+```ts
+provideStackNav({
+  levelOf: (snapshot) => snapshot.data['order'],                          // default data.stackLevel
+  keyOf: (snapshot) => snapshot.data['pageId'] ?? defaultKeyOf(snapshot), // default the URL path
+});
+```
+
+### Replacing the whole thing
+
+The five questions are themselves ordinary functions, exported by
+`@stacknav/core`. An app that needs an order of its own -- to outrank even a
+hint, or to drop a question entirely -- composes them and hands over a resolver,
+which ignores `direction` and `siblings`:
+
+```ts
+import { createDirectionResolver, byHint, byRouteTree } from '@stacknav/core';
+
+provideStackNav({
+  resolveDirection: createDirectionResolver([myRule, byHint(), byRouteTree({ siblings: 'push' })], 'push'),
+});
+```
 
 ### Back buttons
 
@@ -231,7 +276,9 @@ it.
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `direction` | core defaults | strategies in order, or one resolver function |
+| `direction` | none | one rule of your own, asked before the library guesses |
+| `siblings` | `'replace'` | what a tie means: same depth, or same `stackLevel` |
+| `resolveDirection` | core defaults | replaces direction resolution entirely |
 | `fallbackDirection` | `'push'` | used when no strategy has an answer |
 | `levelOf(snapshot)` | `data.stackLevel` | the route's number |
 | `keyOf(snapshot)` | the route's URL path | identity of a page |

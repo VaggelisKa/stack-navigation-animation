@@ -5,7 +5,7 @@ import { MailCompose, MailFolder, MailThread } from './mail';
  * Every route is a sibling, so the route tree alone would call the folder
  * switch a push and a reply from a thread a replace. Each route names itself
  * in `data.animation`, as Angular's route-transition recipe does, and the
- * `fromAnimationData(MAIL_TRANSITIONS)` strategy in main.ts reads the pair.
+ * `byAnimationData(MAIL_TRANSITIONS)` rule in main.ts reads the pair.
  */
 export const MAIL_ROUTES: Routes = [
   { path: '', component: MailFolder, data: { animation: 'Inbox', folder: 'inbox' } },

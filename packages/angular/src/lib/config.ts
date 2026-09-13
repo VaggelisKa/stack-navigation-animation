@@ -14,13 +14,37 @@ import {
 /** Everything `provideStackNav()` accepts. All optional. */
 export interface StackNavConfig {
   /**
-   * Strategies that decide push / pop / replace for a navigation, in priority
-   * order. Defaults to the core's `defaultStrategies()`: an explicit hint, then
-   * browser history, then the kept stack, then route numbering
-   * (`data.stackLevel`), then the route tree. Pass a resolver function to
-   * replace the whole mechanism.
+   * One rule of your own for deciding push / pop / replace, asked before the
+   * library guesses from route numbers or the route tree. Return nothing --
+   * `undefined`, or `'auto'` -- to let it guess after all.
+   *
+   * It is asked *after* the three things the library is sure about, which
+   * always win: an explicit hint on the navigation, the browser's back and
+   * forward buttons, and a page still kept alive beneath this one. To outrank
+   * those as well, replace the mechanism with `resolveDirection`.
+   *
+   * ```ts
+   * provideStackNav({ direction: ({ to }) => (to.data?.['tab'] ? 'replace' : undefined) });
+   * ```
    */
-  direction?: readonly DirectionStrategy[] | DirectionResolver;
+  direction?: DirectionStrategy;
+  /**
+   * What a tie means: two pages carrying the same `stackLevel`, or sitting at
+   * the same depth in the route tree, like `/items/1` and `/items/2`. Default
+   * `replace`.
+   */
+  siblings?: Direction;
+  /**
+   * Replaces direction resolution entirely, ignoring `direction` and
+   * `siblings`. For the rare app that needs to outrank even an explicit hint.
+   * Compose one from the strategies `@stacknav/core` exports:
+   *
+   * ```ts
+   * import { createDirectionResolver, byHint, byRouteTree } from '@stacknav/core';
+   * provideStackNav({ resolveDirection: createDirectionResolver([byHint(), byRouteTree()], 'push') });
+   * ```
+   */
+  resolveDirection?: DirectionResolver;
   /** The direction to use when no strategy has an answer. Default `push`. */
   fallbackDirection?: Direction;
   /**
@@ -98,12 +122,20 @@ export function defaultKeyOf(snapshot: ActivatedRouteSnapshot): string {
 }
 
 export function resolveConfig(c: StackNavConfig): ResolvedStackNavConfig {
-  const resolve =
-    typeof c.direction === 'function'
-      ? c.direction
-      : createDirectionResolver(c.direction ?? defaultStrategies(), c.fallbackDirection ?? 'push');
+  // `direction` used to take the whole mechanism. Both of those now have their
+  // own spellings, and silently demoting one to a rule asked fourth would
+  // change an app's behaviour without a word.
+  if (Array.isArray(c.direction) || (c.direction && 'strategies' in c.direction)) {
+    throw new TypeError(
+      'provideStackNav({ direction }) is one rule of your own, asked before the route number and route tree guesses. ' +
+        'It no longer takes a list of strategies or a whole resolver: pass those as `resolveDirection`, ' +
+        'and use `siblings` to change what a tie means.',
+    );
+  }
   return {
-    resolve,
+    resolve:
+      c.resolveDirection ??
+      createDirectionResolver(defaultStrategies({ direction: c.direction, siblings: c.siblings }), c.fallbackDirection ?? 'push'),
     levelOf: c.levelOf ?? defaultLevelOf,
     keyOf: c.keyOf ?? defaultKeyOf,
     infoKey: c.infoKey ?? 'stacknav',
