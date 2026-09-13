@@ -22,7 +22,7 @@ outlets; `stackNav` listens to it and moves the elements it made. Keeping a page
 alive is the router's own detach/attach mechanism, driven by
 `StackNavRouteReuseStrategy` (which `provideStackNav()` already installed), so
 the `ActivatedRoute` a page injected keeps emitting when it is reached again and
-a nested `<router-outlet>` inside a kept page comes back on its own. Direction
+a nested `<router-outlet>` inside a kept page is re-activated on its own. Direction
 resolution, the hints, the kept stack, the interactive pop and every option of
 `provideStackNav()` are unchanged.
 

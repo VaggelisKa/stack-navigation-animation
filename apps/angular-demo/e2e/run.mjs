@@ -226,6 +226,11 @@ const run = await page.evaluate(async () => {
       lower: x(lower),
       dim: +getComputedStyle(dim).opacity,
       shadowed: getComputedStyle(upper).boxShadow !== 'none',
+      // The router inserted the incoming page at the outlet's anchor, before the
+      // kept page in the DOM; only z-index puts it on top.
+      lowerFollows: !!(upper.compareDocumentPosition(lower) & Node.DOCUMENT_POSITION_FOLLOWING),
+      zIndex: getComputedStyle(upper).zIndex,
+      isolated: getComputedStyle(outlet).isolation,
       transitions: getComputedStyle(upper).transitionProperty,
       owned: upper.getAnimations().map((a) => `${a.transitionProperty}@${a.effect.getTiming().duration}`),
     });
@@ -252,6 +257,9 @@ check(f[0].owned.includes('transform@500'), `the browser owns the transform run 
 eq(f[0].duration, '500ms', 'the container tells CSS how long the phase is');
 eq(f[0].ease, 'cubic-bezier(0.32, 0.72, 0, 1)', 'and on what curve');
 check(f[0].shadowed, 'the incoming page carries the shadow');
+check(f[0].lowerFollows, 'the router put the incoming page before the kept one in the DOM');
+eq(f[0].zIndex, '1', 'so z-index, not document order, puts it on top');
+eq(f[0].isolated, 'isolate', 'inside the container\'s own stacking context');
 // A transition of your own may fade a page rather than move it, and the README
 // offers that; the role classes have to cover opacity for the browser to run it.
 check(/transform/.test(f[0].transitions) && /opacity/.test(f[0].transitions), `a moving page transitions transform and opacity (${f[0].transitions})`);

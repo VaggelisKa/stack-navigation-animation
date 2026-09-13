@@ -9,7 +9,6 @@ import {
   output,
   untracked,
   ViewContainerRef,
-  type ComponentRef,
   type EmbeddedViewRef,
   type OnDestroy,
   type OnInit,
@@ -42,8 +41,8 @@ import {
 import { Subscription } from 'rxjs';
 import { STACKNAV_CONFIG } from './config';
 import { StackNavHistory } from './history';
-import { StackNavRouteReuseStrategy, type PageKeeper } from './route-reuse-strategy';
-import { checkSetup, checkStrategy } from './setup-checks';
+import { StackNavRouteReuseStrategy, destroyHandle, type PageKeeper } from './route-reuse-strategy';
+import { checkSetup, checkStrategy, warn } from './setup-checks';
 
 declare const ngDevMode: boolean | undefined;
 
@@ -66,17 +65,14 @@ export interface StackNavPage {
 
 interface Page extends StackNavPage {
   routeRef: StackNavRouteRef;
-  /** the component's ref, known once the router has detached the page and handed it over */
-  ref: ComponentRef<unknown> | null;
   /** the router's handle, while it has the page detached */
   handle: DetachedRouteHandle | null;
   /** popped by an interactive pop, waiting for the router to catch up */
   pendingRemoval: boolean;
-  /** scroll offsets inside the page, taken before it left the DOM */
-  scroll: ScrollOffsets | null;
+  /** the last scroll offset of every scroller inside the page, kept live */
+  scroll: Map<Element, [number, number]>;
+  stopScroll: () => void;
 }
-
-type ScrollOffsets = Array<[Element, number, number]>;
 
 export interface StackNavActivation {
   page: StackNavPage;
@@ -84,6 +80,9 @@ export interface StackNavActivation {
   animated: boolean;
   reused: boolean;
 }
+
+/** The stack was emptied by the router leaving its outlet; the pages are still kept. */
+const EMPTIED: NavigationSource = 'emptied';
 
 /**
  * Puts the platform's native push/pop transition on Angular's own
@@ -113,7 +112,7 @@ export interface StackNavActivation {
   exportAs: 'stackNav',
 })
 export class StackNav implements OnInit, OnDestroy, PageKeeper {
-  /** Transition options for this stack, merged over `provideStackNav({ transition })`. */
+  /** Transition options for this stack, merged over `provideStackNav({ transition })`. Read once, when the stack is created. */
   readonly transition = input<Partial<NativeTransitionOptions> | undefined>(undefined, { alias: 'stackNavTransition' });
   /** Live override of the configured swipe policy. */
   readonly swipeBack = input<SwipeBackMode | undefined>(undefined, { alias: 'stackNavSwipeBack' });
@@ -148,10 +147,12 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   private entries: Page[] = [];
   private readonly byInstance = new Map<object, Page>();
   private readonly byEl = new Map<HTMLElement, Page>();
-  /** Pages the router has detached and handed to us, by key. */
-  private readonly kept = new Map<string, Page>();
+  /** Pages the router has detached and handed to us. */
+  private readonly kept = new Set<Page>();
   private active: Page | null = null;
   private leaving: Page | null = null;
+  /** The page the outlet just detached; the router hands over its handle next. */
+  private detaching: Page | null = null;
   private readonly subs = new Subscription();
 
   constructor() {
@@ -194,7 +195,10 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     this.subs.unsubscribe();
     // The page on screen belongs to the outlet's view and goes with it. The
     // detached ones belong to nobody else.
-    for (const page of this.byInstance.values()) if (page.handle) page.ref?.destroy();
+    for (const page of this.byInstance.values()) {
+      page.stopScroll();
+      if (page.handle) destroyHandle(page.handle);
+    }
     this.byInstance.clear();
     this.byEl.clear();
     this.kept.clear();
@@ -205,7 +209,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   // ----------------------------------------------------------------- state
   /** Pages currently kept, bottom to top. The last one is on screen. */
   get pages(): readonly StackNavPage[] {
-    return this.entries;
+    return this.entries.slice();
   }
   /** Whether a swipe has a kept page to reveal. */
   get canPop(): boolean {
@@ -216,27 +220,18 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   /** @internal The outlet is showing this route, so the router should detach it rather than destroy it. */
   showing(snapshot: ActivatedRouteSnapshot): boolean {
     const outlet = this.outlet;
-    if (!outlet.isActivated) return false;
-    const page = outlet.activatedRoute.snapshot === snapshot ? this.byInstance.get(outlet.component) : null;
-    if (!page) return false;
-    // The router is about to take the page out of the DOM, which resets every scroll offset in it.
-    page.scroll = captureScroll(page.el);
-    return true;
+    return outlet.isActivated && outlet.activatedRoute.snapshot === snapshot && this.byInstance.has(outlet.component);
   }
   /** @internal The router detached a page and hands over its handle. True if it was one of ours. */
   keep(handle: DetachedRouteHandle): boolean {
-    const ref = (handle as { componentRef?: ComponentRef<unknown> }).componentRef;
-    const page = ref && this.byInstance.get(ref.instance as object);
+    const page = this.detaching;
+    this.detaching = null;
     if (!page) return false;
-    page.ref = ref;
+    page.handle = handle;
     // An interactive pop already took it off screen; the router is only now
     // catching up, and this is the moment it stops owning the component.
-    if (page.pendingRemoval) {
-      this.destroyPage(page);
-      return true;
-    }
-    page.handle = handle;
-    this.kept.set(page.key, page);
+    if (page.pendingRemoval) this.destroyPage(page);
+    else this.kept.add(page);
     return true;
   }
   /** @internal */
@@ -251,19 +246,27 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   release(snapshot: ActivatedRouteSnapshot): boolean {
     const page = this.keptFor(snapshot);
     if (!page) return false;
-    this.kept.delete(page.key);
+    this.kept.delete(page);
     page.handle = null;
     return true;
+  }
+  /** @internal Every handle still held, for the router's injector cleanup. */
+  handles(): DetachedRouteHandle[] {
+    return [...this.kept].map((page) => page.handle!);
   }
 
   /**
    * The kept page this route would re-attach. The key alone is not enough: a
    * componentless parent route (`{ path: 'search', loadChildren }`) and its
-   * `''` child share one URL path, and only the child's route owns the page.
+   * `''` child share one URL path, and only the child's route owns the page;
+   * a custom `keyOf` may group several routes under one key; and another
+   * stack, in a named outlet, may keep the same route.
    */
   private keptFor(snapshot: ActivatedRouteSnapshot): Page | null {
-    const page = this.kept.get(this.config.keyOf(snapshot));
-    return page && page.routeRef.snapshot.routeConfig === snapshot.routeConfig ? page : null;
+    if (snapshot.outlet !== this.outlet.name) return null;
+    const key = this.config.keyOf(snapshot);
+    for (const page of this.kept) if (page.key === key && page.routeRef.snapshot.routeConfig === snapshot.routeConfig) return page;
+    return null;
   }
 
   // -------------------------------------------------- what the outlet says
@@ -275,17 +278,20 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     if (this.active?.instance === instance) return;
     const stack = this.ensureStack();
     const route = outlet.activatedRoute;
-    const leaving = this.takeLeaving();
     let page = this.byInstance.get(instance) ?? null;
     const reused = !!page;
     if (!page) {
       const el = this.elementOf();
-      if (!el) return;
+      if (!el) {
+        if (typeof ngDevMode === 'undefined' || ngDevMode) warn('no-element', 'the outlet activated a component without a host element, so the stack cannot show it.');
+        return;
+      }
       const key = this.config.keyOf(route.snapshot);
-      page = { instance, el, key, routeRef: this.routeRefOf(route.snapshot, key), url: '', ref: null, handle: null, pendingRemoval: false, scroll: null };
+      page = { instance, el, key, routeRef: this.routeRefOf(route.snapshot, key), url: '', handle: null, pendingRemoval: false, ...watchScroll(el) };
       this.byInstance.set(instance, page);
       this.byEl.set(el, page);
     }
+    const leaving = this.takeLeaving();
     // Hidden until the stack shows it, even if a transition is still running.
     page.el.classList.add(stack.pageClass);
     this.show(page, route, leaving, reused);
@@ -296,24 +302,32 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     const page = this.pageOf(instance);
     if (!page) return;
     if (this.active === page) this.active = null;
+    this.detaching = page;
     if (page.pendingRemoval) return;
-    // Angular took the element out of the DOM. Put it back in the container,
-    // where the stack has it hidden, until the router wants it again.
+    // Angular took the element out of the DOM, which reset every scroll
+    // offset inside it. Put it back in the container, where the stack has it
+    // hidden, until the router wants it again.
     const container = this.ensureStack().container;
     if (page.el.parentElement !== container) container.append(page.el);
     restoreScroll(page.scroll);
     // The router detaches before it activates, synchronously. If no
-    // activation follows, the outlet is really empty.
+    // activation follows, the outlet is empty: the router left this outlet
+    // altogether, or is detaching the page this whole stack lives in. The
+    // pages stay kept either way, and come back through attach.
     this.leaving = page;
     queueMicrotask(() => {
       if (this.leaving !== page) return;
       this.leaving = null;
       this.entries = [];
-      this.runStackTask(this.stack.reset([]));
+      this.runStackTask(this.stack.reset([], { source: EMPTIED }));
     });
   }
 
-  /** The router destroyed the page outright, which only happens without `StackNavRouteReuseStrategy`. */
+  /**
+   * The router destroyed the page rather than detaching it: the strategy is
+   * not installed, the outlet's `name` changed, or the router chose not to
+   * keep this route.
+   */
   private onDeactivated(instance: unknown): void {
     const page = this.pageOf(instance);
     if (!page) return;
@@ -336,12 +350,6 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     stack.on('pop', (e) => this.onStackRemoved(e.removed, e.source));
     stack.on('replace', (e) => this.onStackRemoved(e.removed, e.source));
     stack.on('reset', (e) => this.onStackRemoved(e.removed, e.source));
-    // An interactive pop that completes takes the page out of the DOM; if the
-    // router then refuses, the page comes back and wants its scroll offsets.
-    stack.on('transitionstart', ({ upper, kind }) => {
-      const page = kind === 'interactive' ? this.byEl.get(upper.el) : null;
-      if (page) page.scroll = captureScroll(page.el);
-    });
     return stack;
   }
 
@@ -399,12 +407,14 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     this.active = page;
     this.lastDirection = direction;
     this.place(page, direction, leaving);
-    if (!alreadyOnScreen) {
-      this.runStackTask(this.stack.present(page.el, direction, { key: page.key, animated, source: sourceOf(nav?.trigger) }));
-    }
-    // The router put the kept page back into the DOM just now, at zero.
+    // The router put a kept page back into the DOM just now, at zero. A push
+    // of a page kept lower down moves the element again once the stack gets
+    // to it, so the offsets are written back after that too.
     if (reused) restoreScroll(page.scroll);
-    page.scroll = null;
+    if (!alreadyOnScreen) {
+      const task = this.stack.present(page.el, direction, { key: page.key, animated, source: sourceOf(nav?.trigger) });
+      this.runStackTask(reused ? task.then(() => restoreScroll(page.scroll)) : task);
+    }
     this.activate.emit({ page, direction, animated, reused });
   }
 
@@ -429,6 +439,8 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   }
 
   private onStackRemoved(removed: StackEntry[], source: NavigationSource): void {
+    // An emptied outlet only unmounts: the router still holds the pages' routes.
+    if (source === EMPTIED) return;
     for (const entry of removed) {
       const page = this.byEl.get(entry.el);
       if (!page) continue;
@@ -468,28 +480,31 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
       page.pendingRemoval = false;
       this.entries.push(page);
       this.active = page;
-      this.runStackTask(this.stack.push(page.el, { animated: false, key: page.key, source: 'restore' }));
-      restoreScroll(page.scroll);
-      page.scroll = null;
+      // The pop took the element out of the DOM; the push puts it back, possibly only once the stack is free.
+      this.runStackTask(this.stack.push(page.el, { animated: false, key: page.key, source: 'restore' }).then(() => restoreScroll(page.scroll)));
     }
   }
 
   /** Drops a page from every map. Does not touch the component. */
   private forget(page: Page): void {
+    page.stopScroll();
     this.byInstance.delete(page.instance);
     this.byEl.delete(page.el);
-    if (this.kept.get(page.key) === page) this.kept.delete(page.key);
+    this.kept.delete(page);
     this.entries = this.entries.filter((p) => p !== page);
     if (this.active === page) this.active = null;
     if (this.leaving === page) this.leaving = null;
+    if (this.detaching === page) this.detaching = null;
   }
 
   private destroyPage(page: Page): void {
     // A page the outlet still holds is the outlet's to destroy, never ours.
     const outlet = this.outlet;
     if (outlet.isActivated && outlet.component === page.instance) return;
+    const handle = page.handle;
+    page.handle = null;
     this.forget(page);
-    page.ref?.destroy();
+    if (handle) destroyHandle(handle);
   }
 }
 
@@ -499,19 +514,28 @@ function sourceOf(trigger: 'imperative' | 'history' | undefined): NavigationSour
 
 /**
  * Taking an element out of the DOM resets every scroll offset inside it, and
- * the router does exactly that to a page it detaches. These two keep what the
- * old outlet kept for free: the page's own offset and any scroller inside it.
+ * the router does exactly that to a page it detaches. Rather than walk the
+ * page for scrollers at that moment, on the main thread, right as a push
+ * starts, the offsets are recorded as they happen: `scroll` does not bubble,
+ * but a capturing listener on the page element sees every scroller inside it.
  */
-function captureScroll(root: HTMLElement): ScrollOffsets {
-  const out: ScrollOffsets = [];
-  if (root.scrollTop || root.scrollLeft) out.push([root, root.scrollTop, root.scrollLeft]);
-  for (const el of root.querySelectorAll('*')) if (el.scrollTop || el.scrollLeft) out.push([el, el.scrollTop, el.scrollLeft]);
-  return out;
+function watchScroll(el: HTMLElement): Pick<Page, 'scroll' | 'stopScroll'> {
+  const scroll = new Map<Element, [number, number]>();
+  const onScroll = (e: Event) => {
+    const t = e.target;
+    if (t instanceof Element) scroll.set(t, [t.scrollTop, t.scrollLeft]);
+  };
+  el.addEventListener('scroll', onScroll, { capture: true, passive: true });
+  return { scroll, stopScroll: () => el.removeEventListener('scroll', onScroll, { capture: true }) };
 }
 
-function restoreScroll(saved: ScrollOffsets | null): void {
-  if (!saved) return;
-  for (const [el, top, left] of saved) {
+/** Writes the recorded offsets back. A scroller the page has since replaced is dropped. */
+function restoreScroll(scroll: Map<Element, [number, number]>): void {
+  for (const [el, [top, left]] of scroll) {
+    if (!el.isConnected) {
+      scroll.delete(el);
+      continue;
+    }
     if (el.scrollTop !== top) el.scrollTop = top;
     if (el.scrollLeft !== left) el.scrollLeft = left;
   }

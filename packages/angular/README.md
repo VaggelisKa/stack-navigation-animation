@@ -263,8 +263,8 @@ When the router leaves a route a stack is showing, the strategy asks the router
 to *detach* the page rather than destroy it, and to *attach* the same page when
 the route is reached again. That is the router's own mechanism for keeping a
 route alive, so the page's `ActivatedRoute` observables keep emitting, a nested
-`<router-outlet>` inside it comes back with its children, and bound inputs are
-rebound -- none of it reimplemented here. The stack decides when a kept page is
+`<router-outlet>` inside it is re-activated with the same child route, and bound
+inputs are rebound -- none of it reimplemented here. The stack decides when a kept page is
 dropped for good (after a pop, or a replace) and destroys it then.
 
 The router's default strategy also reuses the component when only params change
@@ -282,7 +282,10 @@ element mounted, hidden, in between, and restores every scroll offset inside the
 page around both moves, so scroll position survives as before. What a removal
 and reinsertion does reset is browser-side state that lives on the node: an
 `<iframe>` inside a kept page reloads, a playing `<video>` pauses, and a CSS
-animation restarts from its first keyframe.
+animation restarts from its first keyframe. And the router detaches only the
+page itself: whatever a nested `<router-outlet>` inside it was showing is
+destroyed on the way out and created again on the way back, as it is for any
+detached route.
 
 ### Mobile only
 
@@ -342,9 +345,10 @@ outlet's own `activate`, `deactivate`, `attach` and `detach` outputs keep
 working next to it.
 
 Properties: `stack` (the core `NavigationStack`, for `progress` events and
-`beginInteractivePop()`), `pages` (kept pages, bottom to top, each with its
-component `instance`, element `el`, `key` and last `url`), `canPop`,
-`lastDirection`.
+`beginInteractivePop()`), `pages` (a copy of the kept pages, bottom to top,
+each with its component `instance`, element `el`, `key` and last `url`),
+`canPop`, `lastDirection`. `stackNavTransition` is read once, when the stack
+is created; `stackNavSwipeBack` is live.
 
 Chrome that only has to move with the pages does not need `progress` at all: the
 stack element carries `--sn-t` and `--sn-e` while a phase is in flight, and the

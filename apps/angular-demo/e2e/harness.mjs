@@ -69,8 +69,6 @@ export async function launch({ width = 420, height = 800 } = {}) {
     await settled();
     return mid;
   };
-  // At rest only the top page is visible, so a single visible page is the top one.
-  const top = () => page.locator('.sn-container > .sn-page-visible').first();
   const scrollTop = () => page.evaluate(() => document.querySelector('.sn-container > .sn-page-visible').scrollTop);
   const setScroll = (y) => page.evaluate((y) => (document.querySelector('.sn-container > .sn-page-visible').scrollTop = y), y);
   /**
@@ -110,5 +108,5 @@ export async function launch({ width = 420, height = 800 } = {}) {
     process.exit(failures ? 1 : 0);
   };
 
-  return { page, base, browser, server, errors, check, eq, section, flush, state, busy, settled, transitioned, top, scrollTop, setScroll, interactivePop, shots: SHOTS, finish };
+  return { page, base, browser, server, errors, check, eq, section, flush, state, busy, settled, transitioned, scrollTop, setScroll, interactivePop, shots: SHOTS, finish };
 }
