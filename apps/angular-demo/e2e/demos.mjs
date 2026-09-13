@@ -308,6 +308,8 @@ eq(s.pages.join(','), 'app-home,dash-shell', 'tab change happened inside the nes
 eq(await page.evaluate(() => document.querySelectorAll('.dash-pane > .sn-page').length), 1, 'siblings: the tab replaced the previous one in the inner stack');
 eq(s.url, '/dashboard/team', 'url after the tab change');
 await waitCount('.dash-member', 8);
+// Mark the tab's element: a recreated component would come back without it.
+await page.evaluate(() => (document.querySelector('dash-team').dataset.mark = 'kept'));
 mid = await transitioned(() => page.click('.sn-page-visible .dash-member:has-text("Mira Sato")'), 'dash-member');
 check(mid.busy && mid.pages.length === 3, 'member pushed over the dashboard');
 await page.waitForSelector('.sn-page-visible .dash-profile');
@@ -320,8 +322,9 @@ await transitioned(() => page.goBack(), 'dash-back-2');
 s = await state();
 eq(s.pages.join(','), 'app-home,dash-shell', 'back on the dashboard');
 eq(s.url, '/dashboard/team', 'the shell was kept and the router re-activated the team tab in it');
-eq(await count('dash-team .dash-member'), 8, 'the inner stack resumed with the tab it had: the list is still there, nothing refetched');
-eq(await page.evaluate(() => document.querySelectorAll('.dash-pane > .sn-page-visible').length), 1, 'and the tab is on screen again');
+eq(await page.evaluate(() => document.querySelector('dash-team')?.dataset.mark), 'kept', 'the inner stack resumed with the very tab component it had');
+eq(await count('dash-team .dash-member'), 8, 'its list is still there, nothing refetched');
+eq(await page.evaluate(() => [...document.querySelectorAll('.dash-pane > .sn-page')].map((p) => p.classList.contains('sn-page-visible')).join()), 'true', 'one tab page in the inner stack, on screen');
 await page.click('.sn-page-visible .dash-tabs a:has-text("Activity")');
 await waitCount('.dash-table tbody tr', 40);
 await page.click('.sn-page-visible .dash-filters button:has-text("fail")');

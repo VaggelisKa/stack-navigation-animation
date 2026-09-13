@@ -235,8 +235,8 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   /** @internal The router detached a page and hands over its handle. True if it was one of ours. */
   keep(snapshot: ActivatedRouteSnapshot, handle: DetachedRouteHandle): boolean {
     const page = this.detaching;
-    this.detaching = null;
     if (!page || snapshot.outlet !== this.outlet.name || page.routeRef.snapshot.routeConfig !== snapshot.routeConfig) return false;
+    this.detaching = null;
     page.handle = handle;
     // An interactive pop already took it off screen; the router is only now
     // catching up, and this is the moment it stops owning the component.
@@ -303,11 +303,11 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
       this.byInstance.set(instance, page);
       this.byEl.set(el, page);
     }
-    if (this.suspended) this.resume(page);
+    const resumed = !!this.suspended && this.resume(page);
     const leaving = this.takeLeaving();
     // Hidden until the stack shows it, even if a transition is still running.
     page.el.classList.add(stack.pageClass);
-    this.show(page, route, leaving, reused);
+    this.show(page, route, leaving, reused, resumed);
   }
 
   /** The router detached the page on screen: it stays alive, and the element is ours to keep. */
@@ -330,34 +330,42 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     // when the outlet shows one of them again, or to be dropped once a
     // navigation ends with the host page active and the outlet still empty.
     this.leaving = page;
-    queueMicrotask(() => {
-      if (this.leaving !== page) return;
-      this.leaving = null;
-      this.suspended = [...(this.suspended ?? []), ...this.entries];
-      this.entries = [];
-      this.runStackTask(this.stack.reset([], { source: EMPTIED }));
-    });
+    // A navigation ends in the same task as its activations, so NavigationEnd
+    // is where that is known; the microtask is for a detach outside one.
+    queueMicrotask(() => this.suspend(page));
+  }
+
+  private suspend(page: Page): void {
+    if (this.leaving !== page) return;
+    this.leaving = null;
+    this.suspended = [...(this.suspended ?? []), ...this.entries];
+    this.entries = [];
+    this.runStackTask(this.stack.reset([], { source: EMPTIED }));
   }
 
   /**
    * The outlet shows a page again after being emptied. If it is one of the
    * suspended pages, the stack comes back as it was up to that page, and
    * whatever was above it is popped for good; anything else means the old
-   * stack is gone.
+   * stack is gone. True when the page is placed by this.
    */
-  private resume(page: Page): void {
+  private resume(page: Page): boolean {
     const suspended = this.suspended!;
     this.suspended = null;
     const i = suspended.indexOf(page);
     for (const p of suspended.slice(i + 1)) this.destroyPage(p);
-    if (i < 0) return;
-    this.entries = suspended.slice(0, i + 1);
+    if (i < 0) return false;
+    // A page beneath that the router no longer holds cannot be shown again.
+    for (const p of suspended.slice(0, i)) if (!p.handle) this.forget(p);
+    this.entries = suspended.slice(0, i + 1).filter((p) => p === page || p.handle);
     // The suspend unmounted the lower pages; mounting them again resets their scrollers.
     this.runStackTask(this.stack.reset(this.entries.map((p) => p.el), { source: RESUMED }).then(() => this.entries.forEach((p) => restoreScroll(p.scroll))));
+    return true;
   }
 
   private onNavigationEnd(e: NavigationEnd): void {
     if (this.active) this.active.url = e.urlAfterRedirects;
+    if (this.leaving) this.suspend(this.leaving);
     // Emptied while its host page stays active: the outlet was left for good, and so were its pages.
     if (this.suspended && !this.outlet.isActivated && this.hostIsActive()) {
       const suspended = this.suspended;
@@ -433,12 +441,13 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   }
 
   /** Decides the direction, places the page in the stack, and makes it the active one. */
-  private show(page: Page, route: ActivatedRoute, leaving: Page | null, reused: boolean): void {
+  private show(page: Page, route: ActivatedRoute, leaving: Page | null, reused: boolean, resumed = false): void {
     const nav = this.history.current;
     const from = leaving ?? this.entries[this.entries.length - 1] ?? null;
     // Resolvers may have rerun, and a custom keyOf may group several snapshots, so the old snapshot cannot be trusted.
     page.routeRef = this.routeRefOf(route.snapshot, page.key);
-    const alreadyOnScreen = reused && !this.stack.busy && this.stack.top?.el === page.el;
+    // Placed already: by the resume, or by an interactive pop the router is catching up with.
+    const alreadyOnScreen = resumed || (reused && !this.stack.busy && this.stack.top?.el === page.el);
     let direction = this.config.resolve({
       from: from?.routeRef ?? null,
       to: page.routeRef,
@@ -450,7 +459,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     // After a swipe the page beneath is already showing and the one that left
     // is gone. A pop onto anything else has nothing to pop, so just show the page.
     if (!leaving && this.stack.top && direction === 'pop' && !reused) direction = 'replace';
-    const animated = this.config.animated() && (nav?.animated ?? true) && (this.entries.length > 0 || !!leaving);
+    const animated = !alreadyOnScreen && this.config.animated() && (nav?.animated ?? true) && (this.entries.length > 0 || !!leaving);
 
     const current = this.router.getCurrentNavigation();
     page.url = current ? this.router.serializeUrl(current.finalUrl ?? current.extractedUrl) : this.router.url;
@@ -490,7 +499,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
 
   private onStackRemoved(removed: StackEntry[], source: NavigationSource): void {
     // A suspended stack only unmounts: the router still holds the pages' routes.
-    if (source === EMPTIED || source === RESUMED) return;
+    if (source === EMPTIED) return;
     for (const entry of removed) {
       const page = this.byEl.get(entry.el);
       if (!page) continue;
