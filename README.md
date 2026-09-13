@@ -14,6 +14,22 @@ replacing it.
 Demos: [`apps/demo`](apps/demo) (vanilla, no router) and
 [`apps/angular-demo`](apps/angular-demo) (Angular router).
 
+## Angular, in full
+
+```ts
+providers: [provideRouter(routes), provideStackNav()];
+```
+
+```html
+<sn-outlet style="height: 100dvh" />
+```
+
+That is the setup: no stylesheet to import, no routes to annotate, nothing to add
+to a page. `provideStackNav()` injects the engine's CSS, resolves the direction
+of every navigation itself, and makes sibling routes separate pages. The options
+exist for when the defaults are wrong, and are listed in the
+[Angular README](packages/angular).
+
 ## Swipe-back modes
 
 The library has no back gesture of its own. In a browser tab the browser already

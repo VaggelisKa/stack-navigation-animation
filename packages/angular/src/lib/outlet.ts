@@ -27,6 +27,7 @@ import {
   NavigationError,
   NavigationSkipped,
   PRIMARY_OUTLET,
+  ROUTER_CONFIGURATION,
   ROUTER_OUTLET_DATA,
   Router,
   type ActivatedRouteSnapshot,
@@ -49,6 +50,9 @@ import { Subscription, combineLatest, from, of, switchMap } from 'rxjs';
 import { StackNavActivatedRoute } from './activated-route-proxy';
 import { STACKNAV_CONFIG } from './config';
 import { StackNavHistory } from './history';
+import { checkSetup } from './setup-checks';
+
+declare const ngDevMode: boolean | undefined;
 
 /** What the outlet knows about a page, passed to direction strategies. */
 export interface StackNavRouteRef extends RouteRef {
@@ -162,6 +166,11 @@ export class StackNavOutlet implements RouterOutletContract, OnInit, OnDestroy {
       this.stack?.setSwipeBack(mode);
     });
     if (this.router.componentInputBindingEnabled) this.supportsBindingToComponentInputs = true;
+    // The setup an app has to get right around the outlet, said once. Folded
+    // away by a production build.
+    if (typeof ngDevMode === 'undefined' || ngDevMode) {
+      checkSetup(this.host, inject(ROUTER_CONFIGURATION, { optional: true })?.canceledNavigationResolution);
+    }
   }
 
   // ------------------------------------------------------------- lifecycle
