@@ -1,6 +1,6 @@
 import { bootstrapApplication } from '@angular/platform-browser';
-import { RouteReuseStrategy, provideRouter, withComponentInputBinding, withRouterConfig } from '@angular/router';
-import { StackNavRouteReuseStrategy, provideStackNav } from '@stacknav/angular';
+import { provideRouter, withComponentInputBinding, withRouterConfig } from '@angular/router';
+import { provideStackNav } from '@stacknav/angular';
 import { MAIL_TRANSITIONS, byAnimationData } from './app/demos/mail/animation';
 import { App } from './app/app';
 import { routes } from './app/routes';
@@ -18,7 +18,7 @@ bootstrapApplication(App, {
       // No `swipeBack` here: the browser keeps the gesture, which is both the
       // library default and the only thing it offers. Lab switches to `disabled`.
     }),
-    // Opt in: /items/1 → /items/2 becomes a new page instead of a reused component.
-    { provide: RouteReuseStrategy, useClass: StackNavRouteReuseStrategy },
+    // Nothing else: provideStackNav() also installs StackNavRouteReuseStrategy,
+    // so /items/1 → /items/2 is a page of its own rather than a reused component.
   ],
 }).catch(console.error);

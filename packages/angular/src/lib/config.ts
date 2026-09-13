@@ -1,5 +1,5 @@
-import { InjectionToken, type EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
-import type { ActivatedRouteSnapshot } from '@angular/router';
+import { InjectionToken, type EnvironmentProviders, type Provider, makeEnvironmentProviders } from '@angular/core';
+import { RouteReuseStrategy, type ActivatedRouteSnapshot } from '@angular/router';
 import {
   createDirectionResolver,
   defaultStrategies,
@@ -10,6 +10,7 @@ import {
   type NativeTransitionOptions,
   type SwipeBackMode,
 } from '@stacknav/core';
+import { StackNavRouteReuseStrategy } from './route-reuse-strategy';
 
 /** Everything `provideStackNav()` accepts. All optional. */
 export interface StackNavConfig {
@@ -63,6 +64,16 @@ export interface StackNavConfig {
    * `router.navigate(cmds, { info: { stacknav: 'pop' } })`. Default `stacknav`.
    */
   infoKey?: string;
+  /**
+   * Installs `StackNavRouteReuseStrategy`, so that a navigation which only
+   * changes params -- `/items/1` to `/items/2` -- is a page of its own rather
+   * than the same component with new inputs, and so animates. Default true.
+   *
+   * Turn it off to keep the router's own strategy, or provide a
+   * `RouteReuseStrategy` of your own after `provideStackNav()`, which wins
+   * either way. Routes opt out one at a time with `data: { reuseRoute: true }`.
+   */
+  routeReuse?: boolean;
   /** Defaults for every outlet's transition. An outlet's `transition` input overrides these per key. */
   transition?: Partial<NativeTransitionOptions>;
   /** Default browser. `disabled` requests document-wide browser gesture suppression where supported. */
@@ -155,13 +166,20 @@ function resolveAnimated(animated: StackNavConfig['animated']): () => boolean {
 }
 
 /**
- * Configures the outlets. Add it next to `provideRouter()`. It changes no
- * router configuration.
+ * Configures the outlets. Add it next to `provideRouter()`, with no options for
+ * the usual app. It changes no router configuration; the one provider it adds
+ * besides its own is `RouteReuseStrategy`, so that sibling routes are separate
+ * pages (see `routeReuse`).
  *
  * ```ts
  * bootstrapApplication(App, { providers: [provideRouter(routes), provideStackNav()] });
  * ```
  */
 export function provideStackNav(config: StackNavConfig = {}): EnvironmentProviders {
-  return makeEnvironmentProviders([{ provide: STACKNAV_CONFIG, useValue: resolveConfig(config) }]);
+  const providers: Provider[] = [{ provide: STACKNAV_CONFIG, useValue: resolveConfig(config) }];
+  // A stack expects `/items/1` and `/items/2` to be two pages; the router's own
+  // strategy reuses the component, so the outlet is never activated and nothing
+  // animates. An app that provides a strategy after this one still wins.
+  if (config.routeReuse !== false) providers.push({ provide: RouteReuseStrategy, useClass: StackNavRouteReuseStrategy });
+  return makeEnvironmentProviders(providers);
 }

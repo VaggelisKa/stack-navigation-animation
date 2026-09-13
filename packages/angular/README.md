@@ -27,13 +27,12 @@ beneath the new one and the change is animated. Interactive edge swiping is opt-
 
 ## Use
 
+Two lines, and no options for the usual app:
+
 ```ts
 // main.ts
 bootstrapApplication(App, {
-  providers: [
-    provideRouter(routes, withComponentInputBinding(), withRouterConfig({ canceledNavigationResolution: 'computed' })),
-    provideStackNav(),
-  ],
+  providers: [provideRouter(routes), provideStackNav()],
 });
 ```
 
@@ -41,6 +40,23 @@ bootstrapApplication(App, {
 <!-- app.html: the outlet needs a height; it is the pages' scroll container -->
 <sn-outlet style="height: 100dvh" />
 ```
+
+That is the whole setup. No stylesheet to import, no routes to annotate, no
+directive to add to a page: `provideStackNav()` injects the engine's CSS, decides
+the direction of every navigation on its own, and installs
+[`StackNavRouteReuseStrategy`](#siblings) so that `/items/1` → `/items/2` is a
+page of its own rather than a reused component. Everything below is optional.
+
+Two router options are worth adding all the same:
+
+```ts
+provideRouter(routes, withComponentInputBinding(), withRouterConfig({ canceledNavigationResolution: 'computed' }));
+```
+
+`withComponentInputBinding()` lets pages read their params as `input()`s, and
+`'computed'` keeps a back navigation that a guard refuses from rewriting the
+history entry the browser landed on -- a development build says so once if the
+router was left on its default.
 
 ```css
 /* styles.css: the transition's options are custom properties, all optional */
@@ -65,9 +81,6 @@ export class Item {
 }
 ```
 
-`canceledNavigationResolution: 'computed'` is optional but recommended. With the
-router's default, a back navigation refused by a guard rewrites the history entry
-the browser landed on.
 
 ## Swipe-back modes
 
@@ -166,7 +179,7 @@ Nothing left at all: `push`, or `fallbackDirection`. So, out of the box:
 | browser back / forward | pop / push | history |
 | `routerLink` to a page still kept beneath | pop | the stack |
 | `/settings` (`data.stackLevel: 2`) → `/about` (`stackLevel: 3`) | push | numbering |
-| `/items/1` → `/items/2` via `routerLink` | replace | siblings, once `StackNavRouteReuseStrategy` is provided (see below) |
+| `/items/1` → `/items/2` via `routerLink` | replace | siblings |
 | `router.navigate(['/items', 2], { info: { stacknav: 'push' } })` | push | explicit hint |
 
 ### Two knobs
@@ -234,14 +247,13 @@ app code using `Router`, `Location` and the browser's `navigation.canGoBack`; se
 
 The router's default `RouteReuseStrategy` reuses the component when only params
 change (`/items/1` → `/items/2`), so the outlet is never activated and nothing
-animates. To make those separate pages, provide the strategy this package
-exports, like any other:
+animates. `provideStackNav()` therefore installs `StackNavRouteReuseStrategy`,
+which makes those separate pages. Nothing to add.
 
-```ts
-{ provide: RouteReuseStrategy, useClass: StackNavRouteReuseStrategy }
-```
-
-Routes opt out of it with `data: { reuseRoute: true }`.
+Routes opt out one at a time with `data: { reuseRoute: true }`. To keep the
+router's own strategy everywhere, say `provideStackNav({ routeReuse: false })`;
+a `RouteReuseStrategy` provided *after* `provideStackNav()` wins over it either
+way.
 
 ### Mobile only
 
@@ -283,6 +295,7 @@ it.
 | `levelOf(snapshot)` | `data.stackLevel` | the route's number |
 | `keyOf(snapshot)` | the route's URL path | identity of a page |
 | `infoKey` | `'stacknav'` | key in `NavigationExtras.info` for hints |
+| `routeReuse` | `true` | install `StackNavRouteReuseStrategy`, so sibling routes are separate pages; see [Siblings](#siblings) |
 | `transition` | `{}` | `createNativeTransition` options for every outlet: `platform` (`'auto'`, `'ios'`, `'android'`), duration, curve and the rest. The same options are CSS variables (`--sn-duration`, `--sn-easing`, `--sn-parallax`, `--sn-dim-max`, `--sn-shadow`, …) read off the outlet, so a stylesheet can retune them. See the [core README](../core#tuning-from-css) |
 | `swipeBack` | `browser` | `browser` or `disabled`; see the browser suppression limitations above |
 | `detachInactiveViews` | `false` | detach change detection from hidden pages |
@@ -317,7 +330,16 @@ options passed to `withComponentInputBinding()`. Those options, and route
 
 ### `StackNavRouteReuseStrategy`
 
-Opt-in; see [Siblings](#siblings) above.
+Installed by `provideStackNav()`; see [Siblings](#siblings) above. Exported so an
+app can provide it itself, e.g. alongside `provideStackNav({ routeReuse: false })`
+in a lazy part of the app.
+
+### Development-only warnings
+
+A development build checks the two things around the outlet that fail silently
+and says each once, in the console: an `<sn-outlet>` that is 0px tall, and a
+router left on its default `canceledNavigationResolution`. Both checks, and
+their messages, are folded out of a production build.
 
 ## How it works
 

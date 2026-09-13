@@ -8,12 +8,10 @@ import { BaseRouteReuseStrategy, type ActivatedRouteSnapshot } from '@angular/ro
  * route differs, which is what a navigation stack expects. Routes opt out with
  * `data: { reuseRoute: true }`.
  *
- * It is not installed automatically. Provide it like any other strategy to get
- * this behaviour:
- *
- * ```ts
- * { provide: RouteReuseStrategy, useClass: StackNavRouteReuseStrategy }
- * ```
+ * `provideStackNav()` installs it, so this is what an app gets by default.
+ * `provideStackNav({ routeReuse: false })` keeps the router's own strategy
+ * instead, and a `RouteReuseStrategy` provided after `provideStackNav()` wins
+ * over it either way.
  */
 @Injectable()
 export class StackNavRouteReuseStrategy extends BaseRouteReuseStrategy {
