@@ -290,7 +290,7 @@ eq(await page.inputValue('.srch-box input'), 'ada', 'deep link seeded the box fr
 check((await text('.srch-row b')) === 'Ada Lindqvist', 'and ran the search');
 
 // ============================================================ dashboard
-section('dashboard: a nested router-outlet inside a kept page');
+section('dashboard: a nested stack inside a kept page');
 await page.goto(base + '/');
 await page.waitForSelector('app-home');
 await openDemo('Dashboard');
@@ -304,7 +304,8 @@ check(true, 'range switch reloaded the chart in place');
 await page.click('.sn-page-visible .dash-tabs a:has-text("Team")');
 await page.waitForSelector('dash-team');
 s = await state();
-eq(s.pages.join(','), 'app-home,dash-shell', 'tab change happened inside the nested outlet, not in the stack');
+eq(s.pages.join(','), 'app-home,dash-shell', 'tab change happened inside the nested stack, not in the outer one');
+eq(await page.evaluate(() => document.querySelectorAll('.dash-pane > .sn-page').length), 1, 'siblings: the tab replaced the previous one in the inner stack');
 eq(s.url, '/dashboard/team', 'url after the tab change');
 await waitCount('.dash-member', 8);
 mid = await transitioned(() => page.click('.sn-page-visible .dash-member:has-text("Mira Sato")'), 'dash-member');
@@ -319,8 +320,8 @@ await transitioned(() => page.goBack(), 'dash-back-2');
 s = await state();
 eq(s.pages.join(','), 'app-home,dash-shell', 'back on the dashboard');
 eq(s.url, '/dashboard/team', 'the shell was kept and the router re-activated the team tab in it');
-await waitCount('dash-team .dash-member', 8);
-check(true, 'the child route is re-created by the router (only the shell is kept), so its list loads again');
+eq(await count('dash-team .dash-member'), 8, 'the inner stack resumed with the tab it had: the list is still there, nothing refetched');
+eq(await page.evaluate(() => document.querySelectorAll('.dash-pane > .sn-page-visible').length), 1, 'and the tab is on screen again');
 await page.click('.sn-page-visible .dash-tabs a:has-text("Activity")');
 await waitCount('.dash-table tbody tr', 40);
 await page.click('.sn-page-visible .dash-filters button:has-text("fail")');

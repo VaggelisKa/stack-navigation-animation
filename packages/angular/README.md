@@ -283,9 +283,11 @@ page around both moves, so scroll position survives as before. What a removal
 and reinsertion does reset is browser-side state that lives on the node: an
 `<iframe>` inside a kept page reloads, a playing `<video>` pauses, and a CSS
 animation restarts from its first keyframe. And the router detaches only the
-page itself: whatever a nested `<router-outlet>` inside it was showing is
+page itself: whatever a plain nested `<router-outlet>` inside it was showing is
 destroyed on the way out and created again on the way back, as it is for any
-detached route.
+detached route. A nested `<router-outlet stackNav>` is different: its stack is
+suspended with the page, pages and all, and resumes as it was when the page
+comes back (the Dashboard demo does this with its tabs).
 
 ### Mobile only
 

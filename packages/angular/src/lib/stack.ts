@@ -22,7 +22,7 @@ import {
   RouteReuseStrategy,
   Router,
   RouterOutlet,
-  type ActivatedRoute,
+  ActivatedRoute,
   type ActivatedRouteSnapshot,
   type DetachedRouteHandle,
 } from '@angular/router';
@@ -82,7 +82,9 @@ export interface StackNavActivation {
 }
 
 /** The stack was emptied by the router leaving its outlet; the pages are still kept. */
-const EMPTIED: NavigationSource = 'emptied';
+const EMPTIED: NavigationSource = 'suspend';
+/** The outlet is showing one of the pages it had; the stack is put back as it was. */
+const RESUMED: NavigationSource = 'resume';
 
 /**
  * Puts the platform's native push/pop transition on Angular's own
@@ -131,6 +133,8 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   private readonly document = inject(DOCUMENT);
   private readonly errorHandler = inject(ErrorHandler);
   private readonly strategy = inject(RouteReuseStrategy);
+  /** The route of the page this outlet lives in: the root route for a top-level outlet. */
+  private readonly hostRoute = inject(ActivatedRoute);
   private unregister: (() => void) | null = null;
   private destroyed = false;
 
@@ -153,6 +157,8 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   private leaving: Page | null = null;
   /** The page the outlet just detached; the router hands over its handle next. */
   private detaching: Page | null = null;
+  /** The entries of an emptied outlet, until it shows one of them again or its host page is gone for good. */
+  private suspended: Page[] | null = null;
   private readonly subs = new Subscription();
 
   constructor() {
@@ -182,8 +188,12 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     if (this.outlet.isActivated) this.onActivated();
     this.subs.add(
       this.router.events.subscribe((e) => {
-        if (e instanceof NavigationCancel || e instanceof NavigationError || e instanceof NavigationSkipped) this.restorePending();
-        else if (e instanceof NavigationEnd && this.active) this.active.url = e.urlAfterRedirects;
+        const ended = e instanceof NavigationEnd;
+        const failed = e instanceof NavigationCancel || e instanceof NavigationError || e instanceof NavigationSkipped;
+        // The detach/store handshake never outlives its navigation.
+        if (ended || failed) this.detaching = null;
+        if (failed) this.restorePending();
+        else if (ended) this.onNavigationEnd(e);
       }),
     );
   }
@@ -223,10 +233,10 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     return outlet.isActivated && outlet.activatedRoute.snapshot === snapshot && this.byInstance.has(outlet.component);
   }
   /** @internal The router detached a page and hands over its handle. True if it was one of ours. */
-  keep(handle: DetachedRouteHandle): boolean {
+  keep(snapshot: ActivatedRouteSnapshot, handle: DetachedRouteHandle): boolean {
     const page = this.detaching;
     this.detaching = null;
-    if (!page) return false;
+    if (!page || snapshot.outlet !== this.outlet.name || page.routeRef.snapshot.routeConfig !== snapshot.routeConfig) return false;
     page.handle = handle;
     // An interactive pop already took it off screen; the router is only now
     // catching up, and this is the moment it stops owning the component.
@@ -252,7 +262,9 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   }
   /** @internal Every handle still held, for the router's injector cleanup. */
   handles(): DetachedRouteHandle[] {
-    return [...this.kept].map((page) => page.handle!);
+    const handles: DetachedRouteHandle[] = [];
+    for (const page of this.kept) if (page.handle) handles.push(page.handle);
+    return handles;
   }
 
   /**
@@ -291,6 +303,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
       this.byInstance.set(instance, page);
       this.byEl.set(el, page);
     }
+    if (this.suspended) this.resume(page);
     const leaving = this.takeLeaving();
     // Hidden until the stack shows it, even if a transition is still running.
     page.el.classList.add(stack.pageClass);
@@ -312,15 +325,52 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     restoreScroll(page.scroll);
     // The router detaches before it activates, synchronously. If no
     // activation follows, the outlet is empty: the router left this outlet
-    // altogether, or is detaching the page this whole stack lives in. The
-    // pages stay kept either way, and come back through attach.
+    // altogether, or is detaching the page this whole stack lives in. Either
+    // way the pages stay kept and the stack is suspended, to resume as it was
+    // when the outlet shows one of them again, or to be dropped once a
+    // navigation ends with the host page active and the outlet still empty.
     this.leaving = page;
     queueMicrotask(() => {
       if (this.leaving !== page) return;
       this.leaving = null;
+      this.suspended = [...(this.suspended ?? []), ...this.entries];
       this.entries = [];
       this.runStackTask(this.stack.reset([], { source: EMPTIED }));
     });
+  }
+
+  /**
+   * The outlet shows a page again after being emptied. If it is one of the
+   * suspended pages, the stack comes back as it was up to that page, and
+   * whatever was above it is popped for good; anything else means the old
+   * stack is gone.
+   */
+  private resume(page: Page): void {
+    const suspended = this.suspended!;
+    this.suspended = null;
+    const i = suspended.indexOf(page);
+    for (const p of suspended.slice(i + 1)) this.destroyPage(p);
+    if (i < 0) return;
+    this.entries = suspended.slice(0, i + 1);
+    // The suspend unmounted the lower pages; mounting them again resets their scrollers.
+    this.runStackTask(this.stack.reset(this.entries.map((p) => p.el), { source: RESUMED }).then(() => this.entries.forEach((p) => restoreScroll(p.scroll))));
+  }
+
+  private onNavigationEnd(e: NavigationEnd): void {
+    if (this.active) this.active.url = e.urlAfterRedirects;
+    // Emptied while its host page stays active: the outlet was left for good, and so were its pages.
+    if (this.suspended && !this.outlet.isActivated && this.hostIsActive()) {
+      const suspended = this.suspended;
+      this.suspended = null;
+      for (const page of suspended) this.destroyPage(page);
+    }
+  }
+
+  /** Whether the page this outlet lives in is part of the router's current state, rather than kept by a stack of its own. */
+  private hostIsActive(): boolean {
+    const target = this.hostRoute.snapshot;
+    const inTree = (s: ActivatedRouteSnapshot): boolean => s === target || s.children.some(inTree);
+    return inTree(this.router.routerState.snapshot.root);
   }
 
   /**
@@ -439,8 +489,8 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   }
 
   private onStackRemoved(removed: StackEntry[], source: NavigationSource): void {
-    // An emptied outlet only unmounts: the router still holds the pages' routes.
-    if (source === EMPTIED) return;
+    // A suspended stack only unmounts: the router still holds the pages' routes.
+    if (source === EMPTIED || source === RESUMED) return;
     for (const entry of removed) {
       const page = this.byEl.get(entry.el);
       if (!page) continue;

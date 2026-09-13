@@ -1,20 +1,22 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject, input, resource, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { StackNav } from '@stacknav/angular';
 import { FakeApi } from '../fake-api';
 import { BackButton, DEMO_UI } from '../shared';
 
 /**
- * A kept page with a nested `<router-outlet>`. The segmented control swaps
- * children inside this page without touching the stack. When a member's page is
- * pushed over it, the router deactivates the child route, but the shell stays
- * alive and the same tab is activated again on the pop back.
+ * A kept page with a stack of its own inside it. The tabs are sibling routes,
+ * so switching one for another replaces in place, without touching the outer
+ * stack. When a member's page is pushed over the shell, the router detaches
+ * the shell and, before it, the tab inside: the inner stack is suspended with
+ * its host and resumes as it was on the pop back, list and scroll intact.
  */
 @Component({
   selector: 'dash-shell',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, BackButton],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, StackNav, BackButton],
   template: `
-    <div class="page dash">
+    <div class="page dash dash-frame">
       <header class="hdr dash-hdr">
         <button type="button" class="back" snBack="/">‹ Demos</button>
         <h1>Dashboard</h1>
@@ -26,7 +28,8 @@ import { BackButton, DEMO_UI } from '../shared';
         <a routerLink="activity" routerLinkActive="on" replaceUrl>Activity</a>
         <a routerLink="team" routerLinkActive="on" replaceUrl>Team</a>
       </nav>
-      <router-outlet />
+      <!-- The pane is the inner stack: the tab pages fill and scroll it. -->
+      <div class="dash-pane"><router-outlet stackNav /></div>
     </div>
   `,
 })

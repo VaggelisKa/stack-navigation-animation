@@ -11,7 +11,7 @@ export interface PageKeeper {
   /** The stack's outlet is showing this route right now. */
   showing(snapshot: ActivatedRouteSnapshot): boolean;
   /** The router detached a page; take its handle if the page is yours. */
-  keep(handle: DetachedRouteHandle): boolean;
+  keep(snapshot: ActivatedRouteSnapshot, handle: DetachedRouteHandle): boolean;
   /** A page for this route is kept and can be re-attached. */
   has(snapshot: ActivatedRouteSnapshot): boolean;
   retrieve(snapshot: ActivatedRouteSnapshot): DetachedRouteHandle | null;
@@ -62,7 +62,7 @@ export class StackNavRouteReuseStrategy extends BaseRouteReuseStrategy {
 
   override store(route: ActivatedRouteSnapshot, handle: DetachedRouteHandle | null): void {
     if (handle) {
-      for (const stack of this.stacks) if (stack.keep(handle)) return;
+      for (const stack of this.stacks) if (stack.keep(route, handle)) return;
       // Nobody claimed it, so nobody would ever destroy it.
       destroyHandle(handle);
     } else {
