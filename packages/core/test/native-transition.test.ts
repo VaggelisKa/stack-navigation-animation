@@ -61,6 +61,7 @@ test('the Android look slides a short way and fades, without dim or shadow', () 
   const t = createNativeTransition({ platform: 'android' });
   const { lower, upper } = entries();
   t.begin(lower, upper);
+  assert.equal(upper.el.classes.has('sn-page-android-fade'), true, 'opacity has its own short, linear timing');
   assert.equal(upper.el.style.boxShadow, 'var(--sn-shadow, none)');
   t.apply(lower, upper, 0);
   assert.equal(upper.el.style.transform, shift('25'), 'a quarter of the width, not the whole of it');
@@ -74,6 +75,18 @@ test('the Android look slides a short way and fades, without dim or shadow', () 
   assert.equal(upper.el.style.opacity, '1');
   t.end(lower, upper);
   assert.equal(upper.el.style.opacity, '', 'the page gets its own opacity back');
+  assert.equal(upper.el.classes.has('sn-page-android-fade'), false, 'fade timing is removed after the transition');
+});
+
+test('Android fade timing is only enabled when the resolved look fades', () => {
+  for (const platform of ['ios', 'android'] as const) {
+    const t = createNativeTransition({ platform });
+    const { container, lower, upper } = entries();
+    container.vars['--sn-fade'] = '1';
+    t.begin(lower, upper);
+    assert.equal(upper.el.classes.has('sn-page-android-fade'), false);
+    t.end(lower, upper);
+  }
 });
 
 test('the iOS look never writes opacity, so a page keeps its own', () => {
