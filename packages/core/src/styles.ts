@@ -48,6 +48,11 @@
  *   still be run by the browser; the iOS look only ever changes `transform`
  *   (the Android look fades as well), and a property that does not change
  *   starts no transition.
+ * - `.sn-page-android-fade`: Android's alpha animation takes 83 ms of the
+ *   450 ms slide and is linear. Sharing the slide's duration and curve leaves
+ *   the outgoing content visible through the incoming page for too long.
+ *   Deriving the fade duration from `--sn-t` also scales slow motion, settling,
+ *   and reduced motion, and keeps interactive updates immediate.
  * - `.sn-dim`: the overlay the lower page dims behind. CSS resolves its colour;
  *   the transition supplies a fallback colour and writes its opacity. It sits
  *   inside a page, so it inherits the timing back through the barrier.
@@ -67,6 +72,7 @@ export const STACKNAV_CSS =
   ':where(.sn-page)>*{--sn-t:0s;--sn-e:linear}' +
   '.sn-page-visible{visibility:visible}' +
   '.sn-page-upper,.sn-page-lower{will-change:transform;transition-property:transform,opacity;transition-duration:var(--sn-t,0s);transition-timing-function:var(--sn-e,linear)}' +
+  '.sn-page-upper.sn-page-android-fade{transition-duration:var(--sn-t,0s),calc(var(--sn-t,0s) * 83 / 450);transition-timing-function:var(--sn-e,linear),linear}' +
   '.sn-dim{position:fixed;inset:0;z-index:2147483647;pointer-events:none;background:var(--sn-dim-color,var(--sn-dim-fallback,#000));opacity:0;--sn-t:inherit;--sn-e:inherit;transition:opacity var(--sn-t,0s) var(--sn-e,linear)}' +
   '.sn-busy::after{content:"";position:absolute;inset:0;z-index:2147483647;user-select:none;-webkit-user-select:none}' +
   '@media(prefers-reduced-motion:reduce){.sn-container{--sn-t:0s!important}}';
