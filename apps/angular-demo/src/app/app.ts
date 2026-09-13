@@ -1,25 +1,27 @@
 import { Component, afterRenderEffect, computed, inject, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationCancel, NavigationEnd, NavigationError, NavigationSkipped, NavigationStart, Router } from '@angular/router';
-import { StackNavOutlet } from '@stacknav/angular';
+import { NavigationCancel, NavigationEnd, NavigationError, NavigationSkipped, NavigationStart, Router, RouterOutlet } from '@angular/router';
+import { StackNav } from '@stacknav/angular';
 import { detectPlatform, nativeTransitionPreset } from '@stacknav/core';
 import { filter, map } from 'rxjs';
 import { FakeApi } from './demos/fake-api';
-import { DemoPrefs } from './demos/shared';
+import { DemoNav, DemoPrefs } from './demos/shared';
 
 @Component({
   selector: 'app-root',
-  imports: [StackNavOutlet],
+  imports: [RouterOutlet, StackNav],
   template: `
+    <!-- The router's own outlet, with stackNav on it. Its parent, the phone, is the stack. -->
     <div class="phone">
       <div class="progress" [class.on]="busy()" [attr.aria-hidden]="!busy()"></div>
-      <sn-outlet [swipeBack]="prefs.swipeBack()" />
+      <router-outlet stackNav [stackNavSwipeBack]="prefs.swipeBack()" />
     </div>
   `,
 })
 export class App {
-  private readonly outlet = viewChild.required(StackNavOutlet);
+  private readonly stack = viewChild.required(StackNav);
   readonly prefs = inject(DemoPrefs);
+  private readonly nav = inject(DemoNav);
   private readonly api = inject(FakeApi);
   private readonly router = inject(Router);
   /** True while the router is between NavigationStart and its end, which covers resolvers and lazy chunks. */
@@ -30,13 +32,14 @@ export class App {
     ),
     { initialValue: false },
   );
-  /** A thin bar over the outlet: chrome that lives outside the stack and animates independently. */
+  /** A thin bar over the pages: chrome that lives inside the stack element but outside the pages, and animates independently. */
   readonly busy = computed(() => this.navigating() || this.api.inflight() > 0);
 
   constructor() {
-    // The Lab's settings are applied directly to the engine the outlet created.
+    // The Lab's settings are applied directly to the engine the stack created.
     afterRenderEffect(() => {
-      const { stack } = this.outlet();
+      const { stack } = this.stack();
+      this.nav.stack = this.stack();
       // The platform is chosen once when a transition is created, so switching it
       // means putting the other preset's values into the live options.
       const chosen = this.prefs.platform();

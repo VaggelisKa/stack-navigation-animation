@@ -1,11 +1,11 @@
 import { Location } from '@angular/common';
 import { Component, Directive, Injectable, computed, inject, input, output, signal } from '@angular/core';
-import { ChildrenOutletContexts, PRIMARY_OUTLET, Router } from '@angular/router';
-import { type SwipeBackMode, type StackNavOutlet } from '@stacknav/angular';
+import { Router } from '@angular/router';
+import { type StackNav, type SwipeBackMode } from '@stacknav/angular';
 import { useBack } from '../back';
 import { initials } from './fake-api';
 
-/** Settings the Lab page changes. The App applies them to the outlet. */
+/** Settings the Lab page changes. The App applies them to the stack. */
 @Injectable({ providedIn: 'root' })
 export class DemoPrefs {
   /** Who handles the back gesture. The browser does, unless Lab asks for suppression. */
@@ -26,11 +26,11 @@ export class DemoPrefs {
 export class DemoNav {
   private readonly router = inject(Router);
   private readonly location = inject(Location);
-  private readonly contexts = inject(ChildrenOutletContexts);
+  /** The app's stack, set by the root component that owns it. */
+  stack: StackNav | null = null;
 
   popTo(url: string): void {
-    const outlet = this.contexts.getContext(PRIMARY_OUTLET)?.outlet as StackNavOutlet | null;
-    const pages = outlet?.pages ?? [];
+    const pages = this.stack?.pages ?? [];
     const i = pages.findIndex((p) => p.url === url);
     if (i >= 0 && i < pages.length - 1) this.location.historyGo(i - (pages.length - 1));
     else void this.router.navigateByUrl(url, { replaceUrl: true, info: { stacknav: 'pop' } });

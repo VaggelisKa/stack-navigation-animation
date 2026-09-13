@@ -1,25 +1,31 @@
 # @stacknav/angular
 
-`<sn-outlet />`: a router outlet with the native push/pop transition (iOS, or
-Android's own on Android), built on
-[`@stacknav/core`](../core).
+`stackNav`: the native push/pop transition (iOS, or Android's own on Android)
+on Angular's own `<router-outlet>`, built on [`@stacknav/core`](../core).
 
-It is an outlet, not a router. Angular Router keeps doing everything it does:
-routes, guards, resolvers, `routerLink`, `router.navigate`, lazy loading,
-component input binding and browser history. The outlet only changes what
-happens when the router activates a route: the page that was showing stays alive
-beneath the new one and the change is animated. Interactive edge swiping is opt-in.
+It is a directive, not an outlet. You keep the `<router-outlet>` you have, and
+Angular Router keeps doing everything it does: routes, guards, resolvers,
+`routerLink`, `router.navigate`, lazy loading, component input binding, nested
+outlets and browser history. The directive sits on the outlet and only changes
+what happens when the router activates a route: the page that was showing stays
+alive beneath the new one and the change is animated. Interactive edge swiping
+is opt-in.
 
+- **Nothing to swap.** The pages are the outlet's own components, in the
+  outlet's own elements. The directive never wraps or replaces them; it listens
+  to the outlet and moves what is already there.
 - **Works alongside the router.** There is no navigation API of its own. You
   navigate with the router, go back with `Location`, and read params as you
   already do.
 - **Pages stay alive.** The page you came from is kept beneath the top one,
-  hidden. Its scroll position, form state, signals and subscriptions are intact
-  when you pop back, with nothing to restore.
-- **Interactive pop, if you drive it.** The outlet ships no gesture: in a browser tab the browser owns
-  the edge. An app that owns it can drive `outlet.stack.beginInteractivePop()`, and the router follows,
-  through `history.back()` when that lands on the right page. A `canDeactivate` guard that rejects puts
-  the page back.
+  hidden, through the router's own detach/attach mechanism. Its scroll
+  position, form state, signals and subscriptions are intact when you pop back,
+  with nothing to restore.
+- **Interactive pop, if you drive it.** The directive ships no gesture: in a
+  browser tab the browser owns the edge. An app that owns it can drive
+  `stack.beginInteractivePop()`, and the router follows, through
+  `history.back()` when that lands on the right page. A `canDeactivate` guard
+  that rejects puts the page back.
 - **Direction it works out itself.** Whether a navigation is a push, a pop or a
   replace comes from an explicit hint, the browser's back/forward, the kept
   stack, numbers on your routes, or the route tree -- in that order, with
@@ -37,15 +43,23 @@ bootstrapApplication(App, {
 ```
 
 ```html
-<!-- app.html: the outlet needs a height; it is the pages' scroll container -->
-<sn-outlet style="height: 100dvh" />
+<!-- app.html: the element around the outlet is the stack; it needs a height -->
+<div style="height: 100dvh">
+  <router-outlet stackNav />
+</div>
 ```
 
 That is the whole setup. No stylesheet to import, no routes to annotate, no
 directive to add to a page: `provideStackNav()` injects the engine's CSS, decides
 the direction of every navigation on its own, and installs
-[`StackNavRouteReuseStrategy`](#siblings) so that `/items/1` → `/items/2` is a
-page of its own rather than a reused component. Everything below is optional.
+[`StackNavRouteReuseStrategy`](#the-strategy), which is how the router keeps a
+page alive when it leaves it and why `/items/1` → `/items/2` is a page of its
+own rather than a reused component. Everything below is optional.
+
+The router inserts each page next to its outlet, so the outlet's parent element
+is the stack: it clips and scrolls the pages, and needs a height of its own.
+Anything else in there -- a progress bar, a tab bar -- is chrome that sits over
+the pages.
 
 Two router options are worth adding all the same:
 
@@ -89,36 +103,32 @@ provideStackNav({ swipeBack: 'browser' });  // default: leave browser gestures a
 provideStackNav({ swipeBack: 'disabled' }); // request browser swipe suppression
 ```
 
-Change a single outlet live with `<sn-outlet [swipeBack]="mode()" />`. Changing
-modes preserves the pages, URL and history.
+Change a single stack live with `<router-outlet stackNav [stackNavSwipeBack]="mode()" />`.
+Changing modes preserves the pages, URL and history.
 
 **There is no gesture of our own to choose.** Suppression cannot stop Safari's
 edge swipe, so a recognizer next to it reads as two backs at once. An app that
 owns the edge -- an installed PWA, a native webview -- can drive the stack's
-`beginInteractivePop()` from its own pointer handling; the outlet treats the
+`beginInteractivePop()` from its own pointer handling; the directive treats the
 resulting pop exactly as it treated the old gesture's, syncing the router and
 restoring the page if a guard refuses.
 
 ```ts
-readonly outlet = viewChild.required(StackNavOutlet);
+readonly nav = viewChild.required(StackNav);
 // on your own pointerdown/pointermove/pointerup
-const pop = this.outlet().stack.beginInteractivePop();
+const pop = this.nav().stack.beginInteractivePop();
 pop?.update(1 - dx / width);
 void pop?.finish({ complete: dx > width / 2, velocity });
 ```
-
-**Migration:** `swipeBack: 'custom'` and the `gesture` option (on both
-`provideStackNav()` and `<sn-outlet />`) were removed. `'custom'` now throws;
-`'disabled'` keeps the suppression half of what it did.
 
 The demos let you try both modes in **Lab → Swipe back** (Angular) or
 **Options → Swipe back** (vanilla).
 
 Browser suppression uses `overscroll-behavior-x: contain` on the document root.
 It is **document-wide and best effort**, not a guarantee against Safari edge
-navigation or OS gestures. A `browser` outlet cannot undo another outlet's
+navigation or OS gestures. A `browser` stack cannot undo another stack's
 suppression request; the original inline declaration is restored after the last
-request ends or its outlet is destroyed. Avoid enabling suppression in an outlet
+request ends or its stack is destroyed. Avoid enabling suppression in a stack
 when the rest of the document should retain native swipe navigation.
 See the [CSS specification](https://drafts.csswg.org/css-overscroll/) and
 [WebKit's history navigation limitation](https://bugs.webkit.org/show_bug.cgi?id=240183).
@@ -129,7 +139,7 @@ and push/pop animation are independent of this policy.
 
 ### Implicit: number your routes
 
-Put a number on each route and the outlet does the rest. Navigating to a higher
+Put a number on each route and the stack does the rest. Navigating to a higher
 number pushes, a lower one pops, and the same number replaces. This needs no
 hints and no extra calls: use `routerLink` and `router.navigate` as usual.
 
@@ -243,17 +253,41 @@ to, so an app typically falls back to a route as a pop. That is a few lines of
 app code using `Router`, `Location` and the browser's `navigation.canGoBack`; see
 [`apps/angular-demo/src/app/back.ts`](../../apps/angular-demo/src/app/back.ts).
 
-### Siblings
+### The strategy
 
-The router's default `RouteReuseStrategy` reuses the component when only params
-change (`/items/1` → `/items/2`), so the outlet is never activated and nothing
-animates. `provideStackNav()` therefore installs `StackNavRouteReuseStrategy`,
-which makes those separate pages. Nothing to add.
+`provideStackNav()` installs `StackNavRouteReuseStrategy` as the router's
+`RouteReuseStrategy`. It is the one piece of router configuration the directive
+depends on, and it does two things.
 
-Routes opt out one at a time with `data: { reuseRoute: true }`. To keep the
-router's own strategy everywhere, say `provideStackNav({ routeReuse: false })`;
-a `RouteReuseStrategy` provided *after* `provideStackNav()` wins over it either
-way.
+When the router leaves a route a stack is showing, the strategy asks the router
+to *detach* the page rather than destroy it, and to *attach* the same page when
+the route is reached again. That is the router's own mechanism for keeping a
+route alive, so the page's `ActivatedRoute` observables keep emitting, a nested
+`<router-outlet>` inside it is re-activated with the same child route, and bound
+inputs are rebound -- none of it reimplemented here. The stack decides when a kept page is
+dropped for good (after a pop, or a replace) and destroys it then.
+
+The router's default strategy also reuses the component when only params change
+(`/items/1` → `/items/2`), so the outlet is never activated and nothing
+animates. The strategy makes those separate pages. Routes opt out one at a time
+with `data: { reuseRoute: true }`.
+
+An app that must provide a `RouteReuseStrategy` of its own extends this one and
+provides it after `provideStackNav()`, which wins either way; a development build
+says so once if the strategy in force is not a `StackNavRouteReuseStrategy`.
+
+One thing to know about the router's mechanism: detaching takes the page's
+element out of the DOM, and attaching puts it back. The directive keeps the
+element mounted, hidden, in between, and restores every scroll offset inside the
+page around both moves, so scroll position survives as before. What a removal
+and reinsertion does reset is browser-side state that lives on the node: an
+`<iframe>` inside a kept page reloads, a playing `<video>` pauses, and a CSS
+animation restarts from its first keyframe. And the router detaches only the
+page itself: whatever a plain nested `<router-outlet>` inside it was showing is
+destroyed on the way out and created again on the way back, as it is for any
+detached route. A nested `<router-outlet stackNav>` is different: its stack is
+suspended with the page, pages and all, and resumes as it was when the page
+comes back (the Dashboard demo does this with its tabs).
 
 ### Mobile only
 
@@ -295,60 +329,62 @@ it.
 | `levelOf(snapshot)` | `data.stackLevel` | the route's number |
 | `keyOf(snapshot)` | the route's URL path | identity of a page |
 | `infoKey` | `'stacknav'` | key in `NavigationExtras.info` for hints |
-| `routeReuse` | `true` | install `StackNavRouteReuseStrategy`, so sibling routes are separate pages; see [Siblings](#siblings) |
-| `transition` | `{}` | `createNativeTransition` options for every outlet: `platform` (`'auto'`, `'ios'`, `'android'`), duration, curve and the rest. The same options are CSS variables (`--sn-duration`, `--sn-easing`, `--sn-parallax`, `--sn-dim-max`, `--sn-shadow`, …) read off the outlet, so a stylesheet can retune them. See the [core README](../core#tuning-from-css) |
+| `routeReuse` | `true` | install `StackNavRouteReuseStrategy`; see [The strategy](#the-strategy) |
+| `transition` | `{}` | `createNativeTransition` options for every stack: `platform` (`'auto'`, `'ios'`, `'android'`), duration, curve and the rest. The same options are CSS variables (`--sn-duration`, `--sn-easing`, `--sn-parallax`, `--sn-dim-max`, `--sn-shadow`, …) read off the stack element, so a stylesheet can retune them. See the [core README](../core#tuning-from-css) |
 | `swipeBack` | `browser` | `browser` or `disabled`; see the browser suppression limitations above |
-| `detachInactiveViews` | `false` | detach change detection from hidden pages |
 | `injectStyles` | `true` | insert the core stylesheet at runtime |
 | `animated` | `true` | animate at all. `'touch'` only on a coarse pointer, or a predicate asked before every navigation; see [Mobile only](#mobile-only) |
 
-### `<sn-outlet>` (`StackNavOutlet`)
+### `stackNav` (`StackNav`)
 
-Inputs: `name`, `transition`, `swipeBack`, `routerOutletData`.
+Goes on a `<router-outlet>`; its parent element is the stack. Exported as
+`stackNav` for template references (`#nav="stackNav"`).
 
-Outputs: `activate`, `deactivate`, `attach`, `detach` (as on `router-outlet`) and
-`navigated` with `{ view, direction, animated, reused }`.
+Inputs: `stackNavTransition`, `stackNavSwipeBack`.
 
-Properties: `stack` (the core `NavigationStack`, for `progress` events), `pages`
-(kept pages, bottom to top), `canPop`, `lastDirection`.
+Outputs: `stackNavActivate` with `{ page, direction, animated, reused }`. The
+outlet's own `activate`, `deactivate`, `attach` and `detach` outputs keep
+working next to it.
+
+Properties: `stack` (the core `NavigationStack`, for `progress` events and
+`beginInteractivePop()`), `pages` (a copy of the kept pages, bottom to top,
+each with its component `instance`, element `el`, `key` and last `url`),
+`canPop`, `lastDirection`. `stackNavTransition` is read once, when the stack
+is created; `stackNavSwipeBack` is live.
 
 Chrome that only has to move with the pages does not need `progress` at all: the
-outlet carries `--sn-t` and `--sn-e` while a phase is in flight, and the two
-pages taking part carry `sn-page-upper` and `sn-page-lower`, so a header or a tab
-bar can transition off them and stay on the compositor with them. The two
+stack element carries `--sn-t` and `--sn-e` while a phase is in flight, and the
+two pages taking part carry `sn-page-upper` and `sn-page-lower`, so a header or
+a tab bar can transition off them and stay on the compositor with them. The two
 properties stop at each page component's children, so that a phase starting
 never re-resolves the style of a kept page's content; a page that wants them
 inside lifts that barrier with `.sn-page > * { --sn-t: inherit; --sn-e: inherit }`
 (see the [core README](../core#your-own-chrome)).
 
-Component inputs are bound when the router is configured with
-`withComponentInputBinding()`: query params, params and data, in that order of
-precedence, with unmatched inputs set to `undefined`. The router only binds
-inputs for its own outlet, so this outlet does it itself and cannot see the
-options passed to `withComponentInputBinding()`. Those options, and route
-`resources`, are not honoured.
+Component inputs, `ROUTER_OUTLET_DATA`, named outlets and route `resources` are
+all the outlet's own business and work exactly as they do without the directive.
 
 ### `StackNavRouteReuseStrategy`
 
-Installed by `provideStackNav()`; see [Siblings](#siblings) above. Exported so an
-app can provide it itself, e.g. alongside `provideStackNav({ routeReuse: false })`
-in a lazy part of the app.
+Installed by `provideStackNav()`; see [The strategy](#the-strategy). Exported so
+an app can extend it, and provide the subclass after `provideStackNav()`.
 
 ### Development-only warnings
 
-A development build checks the two things around the outlet that fail silently
-and says each once, in the console: an `<sn-outlet>` that is 0px tall, and a
-router left on its default `canceledNavigationResolution`. Both checks, and
-their messages, are folded out of a production build.
+A development build checks the things around the stack that fail silently and
+says each once, in the console: an element around the outlet that is 0px tall,
+a `RouteReuseStrategy` that is not the library's, and a router left on its
+default `canceledNavigationResolution`. All checks, and their messages, are
+folded out of a production build.
 
 ## How it works
 
-The outlet implements `RouterOutletContract`. When the router activates a route,
-the outlet creates the component (or finds the kept one for that key), resolves
-the direction, and asks the core stack to push, pop onto, or replace. Deactivated
-pages are not destroyed until the stack drops them.
-
-Each page gets an `ActivatedRoute` proxy whose observables switch to the route
-object the router hands over when the page is reached again. Its nested outlet
-contexts are saved and restored, so a `<router-outlet>` inside a kept page keeps
-working.
+The directive injects the `RouterOutlet` it sits on and subscribes to its
+`activate`, `attach`, `detach` and `deactivate` outputs. When the router
+leaves a route, `StackNavRouteReuseStrategy` has it detach the page; the
+directive puts the element back into the outlet's parent, hidden, and resolves
+the direction of the navigation once the outlet activates the next page. It then
+asks the core stack to push the new page over the kept one, pop onto it, or
+replace it. A page the router has detached is only destroyed once the stack
+drops it. Which page paints on top is decided by `z-index`, so the directive
+never has to reorder the elements the outlet placed.

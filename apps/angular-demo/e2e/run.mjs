@@ -27,7 +27,7 @@ eq(s.visible.join(','), 'app-home', 'home visible');
 section('reduced motion');
 await page.emulateMedia({ reducedMotion: 'reduce' });
 const reducedDuration = await page.evaluate(() => {
-  const outlet = document.querySelector('sn-outlet');
+  const outlet = document.querySelector('.sn-container');
   const current = outlet.querySelector('.sn-page-visible');
   outlet.style.setProperty('--sn-t', '10s');
   current.classList.add('sn-page-upper');
@@ -48,7 +48,7 @@ await page.emulateMedia({ reducedMotion: 'no-preference' });
 // ---- 2. push from the tree: / -> /items/3 ----------------------------------
 await page.click('text=+');
 await page.click('text=+');
-await page.evaluate(() => (document.querySelector('sn-outlet > .sn-page-visible').scrollTop = 600));
+await page.evaluate(() => (document.querySelector('.sn-container > .sn-page-visible').scrollTop = 600));
 const homeScroll = await scrollTop();
 check(homeScroll > 0, `scrolled the home page (${homeScroll}px)`);
 let mid = await transitioned(() => page.click('.sn-page-visible a:has-text("Item 3")'), '02-push-item');
@@ -204,7 +204,7 @@ section('CSS runs the animation');
 await page.goto(base + '/');
 await page.waitForSelector('app-home');
 const run = await page.evaluate(async () => {
-  const outlet = document.querySelector('sn-outlet');
+  const outlet = document.querySelector('.sn-container');
   const x = (el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m41;
   const frames = [];
   let writes = 0;
@@ -226,13 +226,18 @@ const run = await page.evaluate(async () => {
       lower: x(lower),
       dim: +getComputedStyle(dim).opacity,
       shadowed: getComputedStyle(upper).boxShadow !== 'none',
+      // The router inserted the incoming page at the outlet's anchor, before the
+      // kept page in the DOM; only z-index puts it on top.
+      lowerFollows: !!(upper.compareDocumentPosition(lower) & Node.DOCUMENT_POSITION_FOLLOWING),
+      zIndex: getComputedStyle(upper).zIndex,
+      isolated: getComputedStyle(outlet).isolation,
       transitions: getComputedStyle(upper).transitionProperty,
       owned: upper.getAnimations().map((a) => `${a.transitionProperty}@${a.effect.getTiming().duration}`),
     });
   }
   await new Promise((r) => setTimeout(r, 700));
   obs.disconnect();
-  const pages = [...outlet.querySelectorAll(':scope > .sn-page')];
+  const pages = globalThis.__snStack.entries.map((e) => e.el);
   return {
     frames,
     writes,
@@ -252,6 +257,9 @@ check(f[0].owned.includes('transform@500'), `the browser owns the transform run 
 eq(f[0].duration, '500ms', 'the container tells CSS how long the phase is');
 eq(f[0].ease, 'cubic-bezier(0.32, 0.72, 0, 1)', 'and on what curve');
 check(f[0].shadowed, 'the incoming page carries the shadow');
+check(f[0].lowerFollows, 'the router put the incoming page before the kept one in the DOM');
+eq(f[0].zIndex, '1', 'so z-index, not document order, puts it on top');
+eq(f[0].isolated, 'isolate', 'inside the container\'s own stacking context');
 // A transition of your own may fade a page rather than move it, and the README
 // offers that; the role classes have to cover opacity for the browser to run it.
 check(/transform/.test(f[0].transitions) && /opacity/.test(f[0].transitions), `a moving page transitions transform and opacity (${f[0].transitions})`);
@@ -272,7 +280,7 @@ eq(run.rest.top, 0, 'the resting page sits at the origin, from CSS');
 const dragged = [];
 const readDrag = () =>
   page.evaluate(() => {
-    const outlet = document.querySelector('sn-outlet');
+    const outlet = document.querySelector('.sn-container');
     const upper = outlet.querySelector('.sn-page-upper');
     return {
       duration: getComputedStyle(outlet).getPropertyValue('--sn-t').trim(),
@@ -282,7 +290,7 @@ const readDrag = () =>
 await interactivePop({ until: 0.8, mid: async () => {
   dragged.push(await readDrag());
   const colors = await page.evaluate(() => {
-    const outlet = document.querySelector('sn-outlet');
+    const outlet = document.querySelector('.sn-container');
     const dim = outlet.querySelector('.sn-dim');
     const upper = outlet.querySelector('.sn-page-upper');
     const fallback = getComputedStyle(dim).backgroundColor;
@@ -308,7 +316,7 @@ await deepLink('/');
 await transitioned(() => page.locator('a[href="/lab"]').click());
 const mode = (value) => page.locator(`lab-home input[name="swipe-back"][value="${value}"]`);
 const policy = () => page.evaluate(() => ({
-  strip: document.querySelectorAll('sn-outlet > .sn-edge').length,
+  strip: document.querySelectorAll('.sn-container > .sn-edge').length,
   touch: getComputedStyle(document.querySelector('lab-home')).touchAction,
   overscroll: getComputedStyle(document.documentElement).overscrollBehaviorX,
   historyLength: history.length,

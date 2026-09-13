@@ -5,7 +5,7 @@ export const DASHBOARD_ROUTES: Routes = [
   {
     path: '',
     component: DashShell,
-    // Rendered by the <router-outlet> inside the shell, not by the stack.
+    // Rendered by the stack inside the shell, not by the app's. Siblings, so a tab switch replaces.
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'overview' },
       { path: 'overview', component: DashOverview },

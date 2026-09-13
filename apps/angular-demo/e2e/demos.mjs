@@ -3,6 +3,7 @@
 // content arriving before, during and after a transition, resolvers, replaced
 // pages, a nested outlet, and an interactive pop on all of them.
 // Run `ng build` first.
+import { fileURLToPath } from 'node:url';
 import { launch } from './harness.mjs';
 
 const { page, base, check, eq, section, flush, state, busy, settled, transitioned, scrollTop, setScroll, interactivePop, finish } = await launch();
@@ -30,7 +31,7 @@ const feedScroll = await scrollTop();
 check(feedScroll > 0, `scrolled the feed (${feedScroll}px)`);
 // the first card whose author row is in view, so the click does not scroll the list
 const nth = await page.evaluate(() => {
-  const outlet = document.querySelector('sn-outlet').getBoundingClientRect();
+  const outlet = document.querySelector('.sn-container').getBoundingClientRect();
   return [...document.querySelectorAll('.sn-page-visible feed-card .feed-author')].findIndex((a) => a.getBoundingClientRect().top > outlet.top + 60);
 });
 const author = await page.locator('.sn-page-visible feed-card').nth(nth).locator('.feed-author b').textContent();
@@ -137,7 +138,7 @@ s = await state();
 eq(s.pages.join(','), 'app-home,chat-inbox,chat-thread', 'thread over the inbox');
 await page.waitForSelector('.sn-page-visible .chat-bubble');
 const atBottom = await page.evaluate(() => {
-  const el = document.querySelector('sn-outlet > .sn-page-visible');
+  const el = document.querySelector('.sn-container > .sn-page-visible');
   return el.scrollHeight - el.scrollTop - el.clientHeight;
 });
 check(atBottom < 2, `thread scrolled to its newest bubble (${atBottom}px from the bottom)`);
@@ -201,7 +202,7 @@ await interactivePop({
   mid: async () => {
     const m = await state();
     eq(m.visible.join(','), 'gallery-photo,gallery-photo', 'both dark pages visible mid-pop');
-    await page.screenshot({ path: new URL('./shots/gallery-swipe-mid.png', import.meta.url).pathname });
+    await page.screenshot({ path: fileURLToPath(new URL('./shots/gallery-swipe-mid.png', import.meta.url)) });
   },
 });
 await page.waitForFunction(() => location.pathname === '/gallery/7');
@@ -289,7 +290,7 @@ eq(await page.inputValue('.srch-box input'), 'ada', 'deep link seeded the box fr
 check((await text('.srch-row b')) === 'Ada Lindqvist', 'and ran the search');
 
 // ============================================================ dashboard
-section('dashboard: a nested router-outlet inside a kept page');
+section('dashboard: a nested stack inside a kept page');
 await page.goto(base + '/');
 await page.waitForSelector('app-home');
 await openDemo('Dashboard');
@@ -303,9 +304,12 @@ check(true, 'range switch reloaded the chart in place');
 await page.click('.sn-page-visible .dash-tabs a:has-text("Team")');
 await page.waitForSelector('dash-team');
 s = await state();
-eq(s.pages.join(','), 'app-home,dash-shell', 'tab change happened inside the nested outlet, not in the stack');
+eq(s.pages.join(','), 'app-home,dash-shell', 'tab change happened inside the nested stack, not in the outer one');
+eq(await page.evaluate(() => document.querySelectorAll('.dash-pane > .sn-page').length), 1, 'siblings: the tab replaced the previous one in the inner stack');
 eq(s.url, '/dashboard/team', 'url after the tab change');
 await waitCount('.dash-member', 8);
+// Mark the tab's element: a recreated component would come back without it.
+await page.evaluate(() => (document.querySelector('dash-team').dataset.mark = 'kept'));
 mid = await transitioned(() => page.click('.sn-page-visible .dash-member:has-text("Mira Sato")'), 'dash-member');
 check(mid.busy && mid.pages.length === 3, 'member pushed over the dashboard');
 await page.waitForSelector('.sn-page-visible .dash-profile');
@@ -318,8 +322,9 @@ await transitioned(() => page.goBack(), 'dash-back-2');
 s = await state();
 eq(s.pages.join(','), 'app-home,dash-shell', 'back on the dashboard');
 eq(s.url, '/dashboard/team', 'the shell was kept and the router re-activated the team tab in it');
-await waitCount('dash-team .dash-member', 8);
-check(true, 'the child route is re-created by the router (only the shell is kept), so its list loads again');
+eq(await page.evaluate(() => document.querySelector('dash-team')?.dataset.mark), 'kept', 'the inner stack resumed with the very tab component it had');
+eq(await count('dash-team .dash-member'), 8, 'its list is still there, nothing refetched');
+eq(await page.evaluate(() => [...document.querySelectorAll('.dash-pane > .sn-page')].map((p) => p.classList.contains('sn-page-visible')).join()), 'true', 'one tab page in the inner stack, on screen');
 await page.click('.sn-page-visible .dash-tabs a:has-text("Activity")');
 await waitCount('.dash-table tbody tr', 40);
 await page.click('.sn-page-visible .dash-filters button:has-text("fail")');
@@ -485,7 +490,7 @@ await page.emulateMedia({ colorScheme: 'dark' });
 await flush();
 const labDark = await colours('.sn-page-visible .page.lab');
 for (const part of ['page', 'hdr', 'item']) eq(labDark[part], labLight[part], `the lab's ${part} ignores the dark scheme`);
-await page.screenshot({ path: new URL('./shots/lab-dark-scheme.png', import.meta.url).pathname });
+await page.screenshot({ path: fileURLToPath(new URL('./shots/lab-dark-scheme.png', import.meta.url)) });
 await transitioned(() => page.goBack(), 'demos-dark-scheme');
 const homeDark = await colours('.sn-page-visible .page');
 for (const part of ['page', 'hdr', 'item']) check(homeDark[part] !== homeLight[part], `the demos list follows the dark scheme (${part}: ${homeDark[part]})`);

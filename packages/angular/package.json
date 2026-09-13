@@ -1,11 +1,12 @@
 {
   "name": "@stacknav/angular",
   "version": "0.3.0",
-  "description": "Angular router outlet with native-style (iOS and Android) push/pop transitions and interactive swipe back, built on @stacknav/core.",
+  "description": "Native-style (iOS and Android) push/pop transitions on Angular's own router outlet, with pages kept alive beneath the top one, built on @stacknav/core.",
   "license": "MIT",
   "keywords": [
     "angular",
     "router",
+    "router-outlet",
     "navigation",
     "transition",
     "ios",

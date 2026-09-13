@@ -294,6 +294,8 @@ The two properties reach the container, anything in it that is not a page, and t
 
 The barrier has no specificity (`:where(.sn-page) > *`), so any rule of yours wins over it.
 
+The container is a stacking context of its own (`isolation: isolate`), so that the page on top of a transition can be put there by `z-index` whatever order the pages sit in. Chrome that lives in the container stacks within it: a `z-index` above `1` puts it over a moving page, and a `position: fixed` element that should float over the whole document belongs outside the container.
+
 For chrome that needs the number itself, `progress` still fires with `(lower, upper, p)`. It now costs a frame loop, so the engine only runs one while something is subscribed.
 
 ### Styles

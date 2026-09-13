@@ -25,7 +25,8 @@
  * main-thread work on an eight-deep stack of heavy pages, at the very moment
  * the animation was meant to start. Hence the barrier rule and the shield below.
  *
- * - `.sn-container`: the stack's scroll-clipping frame.
+ * - `.sn-container`: the stack's scroll-clipping frame, and a stacking context
+ *   of its own, so that the `z-index` below stays among the pages.
  * - `.sn-container:dir(rtl)`: reading direction is a CSS question, so the
  *   transform the engine writes is signed by `--sn-dir` rather than by JS.
  * - `.sn-page`: absolutely fills the container and is its own scroll container.
@@ -47,7 +48,9 @@
  *   listed, so a transition of your own can fade a page as well as move it and
  *   still be run by the browser; the iOS look only ever changes `transform`
  *   (the Android look fades as well), and a property that does not change
- *   starts no transition.
+ *   starts no transition. The upper page paints above the lower by `z-index`,
+ *   not by document order, so a host that lets something else place the page
+ *   elements (a framework's router outlet) need not keep them sorted.
  * - `.sn-page-android-fade`: Android's alpha animation takes 83 ms of the
  *   450 ms slide and is linear. Sharing the slide's duration and curve leaves
  *   the outgoing content visible through the incoming page for too long.
@@ -66,12 +69,13 @@
  *   by the engine, including when the preference changes during a transition.
  */
 export const STACKNAV_CSS =
-  '.sn-container{position:relative;overflow:hidden}' +
+  '.sn-container{position:relative;overflow:hidden;isolation:isolate}' +
   '.sn-container:dir(rtl){--sn-dir:-1}' +
   '.sn-page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;visibility:hidden;transform:translate3d(0,0,0)}' +
   ':where(.sn-page)>*{--sn-t:0s;--sn-e:linear}' +
   '.sn-page-visible{visibility:visible}' +
   '.sn-page-upper,.sn-page-lower{will-change:transform;transition-property:transform,opacity;transition-duration:var(--sn-t,0s);transition-timing-function:var(--sn-e,linear)}' +
+  '.sn-page-upper{z-index:1}' +
   '.sn-page-upper.sn-page-android-fade{transition-duration:var(--sn-t,0s),calc(var(--sn-t,0s) * 83 / 450);transition-timing-function:var(--sn-e,linear),linear}' +
   '.sn-dim{position:fixed;inset:0;z-index:2147483647;pointer-events:none;background:var(--sn-dim-color,var(--sn-dim-fallback,#000));opacity:0;--sn-t:inherit;--sn-e:inherit;transition:opacity var(--sn-t,0s) var(--sn-e,linear)}' +
   '.sn-busy::after{content:"";position:absolute;inset:0;z-index:2147483647;user-select:none;-webkit-user-select:none}' +
