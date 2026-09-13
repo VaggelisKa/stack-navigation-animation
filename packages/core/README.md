@@ -65,6 +65,8 @@ The engine does not animate anything. For each phase it writes two custom proper
 
 So a 500 ms push costs about a dozen style writes in total rather than one per page per frame, the travel is a percentage of the page (no layout is ever measured), and `transform` and `opacity` stay on the compositor — a busy main thread no longer stutters the transition. `prefers-reduced-motion` is a media query in the stylesheet, so it wins even over a duration the engine wrote.
 
+The cost of starting a phase does not grow with the stack, either. Custom properties inherit, so a change to `--sn-t` on the container would make the browser re-resolve the style of everything beneath it: every element of every kept page, hidden ones included. The stylesheet stops the two properties at each page's children, so a phase starting is a style change to the pages themselves and nothing inside them. Measured in Chromium on an eight-deep stack of 600-row pages, the main-thread work of starting a push fell from about 140 ms to about 20 ms, and of starting a pop from about 110 ms to about 10 ms. See [Your own chrome](#your-own-chrome) for what that means if you want the timing inside a page.
+
 ## API
 
 ### Swipe-back policy
@@ -265,8 +267,18 @@ bounces back; pass `onForward(targetDepth)` to re-push something instead.
 A header or tab bar that should move with the pages can read the same state the engine gives CSS — `--sn-t` and `--sn-e` on the container, and the `sn-page-upper` / `sn-page-lower` classes on the two pages taking part — and it will run on the compositor alongside them:
 
 ```css
-.my-header { transition: opacity var(--sn-t) var(--sn-e); }
+.my-tab-bar { transition: opacity var(--sn-t) var(--sn-e); }
 ```
+
+The two properties reach the container, anything in it that is not a page, and the page elements themselves. They stop there: the stylesheet pins them to `0s` and `linear` on each page's children, so that starting a phase never re-resolves the style of a page's content (see [How it moves](#how-it-moves)). Chrome that lives inside a page can still have them; lift the barrier for the pages that want it, and accept that those pages re-resolve their style when a phase starts:
+
+```css
+.sn-page > * { --sn-t: inherit; --sn-e: inherit; }   /* every page */
+.my-page > * { --sn-t: inherit; --sn-e: inherit; }   /* or only one kind */
+.my-page .hdr { transition: opacity var(--sn-t) var(--sn-e); }
+```
+
+The barrier has no specificity (`:where(.sn-page) > *`), so any rule of yours wins over it.
 
 For chrome that needs the number itself, `progress` still fires with `(lower, upper, p)`. It now costs a frame loop, so the engine only runs one while something is subscribed.
 
@@ -282,7 +294,15 @@ comment in the file rather than set, so that leaving one out means "use the
 default". While a phase is in flight the engine writes two properties of its own
 on the container, `--sn-t` and `--sn-e`, and marks the two pages taking part
 `sn-page-upper` and `sn-page-lower`. Anything of yours that should move with
-them can transition off the same four.
+them can transition off the same four, down to the page elements; inside a page
+the two properties are pinned, see [Your own chrome](#your-own-chrome).
+
+While an operation is in flight the container carries `sn-busy` and a
+pseudo-element (`.sn-busy::after`) covers it, so no click lands on a page
+mid-transition and a drag does not select the text under it. Pointer events
+hit the shield and target the container. The pages' own `pointer-events` and
+`user-select` are never touched: both inherit, and toggling either on a deep
+stack would re-resolve every kept page's style twice per transition.
 
 Reading direction is a CSS question, not a JS one: the stylesheet sets
 `--sn-dir: -1` on a right-to-left container and the transform the engine writes
