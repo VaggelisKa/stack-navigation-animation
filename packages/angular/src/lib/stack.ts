@@ -46,7 +46,7 @@ import { checkSetup, checkStrategy, warn } from './setup-checks';
 
 declare const ngDevMode: boolean | undefined;
 
-/** , without the global: a server render has none. */
+/** `Node.ELEMENT_NODE`, without the global: a server render has none. */
 const ELEMENT_NODE = 1;
 
 /** What the stack knows about a page, passed to direction strategies. */
@@ -440,7 +440,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   private elementOf(): HTMLElement | null {
     const views = this.outletViews;
     const view = views.get(views.length - 1) as EmbeddedViewRef<unknown> | null;
-    // Compared by number: on a server there is no global  to read the constant off.
+    // Compared by number: on a server there is no global `Node` to read the constant off.
     return (view?.rootNodes.find((n: Node) => n.nodeType === ELEMENT_NODE) as HTMLElement | undefined) ?? null;
   }
 
