@@ -7,6 +7,13 @@ test('the stylesheet disables browser-owned transitions for reduced motion', () 
   assert.match(STACKNAV_CSS, /--sn-t:0s!important/);
 });
 
+test('Android fades finish early while transforms retain the phase timing', () => {
+  assert.match(
+    STACKNAV_CSS,
+    /\.sn-page-upper\.sn-page-android-fade\{transition-duration:var\(--sn-t,0s\),calc\(var\(--sn-t,0s\) \* 83 \/ 450\);transition-timing-function:var\(--sn-e,linear\),linear\}/,
+  );
+});
+
 // A phase starting must not re-resolve the style of every element inside every
 // kept page. Inherited properties and custom properties fan out that way, so
 // nothing toggled per phase may change one below the page element.

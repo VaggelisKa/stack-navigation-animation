@@ -1,5 +1,63 @@
 # @stacknav/angular
 
+## 0.3.0
+
+### Minor Changes
+
+- [#25](https://github.com/VaggelisKa/stack-navigation-animation/pull/25) [`0510dc7`](https://github.com/VaggelisKa/stack-navigation-animation/commit/0510dc7974d8ff11dab6237a8faa51a5aa87300e) Thanks [@VaggelisKa](https://github.com/VaggelisKa)! - Deciding push / pop / replace no longer starts with an array of strategies.
+  
+  `provideStackNav({ direction: [...] })` asked every app to spell out the whole
+  default chain — `[fromHint(), fromHistory(), fromStack(), fromLevel(), fromTree()]`
+  — just to insert one rule or change one option, and to know where in that chain
+  its rule belonged. In practice there is only one sensible slot: after the three
+  things the library is sure about (an explicit hint, the browser's back and
+  forward buttons, a page still kept alive beneath this one) and before the two it
+  guesses from (route numbers, the route tree). So that slot is now the API:
+  
+  ```ts
+  provideStackNav({
+    direction: ({ to }) => (to.data?.['tab'] ? 'replace' : undefined), // your one rule
+    siblings: 'push',                                                  // what a tie means
+  });
+  ```
+  
+  `siblings` replaces reaching for `fromLevel({ sameLevel })` and
+  `fromTree({ sameDepth })` separately; it sets both.
+  
+  **Breaking.** `direction` no longer accepts an array or a resolver — an array
+  now throws with a message pointing here. An app that genuinely needs its own
+  order passes a resolver as `resolveDirection` instead, built from the strategies
+  `@stacknav/core` still exports:
+  
+  ```ts
+  provideStackNav({ resolveDirection: createDirectionResolver([myRule, byHint(), byRouteTree()], 'push') });
+  ```
+  
+  Those strategies were renamed to say what they read: `fromHint` → `byHint`,
+  `fromHistory` → `byBrowserHistory`, `fromStack` → `byKeptStack`, `fromLevel` →
+  `byRouteNumber`, `fromTree` → `byRouteTree`. Their `sameLevel` / `sameDepth`
+  options are both spelled `siblings` now, and `defaultStrategies()` takes
+  `{ direction, siblings }` to build the standard order with a host's rule in it.
+  The types `LevelOptions` and `TreeOptions` merged into `SiblingOptions`.
+
+- [#26](https://github.com/VaggelisKa/stack-navigation-animation/pull/26) [`db17b7f`](https://github.com/VaggelisKa/stack-navigation-animation/commit/db17b7f21c03befdff2760b1963d79fff30c7bec) Thanks [@VaggelisKa](https://github.com/VaggelisKa)! - `provideStackNav()` is now the whole Angular setup. It installs
+  `StackNavRouteReuseStrategy`, so a navigation that only changes params
+  (`/items/1` → `/items/2`) is a page of its own and animates, instead of being
+  silently reused by the router. Apps that provided the strategy by hand can drop
+  that provider; `provideStackNav({ routeReuse: false })` keeps the router's own
+  strategy, and a `RouteReuseStrategy` provided after `provideStackNav()` still
+  wins.
+  
+  A development build also says once, in the console, when the outlet is 0px tall
+  or when the router was left on its default `canceledNavigationResolution` -- the
+  two setup mistakes that show up as a blank screen or a rewritten history entry
+  rather than as an error. Both checks are folded out of a production build.
+
+### Patch Changes
+
+- Updated dependencies [[`0510dc7`](https://github.com/VaggelisKa/stack-navigation-animation/commit/0510dc7974d8ff11dab6237a8faa51a5aa87300e), [`f98807d`](https://github.com/VaggelisKa/stack-navigation-animation/commit/f98807da5512b7e82ba60e2973b4d77d8e842e09)]:
+  - @stacknav/core@0.5.0
+
 ## 0.2.0
 
 ### Minor Changes

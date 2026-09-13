@@ -182,6 +182,7 @@ export function createNativeTransition(options: Partial<NativeTransitionOptions>
 
     begin(lower, upper) {
       refresh(upper.el.parentElement);
+      upper.el.classList.toggle('sn-page-android-fade', r.platform === 'android' && r.fade < 1);
       upper.el.style.boxShadow = `var(--sn-shadow, ${o.shadow})`;
       if (lower) dimOf(lower);
     },
@@ -202,6 +203,7 @@ export function createNativeTransition(options: Partial<NativeTransitionOptions>
       }
     },
     end(lower, upper) {
+      upper.el.classList.remove('sn-page-android-fade');
       upper.el.style.boxShadow = '';
       upper.el.style.transform = '';
       upper.el.style.opacity = '';
