@@ -1,5 +1,71 @@
 # @stacknav/core
 
+## 0.5.0
+
+### Minor Changes
+
+- [#25](https://github.com/VaggelisKa/stack-navigation-animation/pull/25) [`0510dc7`](https://github.com/VaggelisKa/stack-navigation-animation/commit/0510dc7974d8ff11dab6237a8faa51a5aa87300e) Thanks [@VaggelisKa](https://github.com/VaggelisKa)! - Deciding push / pop / replace no longer starts with an array of strategies.
+  
+  `provideStackNav({ direction: [...] })` asked every app to spell out the whole
+  default chain — `[fromHint(), fromHistory(), fromStack(), fromLevel(), fromTree()]`
+  — just to insert one rule or change one option, and to know where in that chain
+  its rule belonged. In practice there is only one sensible slot: after the three
+  things the library is sure about (an explicit hint, the browser's back and
+  forward buttons, a page still kept alive beneath this one) and before the two it
+  guesses from (route numbers, the route tree). So that slot is now the API:
+  
+  ```ts
+  provideStackNav({
+    direction: ({ to }) => (to.data?.['tab'] ? 'replace' : undefined), // your one rule
+    siblings: 'push',                                                  // what a tie means
+  });
+  ```
+  
+  `siblings` replaces reaching for `fromLevel({ sameLevel })` and
+  `fromTree({ sameDepth })` separately; it sets both.
+  
+  **Breaking.** `direction` no longer accepts an array or a resolver — an array
+  now throws with a message pointing here. An app that genuinely needs its own
+  order passes a resolver as `resolveDirection` instead, built from the strategies
+  `@stacknav/core` still exports:
+  
+  ```ts
+  provideStackNav({ resolveDirection: createDirectionResolver([myRule, byHint(), byRouteTree()], 'push') });
+  ```
+  
+  Those strategies were renamed to say what they read: `fromHint` → `byHint`,
+  `fromHistory` → `byBrowserHistory`, `fromStack` → `byKeptStack`, `fromLevel` →
+  `byRouteNumber`, `fromTree` → `byRouteTree`. Their `sameLevel` / `sameDepth`
+  options are both spelled `siblings` now, and `defaultStrategies()` takes
+  `{ direction, siblings }` to build the standard order with a host's rule in it.
+  The types `LevelOptions` and `TreeOptions` merged into `SiblingOptions`.
+
+- [#23](https://github.com/VaggelisKa/stack-navigation-animation/pull/23) [`f98807d`](https://github.com/VaggelisKa/stack-navigation-animation/commit/f98807da5512b7e82ba60e2973b4d77d8e842e09) Thanks [@VaggelisKa](https://github.com/VaggelisKa)! - Starting a phase no longer costs a style recalculation of every kept page.
+  
+  Two things in the stylesheet changed inherited properties on every transition,
+  and inherited properties fan out: the browser re-resolves the style of every
+  element beneath, which on a deep stack of heavy pages is every row of every
+  page, hidden ones included, twice per push or pop. Measured in Chromium on an
+  eight-deep stack of 600-row pages, the main-thread work of starting a push fell
+  from about 140 ms to about 20 ms, of starting a pop from about 110 ms to about
+  10 ms, and of starting an interactive pop from about 60 ms to about 7 ms. The
+  cost is now independent of how many pages are kept.
+  
+  - `--sn-t` and `--sn-e` are still written on the container and still reach the
+    page elements, but the stylesheet pins them on each page's children
+    (`:where(.sn-page) > * { --sn-t: 0s; --sn-e: linear }`). Chrome inside a page
+    that transitions off them needs one rule to lift the barrier, and pays the
+    recalculation for that page knowingly:
+    `.sn-page > * { --sn-t: inherit; --sn-e: inherit }`. Chrome beside the pages,
+    and the pages themselves, are unaffected.
+  - `.sn-busy` no longer sets `user-select: none` on the container and
+    `pointer-events: none` on the pages. A pseudo-element shield
+    (`.sn-busy::after`) covers the container instead. Clicks still do not land on
+    a page mid-transition, pointer events still target the container, and a drag
+    still does not start a selection. One visible difference: a selection that
+    already existed when an interactive pop began stays visible during the drag
+    instead of being hidden until it ends.
+
 ## 0.4.0
 
 ### Minor Changes
