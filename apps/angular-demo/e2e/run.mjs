@@ -27,7 +27,7 @@ eq(s.visible.join(','), 'app-home', 'home visible');
 section('reduced motion');
 await page.emulateMedia({ reducedMotion: 'reduce' });
 const reducedDuration = await page.evaluate(() => {
-  const outlet = document.querySelector('sn-outlet');
+  const outlet = document.querySelector('[snStack]');
   const current = outlet.querySelector('.sn-page-visible');
   outlet.style.setProperty('--sn-t', '10s');
   current.classList.add('sn-page-upper');
@@ -48,7 +48,7 @@ await page.emulateMedia({ reducedMotion: 'no-preference' });
 // ---- 2. push from the tree: / -> /items/3 ----------------------------------
 await page.click('text=+');
 await page.click('text=+');
-await page.evaluate(() => (document.querySelector('sn-outlet > .sn-page-visible').scrollTop = 600));
+await page.evaluate(() => (document.querySelector('[snStack] > .sn-page-visible').scrollTop = 600));
 const homeScroll = await scrollTop();
 check(homeScroll > 0, `scrolled the home page (${homeScroll}px)`);
 let mid = await transitioned(() => page.click('.sn-page-visible a:has-text("Item 3")'), '02-push-item');
@@ -204,7 +204,7 @@ section('CSS runs the animation');
 await page.goto(base + '/');
 await page.waitForSelector('app-home');
 const run = await page.evaluate(async () => {
-  const outlet = document.querySelector('sn-outlet');
+  const outlet = document.querySelector('[snStack]');
   const x = (el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m41;
   const frames = [];
   let writes = 0;
@@ -232,7 +232,7 @@ const run = await page.evaluate(async () => {
   }
   await new Promise((r) => setTimeout(r, 700));
   obs.disconnect();
-  const pages = [...outlet.querySelectorAll(':scope > .sn-page')];
+  const pages = globalThis.__snStack.entries.map((e) => e.el);
   return {
     frames,
     writes,
@@ -272,7 +272,7 @@ eq(run.rest.top, 0, 'the resting page sits at the origin, from CSS');
 const dragged = [];
 const readDrag = () =>
   page.evaluate(() => {
-    const outlet = document.querySelector('sn-outlet');
+    const outlet = document.querySelector('[snStack]');
     const upper = outlet.querySelector('.sn-page-upper');
     return {
       duration: getComputedStyle(outlet).getPropertyValue('--sn-t').trim(),
@@ -282,7 +282,7 @@ const readDrag = () =>
 await interactivePop({ until: 0.8, mid: async () => {
   dragged.push(await readDrag());
   const colors = await page.evaluate(() => {
-    const outlet = document.querySelector('sn-outlet');
+    const outlet = document.querySelector('[snStack]');
     const dim = outlet.querySelector('.sn-dim');
     const upper = outlet.querySelector('.sn-page-upper');
     const fallback = getComputedStyle(dim).backgroundColor;
@@ -308,7 +308,7 @@ await deepLink('/');
 await transitioned(() => page.locator('a[href="/lab"]').click());
 const mode = (value) => page.locator(`lab-home input[name="swipe-back"][value="${value}"]`);
 const policy = () => page.evaluate(() => ({
-  strip: document.querySelectorAll('sn-outlet > .sn-edge').length,
+  strip: document.querySelectorAll('[snStack] > .sn-edge').length,
   touch: getComputedStyle(document.querySelector('lab-home')).touchAction,
   overscroll: getComputedStyle(document.documentElement).overscrollBehaviorX,
   historyLength: history.length,

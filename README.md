@@ -8,7 +8,7 @@ replacing it.
 | Package | Description |
 | --- | --- |
 | [`@stacknav/core`](packages/core) | The engine: a stack of page elements, the platform's native transition (iOS: slide, parallax, dim, shadow; Android: short slide and fade), an interactive pop you can drive from a gesture of your own, direction resolution, and a `history.state` adapter for apps without a router. No dependencies. |
-| [`@stacknav/angular`](packages/angular) | `<sn-outlet />`, a router outlet for Angular Router that keeps pages alive beneath the top one, animates every navigation, and leaves the back gesture to the browser. It adds no navigation API of its own: the router, `routerLink` and `Location` handle navigation. |
+| [`@stacknav/angular`](packages/angular) | `snStack`, a directive for the element around Angular's own `<router-outlet>`. It keeps pages alive beneath the top one, animates every navigation, and leaves the back gesture to the browser. Nothing is swapped out, and it adds no navigation API of its own: the router, `routerLink` and `Location` handle navigation. |
 | `@stacknav/react` | Planned. |
 
 Demos: [`apps/demo`](apps/demo) (vanilla, no router) and
@@ -21,12 +21,16 @@ providers: [provideRouter(routes), provideStackNav()];
 ```
 
 ```html
-<sn-outlet style="height: 100dvh" />
+<div snStack style="height: 100dvh">
+  <router-outlet />
+</div>
 ```
 
-That is the setup: no stylesheet to import, no routes to annotate, nothing to add
-to a page. `provideStackNav()` injects the engine's CSS, resolves the direction
-of every navigation itself, and makes sibling routes separate pages. The options
+That is the setup: the `<router-outlet>` you already have, no stylesheet to
+import, no routes to annotate, nothing to add to a page. `provideStackNav()`
+injects the engine's CSS, resolves the direction of every navigation itself, and
+installs the route reuse strategy that keeps pages alive and makes sibling routes
+separate pages. The options
 exist for when the defaults are wrong, and are listed in the
 [Angular README](packages/angular).
 
@@ -43,7 +47,7 @@ document-wide, best effort, and cannot guarantee blocking Safari or OS gestures.
 Back buttons keep working in both.
 
 Configure this in `createNativeStack()` or `provideStackNav()`. Change it live with
-`stack.setSwipeBack(mode)` or `<sn-outlet [swipeBack]="mode()" />`. Try both in
+`stack.setSwipeBack(mode)` or `<div snStack [snSwipeBack]="mode()">`. Try both in
 **Lab → Swipe back** in the Angular demo or **Options → Swipe back** in the vanilla one.
 
 An app that *does* own the edge -- an installed PWA, a native webview -- can drive

@@ -3,6 +3,7 @@
 // content arriving before, during and after a transition, resolvers, replaced
 // pages, a nested outlet, and an interactive pop on all of them.
 // Run `ng build` first.
+import { fileURLToPath } from 'node:url';
 import { launch } from './harness.mjs';
 
 const { page, base, check, eq, section, flush, state, busy, settled, transitioned, scrollTop, setScroll, interactivePop, finish } = await launch();
@@ -30,7 +31,7 @@ const feedScroll = await scrollTop();
 check(feedScroll > 0, `scrolled the feed (${feedScroll}px)`);
 // the first card whose author row is in view, so the click does not scroll the list
 const nth = await page.evaluate(() => {
-  const outlet = document.querySelector('sn-outlet').getBoundingClientRect();
+  const outlet = document.querySelector('[snStack]').getBoundingClientRect();
   return [...document.querySelectorAll('.sn-page-visible feed-card .feed-author')].findIndex((a) => a.getBoundingClientRect().top > outlet.top + 60);
 });
 const author = await page.locator('.sn-page-visible feed-card').nth(nth).locator('.feed-author b').textContent();
@@ -137,7 +138,7 @@ s = await state();
 eq(s.pages.join(','), 'app-home,chat-inbox,chat-thread', 'thread over the inbox');
 await page.waitForSelector('.sn-page-visible .chat-bubble');
 const atBottom = await page.evaluate(() => {
-  const el = document.querySelector('sn-outlet > .sn-page-visible');
+  const el = document.querySelector('[snStack] > .sn-page-visible');
   return el.scrollHeight - el.scrollTop - el.clientHeight;
 });
 check(atBottom < 2, `thread scrolled to its newest bubble (${atBottom}px from the bottom)`);
@@ -201,7 +202,7 @@ await interactivePop({
   mid: async () => {
     const m = await state();
     eq(m.visible.join(','), 'gallery-photo,gallery-photo', 'both dark pages visible mid-pop');
-    await page.screenshot({ path: new URL('./shots/gallery-swipe-mid.png', import.meta.url).pathname });
+    await page.screenshot({ path: fileURLToPath(new URL('./shots/gallery-swipe-mid.png', import.meta.url)) });
   },
 });
 await page.waitForFunction(() => location.pathname === '/gallery/7');
@@ -485,7 +486,7 @@ await page.emulateMedia({ colorScheme: 'dark' });
 await flush();
 const labDark = await colours('.sn-page-visible .page.lab');
 for (const part of ['page', 'hdr', 'item']) eq(labDark[part], labLight[part], `the lab's ${part} ignores the dark scheme`);
-await page.screenshot({ path: new URL('./shots/lab-dark-scheme.png', import.meta.url).pathname });
+await page.screenshot({ path: fileURLToPath(new URL('./shots/lab-dark-scheme.png', import.meta.url)) });
 await transitioned(() => page.goBack(), 'demos-dark-scheme');
 const homeDark = await colours('.sn-page-visible .page');
 for (const part of ['page', 'hdr', 'item']) check(homeDark[part] !== homeLight[part], `the demos list follows the dark scheme (${part}: ${homeDark[part]})`);

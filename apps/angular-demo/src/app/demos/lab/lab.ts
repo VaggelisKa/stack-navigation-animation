@@ -35,7 +35,7 @@ import { BackButton, DEMO_UI, DemoNav, DemoPrefs } from '../shared';
             }
           </fieldset>
           <p id="swipe-help" class="muted">The library has no gesture of its own: in a browser tab the browser owns the edge, and a second recognizer reads as two backs at once. Suppression is best effort and depends on your browser and OS. Back buttons work in both modes.</p>
-          <p class="muted" role="status">Active mode: {{ prefs.swipeBack() }}. Applies immediately to the main demo outlet.</p>
+          <p class="muted" role="status">Active mode: {{ prefs.swipeBack() }}. Applies immediately to the main demo stack.</p>
           <a class="item" routerLink="/lab/deep/1"><span>Try the selected mode</span><small>Open a page, then go back however your browser does it</small><i>›</i></a>
         </section>
         <h2>Fake backend</h2>

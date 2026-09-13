@@ -22,3 +22,11 @@ test('busy blocks input with a shield, not with inherited properties on the page
   assert.doesNotMatch(STACKNAV_CSS, /\.sn-busy\{/);
   for (const rule of STACKNAV_CSS.match(/\.sn-page[^{]*\{[^}]*\}/g)!) assert.doesNotMatch(rule, /pointer-events|user-select/, rule);
 });
+
+// A host may let something else place the page elements (a framework's router
+// outlet inserts them where it likes), so which page is on top cannot depend
+// on document order.
+test('the upper page paints above the lower by z-index, inside the container', () => {
+  assert.match(STACKNAV_CSS, /\.sn-container\{[^}]*isolation:isolate[^}]*\}/, 'the container is its own stacking context');
+  assert.match(STACKNAV_CSS, /\.sn-page-upper\{z-index:1\}/);
+});

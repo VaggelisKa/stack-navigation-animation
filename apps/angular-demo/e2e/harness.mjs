@@ -1,13 +1,14 @@
 // Shared setup for the e2e suites: serves dist/browser, launches the
-// preinstalled Chromium through playwright-core, and reads the outlet's DOM.
+// preinstalled Chromium through playwright-core, and reads the stack's DOM.
 import { chromium } from 'playwright-core';
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { extname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = new URL('../dist/browser/', import.meta.url).pathname;
-const SHOTS = new URL('./shots/', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('../dist/browser/', import.meta.url));
+const SHOTS = fileURLToPath(new URL('./shots/', import.meta.url));
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.map': 'application/json' };
 
 export async function launch({ width = 420, height = 800 } = {}) {
@@ -37,24 +38,28 @@ export async function launch({ width = 420, height = 800 } = {}) {
   const eq = (a, b, msg) => check(a === b, `${msg} (${JSON.stringify(a)}${a === b ? '' : ' ≠ ' + JSON.stringify(b)})`);
   const section = (title) => console.log(`\n# ${title}`);
 
-  // ---- helpers that read the outlet's DOM ----------------------------------
+  // ---- helpers that read the stack's DOM -----------------------------------
   /** The app is zoneless, so a click's view update lands on the next frame. Wait one frame before reading. */
   const flush = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))));
   const state = async () =>
     (await flush(),
     page.evaluate(() => {
-      const outlet = document.querySelector('sn-outlet');
-      const pages = [...outlet.querySelectorAll(':scope > .sn-page')];
+      // The router places each page element where it likes, so the stack's own
+      // order, not document order, says which page is beneath which.
+      const stack = document.querySelector('[snStack]');
+      const pages = globalThis.__snStack.entries.map((e) => e.el);
+      // A page animating out has already left the entries but is still mounted, on top.
+      for (const el of stack.querySelectorAll(':scope > .sn-page')) if (!pages.includes(el)) pages.push(el);
       return {
         url: location.pathname + location.search,
-        busy: outlet.classList.contains('sn-busy'),
+        busy: stack.classList.contains('sn-busy'),
         pages: pages.map((p) => p.tagName.toLowerCase()),
         visible: pages.filter((p) => p.classList.contains('sn-page-visible')).map((p) => p.tagName.toLowerCase()),
         title: pages.at(-1)?.querySelector('h1')?.textContent?.trim(),
       };
     }));
-  const busy = (timeout = 2000) => page.waitForFunction(() => document.querySelector('sn-outlet').classList.contains('sn-busy'), null, { timeout }).catch(() => {});
-  const settled = () => page.waitForFunction(() => !document.querySelector('sn-outlet').classList.contains('sn-busy'));
+  const busy = (timeout = 2000) => page.waitForFunction(() => document.querySelector('[snStack]').classList.contains('sn-busy'), null, { timeout }).catch(() => {});
+  const settled = () => page.waitForFunction(() => !document.querySelector('[snStack]').classList.contains('sn-busy'));
   /** Runs `act`, waits for the transition to start, captures the mid-flight state, then waits for it to end. */
   const transitioned = async (act, name, { timeout = 2000 } = {}) => {
     await act();
@@ -64,9 +69,10 @@ export async function launch({ width = 420, height = 800 } = {}) {
     await settled();
     return mid;
   };
-  const top = () => page.locator('sn-outlet > .sn-page-visible').last();
-  const scrollTop = () => page.evaluate(() => document.querySelector('sn-outlet > .sn-page-visible').scrollTop);
-  const setScroll = (y) => page.evaluate((y) => (document.querySelector('sn-outlet > .sn-page-visible').scrollTop = y), y);
+  // At rest only the top page is visible, so a single visible page is the top one.
+  const top = () => page.locator('[snStack] > .sn-page-visible').first();
+  const scrollTop = () => page.evaluate(() => document.querySelector('[snStack] > .sn-page-visible').scrollTop);
+  const setScroll = (y) => page.evaluate((y) => (document.querySelector('[snStack] > .sn-page-visible').scrollTop = y), y);
   /**
    * The library ships no gesture recognizer: in a browser tab the browser owns
    * the edge. This drives `beginInteractivePop()` the way an app that does own
