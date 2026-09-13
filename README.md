@@ -1,218 +1,107 @@
 # stacknav
 
-Native-style push/pop navigation for the web: the iOS transition, or Android's
-own on an Android browser. A framework-agnostic core plus
-per-framework ports that sit alongside the framework's router rather than
-replacing it.
+Native-style push and pop navigation for the web. stacknav uses the familiar
+iOS transition, or the Android transition when running on Android, while
+leaving your pages, routing, and styling in your control.
 
-| Package | Description |
-| --- | --- |
-| [`@stacknav/core`](packages/core) | The engine: a stack of page elements, the platform's native transition (iOS: slide, parallax, dim, shadow; Android: short slide and fade), an interactive pop you can drive from a gesture of your own, direction resolution, and a `history.state` adapter for apps without a router. No dependencies. |
-| [`@stacknav/angular`](packages/angular) | `stackNav`, a directive for Angular's own `<router-outlet>`. It keeps pages alive beneath the top one, animates every navigation, and leaves the back gesture to the browser. Nothing is swapped out, and it adds no navigation API of its own: the router, `routerLink` and `Location` handle navigation. |
-| `@stacknav/react` | Planned. |
+- [`@stacknav/core`](packages/core) works with any web app.
+- [`@stacknav/angular`](packages/angular) adds the transition to Angular's own
+  `<router-outlet>`.
+- A React integration is planned.
 
-Demos: [`apps/demo`](apps/demo) (vanilla, no router) and
-[`apps/angular-demo`](apps/angular-demo) (Angular router).
-
-## Angular, in full
-
-```ts
-providers: [provideRouter(routes), provideStackNav()];
-```
-
-```html
-<!-- the element around the outlet is the stack; it needs a height -->
-<div style="height: 100dvh">
-  <router-outlet stackNav />
-</div>
-```
-
-That is the setup: the `<router-outlet>` you already have, no stylesheet to
-import, no routes to annotate, nothing to add to a page. `provideStackNav()`
-injects the engine's CSS, resolves the direction of every navigation itself, and
-installs the route reuse strategy that keeps pages alive and makes sibling routes
-separate pages. The options
-exist for when the defaults are wrong, and are listed in the
-[Angular README](packages/angular).
-
-## Swipe-back modes
-
-The library has no back gesture of its own. In a browser tab the browser already
-owns the edge and will not give it up -- `overscroll-behavior-x` does not stop
-Safari's edge swipe ([WebKit #240183](https://bugs.webkit.org/show_bug.cgi?id=240183))
--- so a second recognizer next to it reads as two backs at once.
-
-`swipeBack: 'browser'` (the default) leaves browser gestures alone.
-`'disabled'` requests browser swipe suppression where supported; it is
-document-wide, best effort, and cannot guarantee blocking Safari or OS gestures.
-Back buttons keep working in both.
-
-Configure this in `createNativeStack()` or `provideStackNav()`. Change it live with
-`stack.setSwipeBack(mode)` or `<router-outlet stackNav [stackNavSwipeBack]="mode()" />`. Try both in
-**Lab → Swipe back** in the Angular demo or **Options → Swipe back** in the vanilla one.
-
-An app that *does* own the edge -- an installed PWA, a native webview -- can drive
-[`beginInteractivePop()`](packages/core#navigationstack) from its own pointer
-handling and get the same finger-tracking pop the transition is built for.
+Try the [vanilla demo](apps/demo) or the [Angular demo](apps/angular-demo).
 
 ## How it works
 
-The transition is a function of one number, `p`: how much of the upper page is
-visible. Push runs `p` from 0 to 1, pop from 1 to 0, and an interactive pop sets `p`
-directly from the pointer position.
+stacknav keeps previously visited pages mounted beneath the current page and
+animates between them with CSS transforms. Because a page stays mounted, its
+scroll position, form values, and other UI state are still there when you go
+back.
 
-Pages below the top stay mounted and hidden, so scroll position, form state and
-focus are preserved when you navigate back.
+In Angular, the router continues to own navigation, URLs, guards, and browser
+history. The `stackNav` directive only manages the pages shown by the outlet and
+chooses whether each navigation should push, pop, or replace the current page.
+The framework-agnostic core exposes the same stack behavior directly for apps
+without Angular.
 
-The frames, though, are the browser's. A push writes `p` twice, once at each
-end, and hands CSS that phase's duration and curve; a drag writes it per pointer
-move with the duration pinned at `0s`. Nothing runs per frame and nothing
-measures layout, so the transition stays on the compositor even when the main
-thread is busy.
+The browser keeps control of its native edge-swipe gesture. Apps that own the
+edge themselves, such as installed PWAs or native webviews, can drive an
+interactive pop through the core API.
 
-### Direction resolution
+## Angular example
 
-The engine does not decide whether a navigation is a push or a pop. Apps differ:
-some number their screens, some read the route tree, some rely on the browser's
-back button, some state the direction per navigation. So five small strategies
-are asked in a fixed order, and the first with an answer wins.
+Install the Angular integration:
 
-| Strategy | Answers when |
-| --- | --- |
-| `byHint()` | the navigation carried an explicit `push` / `pop` / `replace` |
-| `byBrowserHistory()` | the browser's back button (pop) or forward button (push) triggered it |
-| `byKeptStack()` | the target page is still kept beneath the current one: pop back to it |
-| `byRouteNumber()` | both routes carry a number (`level`): higher pushes, lower pops |
-| `byRouteTree()` | the target is a descendant (push) or an ancestor (pop) of the current route; otherwise deeper pushes and shallower pops |
+```sh
+pnpm add @stacknav/angular
+```
 
-That order needs no configuring, so an app does not spell it out. What it can do
-is add one rule of its own, asked after the first three -- the ones the library
-is sure about -- and before the last two, which guess:
+Register it alongside the router:
 
 ```ts
-provideStackNav({
-  direction: ({ from, to }) => (to.data?.['tab'] ? 'replace' : undefined),  // undefined: fall through
-  siblings: 'push',                                                      // what a tie means. default 'replace'
+import { provideStackNav } from '@stacknav/angular';
+
+bootstrapApplication(App, {
+  providers: [provideRouter(routes), provideStackNav()],
 });
 ```
 
-The strategies are exported all the same, for an app that wants to compose an
-order of its own and hand over the whole resolver.
+Then add the directive to your existing outlet. Its parent is the navigation
+container, so it needs a height:
 
-### Styling
-
-Duration, curve, parallax, dim and shadow are CSS custom properties on the
-container, so an app can retune the transition from a stylesheet instead of
-rebuilding the engine:
-
-```css
-:root { --sn-duration: 340ms; --sn-easing: cubic-bezier(0.4, 0, 0.2, 1); --sn-parallax: 20%; }
+```html
+<main style="height: 100dvh">
+  <router-outlet stackNav />
+</main>
 ```
 
-Every property is optional; unset means the platform's default (iOS, or Android
-on an Android browser; `platform` forces either). The
-[core README](packages/core#tuning-from-css) lists them all. The same values are
-available as JS options.
+Keep using `routerLink`, `router.navigate()`, and Angular's `Location` service as
+usual. No route annotations or stacknav stylesheet imports are required.
 
-## The Angular demo
+See the [`@stacknav/angular` documentation](packages/angular) for direction
+hints, route levels, transition settings, and advanced use.
 
-The home page demonstrates the router mechanics on small pages. Above them are
-nine demo apps, each with its own design and layout, backed by a fake API that
-responds after a delay and can be made to fail. This makes it possible to watch
-the transition while content is loading, arriving mid-transition, or failing.
+## Core example
 
-| Demo | Layout | What it covers |
-| --- | --- | --- |
-| Feed | cards, cover + tabs profile | skeletons, "load more", likes preserved on cards you pop back to, cross-links that always push (`[pushTo]`) |
-| Shop | 2-column grid, full-bleed hero, sticky buy bar | a `resolve` that delays the push until the product loads, a cart, a checkout form whose success page replaces it (both page and history entry), pop to root |
-| Messages | inbox, chat bubbles, composer pinned to the bottom | scroll-to-bottom on a page that is itself the scroll container, replies arriving after you popped away |
-| Gallery | 3-column tiles, dark full-screen viewer, filmstrip | dim over a dark page, siblings replaced in place vs pushed, `@defer`, swiping between dark pages |
-| Forms | grouped settings, long form, wizard | inputs preserved while away, async save, steps ordered by `stackLevel`, a replaced final step, pop to root |
-| Search | search field in the header | debounced requests cancelled in flight, the query in the URL, results that push pages of other demos |
-| Dashboard | segmented tabs, stat tiles, bar chart, wide table | a nested `<router-outlet>` inside a kept page, tabs that replace their history entry |
-| Mail | folders, message, composer | direction from `data.animation`, the route names Angular's own route-transition recipe uses, looked up in a `transition('A => B')`-style table by an app-side strategy |
-| Lab | controls and stress pages | iOS or Android look, slow motion, swipe-back policy, API latency and failures, a 600-row page, a stack five siblings deep, a 2 s resolver, horizontal scrollers under the browser gesture |
+Install the framework-agnostic package:
 
-`pnpm e2e` builds the demo and drives it in Chromium: `e2e/run.mjs` covers the
-mechanics, `e2e/demos.mjs` covers the demo apps.
+```sh
+pnpm add @stacknav/core
+```
 
-## Develop
+Create a stack, add its styles, and push page elements into it:
+
+```ts
+import {
+  attachBrowserHistory,
+  createNativeStack,
+  injectStyles,
+} from '@stacknav/core';
+
+injectStyles();
+
+const stack = createNativeStack({
+  container: document.querySelector<HTMLElement>('#app')!,
+});
+
+await stack.push(homePage(), { animated: false });
+attachBrowserHistory(stack);
+
+await stack.push(detailsPage());
+await stack.pop();
+```
+
+The container needs a height. Each page is a regular element created and styled
+by your app. See the [`@stacknav/core` documentation](packages/core) for the full
+API, browser-history integration, interactive transitions, and customization.
+
+## Development
 
 ```sh
 pnpm install
-pnpm build          # packages/core, then packages/angular
-pnpm test           # core unit tests (node:test, no browser), including tree-shaking checks
-pnpm size           # what each package costs a consumer, minified + gzipped (after a build)
-pnpm e2e            # builds the Angular demo and drives it in Chromium
-pnpm dev:demo       # vanilla demo
-pnpm dev:angular    # Angular demo on http://localhost:4200
+pnpm test
+pnpm build:all
+pnpm e2e
 ```
 
-Node 22.18+ runs the core; its tests use Node's built-in TypeScript stripping.
-The Angular tooling requires Node ^22.22.3, ^24.15.0, or >=26.0.0.
-
-The demo runs without zone.js, so a click's view update lands on the next
-animation frame. The e2e helpers wait for one frame before reading the DOM.
-
-## Releasing
-
-Releases run on [changesets](https://github.com/changesets/changesets). Every
-change that should reach npm ships with a changeset: a small markdown file
-saying which packages moved and how far.
-
-```sh
-pnpm changeset            # describe a change and pick its bump
-pnpm changeset --empty    # a change that needs no release (docs, CI, tests)
-```
-
-Commit the generated file with your code. A pull request that touches a
-published package without one fails the `Changeset` check.
-
-The rest is automatic. On a push to `main` the `Release` workflow collects the
-pending changesets into a "chore: version packages" pull request that applies
-the bumps and writes the changelogs. Merging that pull request publishes the
-packages to npm and tags them. Pending changesets accumulate into the same pull
-request, so it always reflects the next release.
-
-### Bumping a package when its dependency changes
-
-`@stacknav/angular` depends on `@stacknav/core`, so any core release also
-releases the Angular package:
-
-| core                | angular         | published range |
-| ------------------- | --------------- | --------------- |
-| `0.2.0` -> `0.2.1`  | patch           | `^0.2.1`        |
-| `0.2.0` -> `0.3.0`  | patch           | `^0.3.0`        |
-| `0.2.0` -> `1.0.0`  | patch           | `^1.0.0`        |
-
-The Angular package's own version reflects its own changes; you write those
-changesets yourself. What it inherits from core is the dependency range, which
-pnpm resolves from `workspace:^` at publish time so a consumer always gets a
-core that matches.
-
-Two settings drive this. `updateInternalDependents: "always"` releases the
-Angular package on every core release, not only when core leaves the declared
-range. `updateInternalDependencies: "patch"` rewrites the range for any bump
-down to a patch.
-
-### First-time setup
-
-The `Release` workflow needs an npm automation token with publish rights on the
-`@stacknav` scope, stored as the `NPM_TOKEN` repository secret. It also needs
-"Allow GitHub Actions to create and approve pull requests" enabled under
-Settings -> Actions, so it can open the release pull request.
-
-Running `pnpm changeset version` locally needs a `GITHUB_TOKEN` in the
-environment, because changelog entries link back to the pull request that
-introduced them. In CI the workflow supplies it.
-
-## Layout
-
-```
-packages/core/          @stacknav/core     TypeScript, built with tsc to dist/
-packages/angular/       @stacknav/angular  built with ng-packagr to dist/
-apps/demo/              vanilla demo (esbuild → dist/demo.html)
-apps/angular-demo/      Angular CLI app + Playwright e2e (e2e/run.mjs)
-.changeset/             pending release notes and the changesets config
-.github/workflows/      the Release and Changeset workflows
-```
+Run the demos locally with `pnpm dev:demo` or `pnpm dev:angular`.
