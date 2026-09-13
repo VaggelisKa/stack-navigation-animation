@@ -46,6 +46,9 @@ import { checkSetup, checkStrategy, warn } from './setup-checks';
 
 declare const ngDevMode: boolean | undefined;
 
+/** , without the global: a server render has none. */
+const ELEMENT_NODE = 1;
+
 /** What the stack knows about a page, passed to direction strategies. */
 export interface StackNavRouteRef extends RouteRef {
   snapshot: ActivatedRouteSnapshot;
@@ -437,7 +440,8 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   private elementOf(): HTMLElement | null {
     const views = this.outletViews;
     const view = views.get(views.length - 1) as EmbeddedViewRef<unknown> | null;
-    return (view?.rootNodes.find((n: Node) => n.nodeType === Node.ELEMENT_NODE) as HTMLElement | undefined) ?? null;
+    // Compared by number: on a server there is no global  to read the constant off.
+    return (view?.rootNodes.find((n: Node) => n.nodeType === ELEMENT_NODE) as HTMLElement | undefined) ?? null;
   }
 
   /** Decides the direction, places the page in the stack, and makes it the active one. */
@@ -581,8 +585,8 @@ function sourceOf(trigger: 'imperative' | 'history' | undefined): NavigationSour
 function watchScroll(el: HTMLElement): Pick<Page, 'scroll' | 'stopScroll'> {
   const scroll = new Map<Element, [number, number]>();
   const onScroll = (e: Event) => {
-    const t = e.target;
-    if (t instanceof Element) scroll.set(t, [t.scrollTop, t.scrollLeft]);
+    const t = e.target as Element | null;
+    if (t && t.nodeType === ELEMENT_NODE) scroll.set(t, [t.scrollTop, t.scrollLeft]);
   };
   el.addEventListener('scroll', onScroll, { capture: true, passive: true });
   return { scroll, stopScroll: () => el.removeEventListener('scroll', onScroll, { capture: true }) };
