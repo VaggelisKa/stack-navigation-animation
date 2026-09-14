@@ -4,8 +4,9 @@
 // Custom properties set through `style.setProperty` land in the same store
 // `getComputedStyle` reads, as they would in a browser, so a test can set a
 // variable the way an author would (`el.vars[name] = value`) and still see
-// what the engine writes. There is no layout and no animation, so
-// `commitStyles` is a no-op and every CSS transition reads as already finished.
+// what the engine writes. There is no layout and no animation, so the property
+// `commitStyles` resolves reads as undefined and every CSS transition reads as
+// already finished.
 const makeStyle = (vars: Record<string, string>) => {
   const priorities: Record<string, string> = {};
   const style: any = {
