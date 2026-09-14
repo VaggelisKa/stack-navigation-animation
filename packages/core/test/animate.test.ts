@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cubicBezier, easings, isTouchPrimary, linearEasing, prefersReducedMotion, tween } from '../src/animate.ts';
+import { commitStyles, cubicBezier, easings, isTouchPrimary, linearEasing, prefersReducedMotion, tween } from '../src/animate.ts';
 
 test('cubicBezier is clamped and passes through the endpoints', () => {
   const f = cubicBezier(0.32, 0.72, 0, 1);
@@ -128,4 +128,43 @@ test('media helpers ask the right queries, and are false without matchMedia', ()
   assert.equal(prefersReducedMotion(), true);
   assert.deepEqual(asked, ['(pointer: coarse)', '(prefers-reduced-motion: reduce)']);
   globalThis.matchMedia = () => ({ matches: false });
+});
+
+// The commit exists to separate two writes made in one task. Style resolution
+// is enough for that; measuring the box would also lay out the page being
+// mounted, inside the navigation task, for a number nobody reads.
+test('commitStyles resolves style without measuring the box', () => {
+  const reads: string[] = [];
+  const el = {
+    get offsetWidth(): number {
+      throw new Error('commitStyles forced layout');
+    },
+  } as unknown as HTMLElement;
+  const previous = globalThis.getComputedStyle;
+  globalThis.getComputedStyle = ((target: unknown) => {
+    reads.push(target === el ? 'element' : 'something else');
+    return {
+      get opacity() {
+        reads.push('opacity');
+        return '1';
+      },
+    };
+  }) as unknown as typeof getComputedStyle;
+  try {
+    commitStyles(el);
+  } finally {
+    globalThis.getComputedStyle = previous;
+  }
+  assert.deepEqual(reads, ['element', 'opacity'], 'one property, on the element itself, that cannot depend on geometry');
+});
+
+test('commitStyles is a no-op where there is no getComputedStyle', () => {
+  const previous = globalThis.getComputedStyle;
+  // A server, or a test runner without a DOM.
+  (globalThis as { getComputedStyle?: unknown }).getComputedStyle = undefined;
+  try {
+    assert.doesNotThrow(() => commitStyles({} as HTMLElement));
+  } finally {
+    globalThis.getComputedStyle = previous;
+  }
 });

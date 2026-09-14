@@ -436,3 +436,26 @@ for (const operation of ['pop', 'popTo', 'popWith']) {
     assert.equal(upper.parentElement, otherContainer, 'late completion cannot unmount a reused page');
   });
 }
+
+// The forced layout this used to do was the single most expensive thing in a
+// push: it laid out the page being mounted, inside the navigation task.
+test('an animated push commits both ends of the phase without forcing layout', async () => {
+  const a = el('a'), b = el('b');
+  await stack.push(a);
+  t.log.length = 0;
+  t.duration = 200;
+  for (const page of [a, b]) {
+    Object.defineProperty(page, 'offsetWidth', {
+      get() {
+        throw new Error('the push forced layout');
+      },
+    });
+  }
+  await stack.push(b);
+  assert.equal(stack.depth, 2);
+  assert.deepEqual(
+    t.log.filter((e) => e[0] === 'apply').map((e) => e[3]),
+    [0, 1],
+    'the phase still starts at 0 and ends at 1, so the browser has two states to interpolate',
+  );
+});
