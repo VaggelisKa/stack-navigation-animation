@@ -1,5 +1,11 @@
 # @stacknav/angular
 
+## 0.5.0
+
+### Minor Changes
+
+- [#31](https://github.com/VaggelisKa/stack-navigation-animation/pull/31) [`77c34e1`](https://github.com/VaggelisKa/stack-navigation-animation/commit/77c34e1479c722fe893c6b0372d19ffb4ec25b63) Thanks [@VaggelisKa](https://github.com/VaggelisKa)! - Add the optional `StackNavFillViewport` directive. Put `stackNavFillViewport` on the stack's wrapper to fill the visible viewport below a shell header, without changing the shell or hard-coding its height. It follows layout and viewport changes and restores the original inline sizing on destruction.
+
 ## 0.4.0
 
 ### Minor Changes
