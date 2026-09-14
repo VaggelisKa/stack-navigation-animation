@@ -86,6 +86,13 @@ export interface Email {
   minutesAgo: number;
   unread: boolean;
 }
+export interface Note {
+  id: number;
+  title: string;
+  body: string[];
+  minutesAgo: number;
+  pinned: boolean;
+}
 export interface TeamMember {
   id: number;
   name: string;
@@ -230,6 +237,35 @@ function buildMail(): Email[] {
   });
 }
 const MAIL = buildMail();
+
+/** Notes taken while building the transition. One title is deliberately long: the large title wraps, and the header it belongs to is taller than the others. */
+const NOTE_TITLES = [
+  'Curves worth keeping',
+  'Everything the pop has to get right before it feels like the finger is still holding the page, in order',
+  'Reading list',
+  'What the large title does on scroll',
+  'Phones to test on',
+  'Questions for the review',
+  'Words for the docs',
+  'Gesture notes',
+  'Things that felt wrong at 120 Hz',
+  'Shipping checklist',
+  'Ideas, unsorted',
+  'Old measurements',
+];
+const NOTE_LINES = [...SENTENCES, ...COMMENTS];
+function buildNotes(): Note[] {
+  const r = rng(67);
+  return NOTE_TITLES.map((title, i) => ({
+    id: i + 1,
+    title,
+    // Walked in steps of three rather than picked, so a note reads as a list of different lines.
+    body: Array.from({ length: 18 + Math.floor(r() * 8) }, (_, k) => NOTE_LINES[(i * 5 + k * 3) % NOTE_LINES.length]),
+    minutesAgo: 7 + i * 917,
+    pinned: i < 2,
+  }));
+}
+const NOTES = buildNotes();
 
 /**
  * A fake backend. Every call resolves after `latency()` milliseconds, and
@@ -389,6 +425,18 @@ export class FakeApi {
   }
   photoCount(): number {
     return PHOTOS.length;
+  }
+
+  // notes
+  notes(): Promise<Note[]> {
+    return this.request(() => NOTES);
+  }
+  note(id: number): Promise<Note> {
+    return this.request(() => {
+      const n = NOTES.find((x) => x.id === id);
+      if (!n) throw new Error(`No note ${id}`);
+      return n;
+    }, this.latency() * 0.6);
   }
 
   // search

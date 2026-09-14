@@ -4,7 +4,7 @@
    dark-scheme block out of a light demo's header, cards and lede, and keeps the
    light tokens out of the dark gallery viewer. */
 
-.feed, .shop, .chat, .gal, .frm, .srch, .dash, .mail, .lab {
+.feed, .shop, .chat, .gal, .frm, .srch, .dash, .mail, .notes, .lab {
   /* `color-scheme` as well as the tokens: native controls, such as the lab's
      range sliders and the form's selects, paint themselves from it. */
   color-scheme: light;
@@ -45,6 +45,22 @@
 .hdr .back { width: auto; min-width: 64px; white-space: nowrap; }
 .item span { white-space: nowrap; }
 .item small { text-align: right; }
+
+/* ------------------------------------------------------- large title */
+/* The iOS large title: a bar that stays and a title beneath it that scrolls
+   away under it. The component host contributes no box (`display: contents`),
+   so the bar's `position: sticky` is measured against the page rather than
+   against the header, which is what lets the title leave while the bar stays.
+   A scroll writes `--lt-in`, `--lt-out` and `--lt-scale` on the host and
+   these rules spend them; nothing else on the page re-renders. */
+.lt { display: contents; }
+.lt-bar { border-bottom-color: transparent; }
+/* The hairline under the bar belongs to the collapsed state, so it arrives with the small title. */
+.lt-bar::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--hdr-border); opacity: var(--lt-in, 0); }
+.lt-compact { flex: 1; min-width: 0; text-align: center; font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: var(--lt-in, 0); }
+.lt-action { width: 64px; text-align: right; }
+.lt-large { padding: 4px 16px 10px; }
+.lt-large h1 { margin: 0; font-size: 34px; line-height: 1.14; letter-spacing: -.02em; opacity: var(--lt-out, 1); transform: scale(var(--lt-scale, 1)); transform-origin: left bottom; }
 
 /* ---------------------------------------------------------------- feed */
 .feed { --page-bg: #fff; --page-fg: #0f1419; --hdr-bg: rgba(255,255,255,.88); --hdr-border: #eff3f4; --lede-fg: #536471; --control-border: #cfd9de; }
@@ -357,6 +373,28 @@
 .mail-form label span { flex: 0 0 64px; color: #8e8e93; }
 .mail-form input, .mail-form textarea { flex: 1; min-width: 0; font: inherit; color: inherit; border: 0; background: none; padding: 0; outline: none; }
 .mail-form textarea { padding: 12px 16px; resize: none; }
+
+/* ---------------------------------------------------------------- notes */
+.notes { --page-bg: #fbfaf7; --page-fg: #1c1c1e; --card-bg: #fff; --hdr-bg: rgba(251,250,247,.92); --hdr-border: #e6e3da; --lede-fg: #6e6e73; --control-border: #ded9cc; }
+.notes .back, .notes-sort { color: #c89217; }
+.notes-sort { width: 64px; text-align: right; background: none; border: 0; font: inherit; font-weight: 600; padding: 0; cursor: pointer; }
+.notes-h2 { margin: 14px 16px 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #8e8e93; }
+.notes-list { background: var(--card-bg); border-top: 1px solid #eceadf; border-bottom: 1px solid #eceadf; }
+.notes-row { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; color: inherit; text-decoration: none; border-bottom: 1px solid #f1efe6; }
+.notes-row:last-child { border-bottom: 0; }
+.notes-row b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notes-row > span { display: flex; gap: 8px; min-width: 0; font-size: 14px; }
+.notes-row time { flex: none; }
+.notes-row small { min-width: 0; font-size: inherit; color: #8e8e93; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notes-row .skel { flex: 1; padding: 0; }
+.notes-count { margin: 16px 0; text-align: center; font-size: 13px; color: #8e8e93; }
+.notes-body { padding: 4px 16px 24px; }
+.notes-body p { line-height: 1.55; margin: 0 0 12px; }
+.notes-when { color: #8e8e93; font-size: 13px; }
+.notes-about { border-top: 8px solid #f1efe6; }
+.notes-about code { font-size: 13px; }
+.notes-rules div { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; margin-bottom: 4px; border-radius: 8px; background: #f3f1e8; }
+.notes-rules b { color: #b07d10; text-align: right; }
 
 /* ---------------------------------------------------------------- lab */
 /* The lab uses the shared tokens above, with nothing to override. */
