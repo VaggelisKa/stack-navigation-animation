@@ -1,7 +1,7 @@
 import { launch } from './harness.mjs';
 import { join } from 'node:path';
 
-const { page, base, check, eq, state, settled, transitioned, shots, finish } = await launch();
+const { page, base, check, eq, state, transitioned, shots, finish } = await launch();
 await page.goto(base + '/?shell');
 await page.waitForSelector('.embedded-stack > embedded-home');
 eq(await page.locator('header').count(), 1, 'application has one header, owned by the shell');
@@ -61,9 +61,11 @@ const mid = await transitioned(() => page.click('.sn-page-visible a:has-text("It
 check(mid.busy && mid.pages.length === 2, 'push animates inside embedded stack');
 check(await page.evaluate(() => window.shellHeader === document.querySelector('.shell-header') && !window.shellHeader.closest('.sn-page')), 'same shell header remains outside the animated pages');
 await fits('navigation preserves container bounds');
-await page.goBack();
-await settled();
+await page.locator('.shell-header').getByRole('button', { name: 'Back to items' }).waitFor();
+await page.screenshot({ path: join(shots, 'shell-header-back.png') });
+await transitioned(() => page.locator('.shell-header').getByRole('button', { name: 'Back to items' }).click());
 eq((await state()).pages.join(','), 'embedded-home', 'back restores microfrontend content');
+eq(await page.getByRole('button', { name: 'Back to items' }).count(), 0, 'shell back button is hidden on the list');
 
 // Exercise mobile viewport coordinates without depending on a physical keyboard.
 await page.evaluate(() => Object.defineProperty(window, 'visualViewport', {

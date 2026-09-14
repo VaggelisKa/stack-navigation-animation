@@ -1,5 +1,7 @@
-import { afterRenderEffect, Component, input, signal, viewChild } from '@angular/core';
-import { RouterLink, RouterOutlet, type Routes } from '@angular/router';
+import { afterRenderEffect, Component, inject, input, signal, viewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterOutlet, type Routes } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { StackNav, StackNavFillViewport } from '@stacknav/angular';
 
 /** Content pages belong to the microfrontend; the application header does not. */
@@ -29,10 +31,8 @@ class EmbeddedHome {
 
 @Component({
   selector: 'embedded-item',
-  imports: [RouterLink],
   template: `
     <div class="page body">
-      <a routerLink="/" [queryParams]="{ shell: '' }">‹ All items</a>
       <h2>Item {{ id() }}</h2>
       <p>This detail page belongs to the microfrontend. The application header stays in the shell.</p>
     </div>
@@ -74,18 +74,24 @@ class ShellMicrofrontend {
 @Component({
   selector: 'app-root',
   host: { 'data-shell-demo': '' },
-  imports: [ShellMicrofrontend],
+  imports: [ShellMicrofrontend, RouterLink],
   styles: `
     :host { display: block; width: 100%; height: auto; }
     .shell-header { height: 80px; padding: 8px 16px; background: #dde8ff; color: #111; }
-    .shell-header h1 { font-size: 18px; margin: 0 0 6px; }
+    .shell-title { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+    .shell-header h1 { font-size: 18px; margin: 0; }
     .shell-controls { display: flex; gap: 8px; }
     .shell-header.expanded { height: 140px; }
     .microfrontend { display: block; }
   `,
   template: `
     <header class="shell-header" [class.expanded]="expanded()">
-      <h1>stacknav</h1>
+      <div class="shell-title">
+        @if (mounted() && detail()) {
+          <button type="button" routerLink="/" [queryParams]="{ shell: '' }" aria-label="Back to items">‹ Back</button>
+        }
+        <h1>stacknav</h1>
+      </div>
       <div class="shell-controls">
         <button (click)="expanded.set(!expanded())">Resize header</button>
         <button (click)="mounted.set(!mounted())">Toggle microfrontend</button>
@@ -99,6 +105,11 @@ class ShellMicrofrontend {
   `,
 })
 export class ShellDemo {
+  private readonly router = inject(Router);
+  readonly detail = toSignal(this.router.events.pipe(
+    filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+    map((event) => event.urlAfterRedirects.split('?')[0] !== '/'),
+  ), { initialValue: this.router.url.split('?')[0] !== '/' });
   readonly expanded = signal(false);
   readonly mounted = signal(true);
 }
