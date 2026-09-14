@@ -96,6 +96,43 @@ export class Item {
 ```
 
 
+### Below a shell header (microfrontends)
+
+`100dvh` is a full-screen example, not a requirement. If the shell already
+allocates a height to your content area, fill that area with your normal CSS
+layout. The stack only needs a nonzero container height.
+
+If the shell places your microfrontend below a header but leaves its content
+slot at automatic height, import `StackNavFillViewport` alongside `StackNav`
+in your component and use:
+
+```html
+<!-- This wrapper belongs to your microfrontend. No shell changes needed. -->
+<div stackNavFillViewport>
+  <router-outlet stackNav />
+</div>
+```
+
+The helper measures the wrapper's top edge and sets its height to the visible
+viewport's bottom minus that top edge, clamped to zero. An 80px header in a
+900px viewport leaves an 820px stack. It uses `visualViewport` when available
+(including changes caused by the keyboard and pinch zoom), otherwise
+`window.innerHeight`. In an iframe it uses that iframe's viewport.
+
+Position is sampled once per animation frame outside Angular so shell banners,
+header animations, scrolling and other layout shifts are followed even when
+the wrapper itself does not resize. Height is written only when it changes;
+the frame loop stops on destruction and the original inline `height` and
+`box-sizing` are restored. Browser measurement starts after rendering and does
+not run during server rendering.
+
+Use a block wrapper whose top position is independent of its height. The helper
+sets `box-sizing: border-box` so padding and borders fit within the available
+height. Avoid competing height bindings, min/max-height constraints, vertical
+centering, and scaled or rotated ancestors. It deliberately fills to the
+viewport bottom: it does not reserve space for a shell footer or discover the
+bounds of a nested scrolling panel. Use a CSS-sized container for those layouts.
+
 ## Swipe-back modes
 
 ```ts

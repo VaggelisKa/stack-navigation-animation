@@ -3,9 +3,10 @@ import { provideRouter, withComponentInputBinding, withRouterConfig } from '@ang
 import { provideStackNav } from '@stacknav/angular';
 import { MAIL_TRANSITIONS, byAnimationData } from './app/demos/mail/animation';
 import { App } from './app/app';
+import { ShellDemo } from './app/shell-demo';
 import { routes } from './app/routes';
 
-bootstrapApplication(App, {
+bootstrapApplication(new URLSearchParams(location.search).has('shell') ? ShellDemo : App, {
   providers: [
     // 'computed' makes a refused back navigation leave history exactly as it was.
     provideRouter(routes, withComponentInputBinding(), withRouterConfig({ canceledNavigationResolution: 'computed' })),
