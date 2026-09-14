@@ -3,7 +3,11 @@ import { join } from 'node:path';
 
 const { page, base, check, eq, state, settled, transitioned, shots, finish } = await launch();
 await page.goto(base + '/?shell');
-await page.waitForSelector('.embedded-stack > app-home');
+await page.waitForSelector('.embedded-stack > embedded-home');
+eq(await page.locator('header').count(), 1, 'application has one header, owned by the shell');
+eq(await page.locator('shell-microfrontend header').count(), 0, 'microfrontend contains content only');
+check(await page.locator('shell-microfrontend .embedded-stack > router-outlet').count() === 1, 'microfrontend owns the outlet and its sizing wrapper');
+await page.evaluate(() => { window.shellHeader = document.querySelector('.shell-header'); });
 
 const fits = async (label) => {
   await page.waitForFunction(() => {
@@ -55,10 +59,11 @@ await fits('recovers after position-only layout change');
 
 const mid = await transitioned(() => page.click('.sn-page-visible a:has-text("Item 3")'));
 check(mid.busy && mid.pages.length === 2, 'push animates inside embedded stack');
+check(await page.evaluate(() => window.shellHeader === document.querySelector('.shell-header') && !window.shellHeader.closest('.sn-page')), 'same shell header remains outside the animated pages');
 await fits('navigation preserves container bounds');
 await page.goBack();
 await settled();
-eq((await state()).title, 'stacknav', 'back restores home');
+eq((await state()).pages.join(','), 'embedded-home', 'back restores microfrontend content');
 
 // Exercise mobile viewport coordinates without depending on a physical keyboard.
 await page.evaluate(() => Object.defineProperty(window, 'visualViewport', {
