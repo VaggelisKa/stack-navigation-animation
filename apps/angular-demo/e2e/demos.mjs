@@ -1,5 +1,5 @@
 // Drives the demo apps (feed, shop, messages, gallery, forms, search,
-// dashboard, mail, lab) through the outlet: pushes and pops across different layouts,
+// dashboard, mail, notes, lab) through the outlet: pushes and pops across different layouts,
 // content arriving before, during and after a transition, resolvers, replaced
 // pages, a nested outlet, and an interactive pop on all of them.
 // Run `ng build` first.
@@ -416,6 +416,76 @@ await transitioned(() => page.goBack(), 'mail-out-2');
 await openDemo('Lab');
 await page.click('.sn-page-visible label:has-text("Every request fails")');
 await transitioned(() => page.goBack(), 'mail-lab-back-2');
+
+// ============================================================ notes
+// A header of two heights. It is a function of the page's own scroll offset and
+// of nothing else, so the stack keeping that offset is all it takes for a list
+// left collapsed to come back collapsed.
+section('notes: a large title that collapses into the bar');
+// A fresh load, so the lab's settings from the section above are gone.
+await page.goto(base + '/');
+await page.waitForSelector('app-home');
+await openDemo('Notes');
+await page.waitForSelector('.sn-page-visible .notes-row b');
+const header = () =>
+  page.evaluate(() => {
+    const p = document.querySelector('.sn-container > .sn-page-visible');
+    const num = (el, prop) => Math.round(Number(getComputedStyle(el).getPropertyValue(prop)) * 100) / 100;
+    const large = p.querySelector('.lt-large');
+    return {
+      bar: Math.round(p.querySelector('.lt-bar').getBoundingClientRect().height),
+      large: Math.round(large.getBoundingClientRect().height),
+      // Below the bar while the header is tall, above the top of the page once it has gone under it.
+      largeTop: Math.round(large.getBoundingClientRect().top),
+      inBar: num(p.querySelector('.lt-compact'), 'opacity'),
+      title: num(large.querySelector('h1'), 'opacity'),
+    };
+  });
+/** The header repaints on the frame after the scroll, so wait for the value rather than for a fixed number of frames. */
+const inBar = (want, msg) =>
+  page
+    .waitForFunction((want) => Math.round(Number(getComputedStyle(document.querySelector('.sn-container > .sn-page-visible .lt-compact')).opacity)) === want, want, { timeout: 2000 })
+    .then(() => check(true, msg), () => check(false, msg));
+let h = await header();
+const tall = h.bar + h.large;
+check(h.inBar === 0 && h.title === 1, `at the top the title is large and the bar carries none of it (header ${tall}px)`);
+check(h.large > 40 && h.largeTop === h.bar, 'the large title sits below a bar that is not covering it');
+await setScroll(200);
+await inBar(1, 'scrolled past it, the title has crossed into the bar');
+h = await header();
+check(h.title === 0 && h.largeTop < 0, `the large title has left, so the header is ${h.bar}px rather than ${tall}px`);
+const notesScroll = await scrollTop();
+// A row that is on screen, so opening it does not move the list first.
+const row = await page.evaluate(() => {
+  const top = document.querySelector('.sn-container').getBoundingClientRect().top;
+  return [...document.querySelectorAll('.sn-page-visible .notes-row')].findIndex((r) => r.getBoundingClientRect().top > top + 120);
+});
+mid = await transitioned(() => page.locator('.sn-page-visible .notes-row').nth(row).click(), 'notes-push');
+check(mid.busy && mid.pages.join(',') === 'app-home,notes-list,notes-note', 'the note pushed over the list');
+await page.waitForSelector('.sn-page-visible .notes-body p');
+await flush();
+h = await header();
+check(h.inBar === 0 && h.title === 1, 'the pushed note starts with a large title of its own');
+await setScroll(300);
+await inBar(1, 'and collapses on its own scroll offset');
+await transitioned(() => page.goBack(), 'notes-pop');
+await flush();
+eq(await scrollTop(), notesScroll, 'the list came back at the offset it was left at');
+h = await header();
+check(h.inBar === 1 && h.title === 0, 'and therefore still collapsed: there is no header state to restore');
+await setScroll(0);
+await inBar(0, 'back at the top, the large title is back');
+const short = (await header()).large;
+// The second pinned note has a title long enough to wrap, so its header is taller than the list's.
+mid = await transitioned(() => page.locator('.sn-page-visible .notes-row').nth(1).click(), 'notes-long-title');
+await page.waitForSelector('.sn-page-visible .notes-body p');
+h = await header();
+check(h.large > short * 2, `a title that wraps makes a taller header (${h.large}px against ${short}px)`);
+check(h.inBar === 0, 'still large at the top, whatever its height');
+await setScroll(h.large + 40);
+await inBar(1, 'and it collapses over the longer distance');
+await transitioned(() => page.goBack(), 'notes-out');
+await transitioned(() => page.goBack(), 'notes-demos');
 
 // ============================================================ lab
 section('lab: deep stack, slow resolver, heavy page, failing backend');
