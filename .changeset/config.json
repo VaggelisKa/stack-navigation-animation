@@ -3,7 +3,8 @@
   "changelog": [
     "@changesets/changelog-github",
     {
-      "repo": "VaggelisKa/stack-navigation-animation"
+      "repo": "VaggelisKa/stack-navigation-animation",
+      "disableThanks": true
     }
   ],
   "commit": false,
