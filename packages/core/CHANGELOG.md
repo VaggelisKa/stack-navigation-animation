@@ -1,5 +1,11 @@
 # @stacknav/core
 
+## 0.5.2
+
+### Patch Changes
+
+- [#35](https://github.com/VaggelisKa/stack-navigation-animation/pull/35) [`c4aacde`](https://github.com/VaggelisKa/stack-navigation-animation/commit/c4aacde9dd0409407bc8bdf86ff3d3266b9da86a) - Commit the start of a transition with a style resolution instead of a forced layout. A push no longer lays out the page it is mounting inside the navigation task: on an eight-deep stack of 600-row pages in Edge the synchronous main-thread work of a push drops from ~22 ms to ~11 ms, and a pop from ~9 ms to ~7 ms, with the same number of elements restyled and the same painting. The layout still happens, in the browser's own frame, where it was always going to be needed.
+
 ## 0.5.1
 
 ### Patch Changes
