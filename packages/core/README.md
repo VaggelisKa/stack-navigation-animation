@@ -45,7 +45,9 @@ pages mounted, preserving their scroll position, form values, and UI state.
 The sheet lives in `@layer stacknav`, so your own CSS overrides it without
 `!important` or extra specificity, whatever the load order. If your app uses
 cascade layers of its own, declare `@layer stacknav, app;` first so your layer
-comes after ours.
+comes after ours. Cascade layers need Chrome 99, Safari 15.4, or Firefox 97.
+An older browser drops the whole sheet, so those are the minimum the package
+supports.
 
 ## Navigation stack
 
