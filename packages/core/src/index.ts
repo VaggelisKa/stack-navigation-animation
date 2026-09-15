@@ -51,6 +51,7 @@ export type {
   DefaultStrategyOptions,
 } from './direction.ts';
 export { STACKNAV_CSS, STACKNAV_STYLE_ID, injectStyles } from './styles.ts';
+export type { StyleTarget, InjectStylesOptions } from './styles.ts';
 
 import { NavigationStack } from './navigation-stack.ts';
 import { createNativeTransition, type NativeTransition, type NativeTransitionOptions } from './native-transition.ts';

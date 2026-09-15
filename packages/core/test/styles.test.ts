@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { STACKNAV_CSS } from '../src/styles.ts';
+import { FakeCSSStyleSheet, makeDocument, makeShadowRoot } from './dom-stub.ts';
+import { STACKNAV_CSS, STACKNAV_STYLE_ID, injectStyles } from '../src/styles.ts';
 
 // The sheet is appended to the end of <head>, so without a layer it would beat
 // an app rule of equal specificity on order alone. One layer, wrapping
@@ -57,4 +58,94 @@ test('busy blocks input with a shield, not with inherited properties on the page
 test('the upper page paints above the lower by z-index, inside the container', () => {
   assert.match(STACKNAV_CSS, /\.sn-container\{[^}]*isolation:isolate[^}]*\}/, 'the container is its own stacking context');
   assert.match(STACKNAV_CSS, /\.sn-page-upper\{z-index:1\}/);
+});
+
+// ------------------------------------------------------------- injectStyles
+const stylesIn = (root: any) => root.children.filter((c: any) => c.tagName === 'STYLE');
+
+const docWithConstructedSheets = () => {
+  const doc = makeDocument();
+  doc.defaultView = { CSSStyleSheet: FakeCSSStyleSheet };
+  return doc;
+};
+
+test('a document gets one style element in its head', () => {
+  const doc = makeDocument();
+  injectStyles(doc);
+  injectStyles(doc);
+  const found = stylesIn(doc.head);
+  assert.equal(found.length, 1);
+  assert.equal(found[0].id, STACKNAV_STYLE_ID);
+  assert.equal(found[0].textContent, STACKNAV_CSS);
+  assert.equal(found[0].attrs.nonce, undefined);
+});
+
+test('the default target is the ambient document', () => {
+  const doc = makeDocument();
+  const previous = (globalThis as any).document;
+  (globalThis as any).document = doc;
+  try {
+    injectStyles();
+  } finally {
+    (globalThis as any).document = previous;
+  }
+  assert.equal(stylesIn(doc.head).length, 1);
+});
+
+test('a nonce lands on the style element, for a strict style-src', () => {
+  const doc = makeDocument();
+  injectStyles(doc, { nonce: 'r4nd0m' });
+  injectStyles(doc, { nonce: 'r4nd0m' });
+  const found = stylesIn(doc.head);
+  assert.equal(found.length, 1);
+  assert.equal(found[0].attrs.nonce, 'r4nd0m');
+});
+
+test('a shadow root that supports adoptedStyleSheets adopts a constructed sheet', () => {
+  const doc = docWithConstructedSheets();
+  const root = makeShadowRoot(doc, { adoptedStyleSheets: true });
+  injectStyles(root);
+  injectStyles(root);
+  assert.equal(root.adoptedStyleSheets.length, 1);
+  assert.equal(root.adoptedStyleSheets[0].cssText, STACKNAV_CSS);
+  assert.equal(stylesIn(root).length, 0, 'no element is appended when the sheet can be adopted');
+});
+
+test('shadow roots in one document share the sheet, and keep what was adopted before', () => {
+  const doc = docWithConstructedSheets();
+  const a = makeShadowRoot(doc, { adoptedStyleSheets: true });
+  const b = makeShadowRoot(doc, { adoptedStyleSheets: true });
+  const theirs = new FakeCSSStyleSheet();
+  b.adoptedStyleSheets = [theirs];
+  injectStyles(a);
+  injectStyles(b);
+  assert.equal(b.adoptedStyleSheets.length, 2);
+  assert.equal(b.adoptedStyleSheets[0], theirs);
+  assert.equal(b.adoptedStyleSheets[1], a.adoptedStyleSheets[0]);
+});
+
+test('a shadow root without adoptedStyleSheets gets a style element of its own', () => {
+  const doc = makeDocument();
+  const root = makeShadowRoot(doc);
+  injectStyles(root, { nonce: 'r4nd0m' });
+  injectStyles(root, { nonce: 'r4nd0m' });
+  const found = stylesIn(root);
+  assert.equal(found.length, 1);
+  assert.equal(found[0].id, STACKNAV_STYLE_ID);
+  assert.equal(found[0].textContent, STACKNAV_CSS);
+  assert.equal(found[0].attrs.nonce, 'r4nd0m');
+  assert.equal(stylesIn(doc.head).length, 0, 'the document head is left alone');
+});
+
+test('a shadow root in a windowless document gets a style element, not a foreign sheet', () => {
+  // `createHTMLDocument()` has no window, so there is no realm to construct a sheet in.
+  const doc = makeDocument();
+  const root = makeShadowRoot(doc, { adoptedStyleSheets: true });
+  assert.doesNotThrow(() => injectStyles(root));
+  assert.equal(root.adoptedStyleSheets.length, 0);
+  assert.equal(stylesIn(root).length, 1);
+});
+
+test('no target is a no-op, as on a server', () => {
+  assert.doesNotThrow(() => injectStyles(null));
 });

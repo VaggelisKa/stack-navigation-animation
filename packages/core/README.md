@@ -40,7 +40,9 @@ by your app. stacknav positions pages inside the container and keeps inactive
 pages mounted, preserving their scroll position, form values, and UI state.
 
 `injectStyles()` adds the required CSS once. You can import
-`@stacknav/core/stacknav.css` instead.
+`@stacknav/core/stacknav.css` instead. Pass a shadow root to style a stack
+inside one, and a `nonce` for a strict `style-src`:
+`injectStyles(host.shadowRoot, { nonce })`.
 
 The sheet lives in `@layer stacknav`, so your own CSS overrides it without
 `!important` or extra specificity, whatever the load order. If your app uses
@@ -208,7 +210,12 @@ The package also exports:
   `parseEasing`.
 - Animation helpers: `tween`, `commitStyles`, `animationsFinished`,
   `prefersReducedMotion`, `matchesMedia`, `isTouchPrimary`.
-- Styles: `STACKNAV_CSS`, `STACKNAV_STYLE_ID`, `injectStyles`.
+- Styles: `STACKNAV_CSS`, `STACKNAV_STYLE_ID`, and
+  `injectStyles(target?, { nonce })`. The target is a `Document` (the default)
+  or a `ShadowRoot`. A document gets a `<style id="stacknav-styles">` in its
+  head; a shadow root gets a constructed sheet through `adoptedStyleSheets`, or
+  the same `<style>` where that is unsupported. Injecting twice into the same
+  target does nothing the second time.
 
 ## Size and development
 
