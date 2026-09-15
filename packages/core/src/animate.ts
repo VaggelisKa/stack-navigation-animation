@@ -147,56 +147,25 @@ export function tween({ from, to, duration, ease = (t) => t, onUpdate }: TweenOp
 }
 
 /**
- * Whether the browser understands `@starting-style`, which is the only way to
- * say what a page looked like before it was inserted. Where it is not
- * understood a push has nothing to animate from and would simply land, so the
- * engine writes that start state itself and commits it, as it did before the
- * rule existed: slower, but it moves.
- *
- * Asked by inserting the rule, because CSSOM rejects an at-rule it does not
- * know. Somewhere with no stylesheet to ask — a server, a test — the answer is
- * yes, which costs nothing there and leaves the decision to CSS.
- */
-export function supportsStartingStyle(doc: Document | null = typeof document === 'undefined' ? null : document): boolean {
-  if (!doc) return true;
-  let style: HTMLStyleElement | undefined;
-  try {
-    style = doc.createElement('style');
-    (doc.head ?? doc.documentElement).append(style);
-    if (!style.sheet) return true;
-    style.sheet.insertRule('@starting-style{.sn-starting-style-probe{opacity:0}}');
-    return true;
-  } catch (e) {
-    return !(e instanceof Error && e.name === 'SyntaxError');
-  } finally {
-    style?.remove();
-  }
-}
-
-/** The next rendering opportunity, or now where there are no frames (a server, a test). */
-export function nextFrame(): Promise<void> {
-  return typeof requestAnimationFrame === 'function'
-    ? new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-    : Promise.resolve();
-}
-
-/**
- * The engine no longer needs this: a phase now begins from where the pages
- * already rest, so there is nothing of its own left to commit. It is still
- * here for an application that writes a start state itself and wants the
- * next write to be seen as a change rather than collapsed into it.
- *
  * Commits the styles written so far, so the *next* write is seen as a change
  * and starts a CSS transition from here instead of being collapsed into it.
+ * One forced style resolution per transition, in place of a frame of
+ * JavaScript per frame of animation.
  *
  * What a transition takes its start value from is the resolved style, and
  * style resolution is document-wide, so reading one property commits every
- * write made so far, the page beneath included -- which is why it is not free,
- * and why the engine went to the trouble of not needing it: on an eight-deep
- * stack of heavy pages this cost about 6 ms inside the navigation task.
- * Asking for `offsetWidth` commits the writes too, but it forces layout as
- * well; `opacity` cannot depend on geometry, so asking for it resolves style
- * and stops.
+ * write made so far, the page beneath included. Asking for `offsetWidth`
+ * commits them too, but it forces layout as well, and on a push that lays out
+ * the page being mounted inside the navigation task: measured at ~10 ms of the
+ * ~20 ms an eight-deep stack of heavy pages spent there, for a box nobody
+ * reads. The browser has to lay that page out before it can paint it either
+ * way; it just does not have to do it here. `opacity` cannot depend on
+ * geometry, so asking for it resolves style and stops.
+ *
+ * It is the push that needs this, its two writes landing in one task. A pop
+ * leaves from the resting state, which was resolved frames ago. The commit is
+ * kept unconditional because "frames ago" is not something the engine can
+ * promise: a caller is free to move a page and pop it in the same task.
  */
 export function commitStyles(el: HTMLElement): void {
   if (typeof getComputedStyle === 'function') void getComputedStyle(el).opacity;

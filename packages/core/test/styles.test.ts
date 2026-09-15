@@ -19,26 +19,8 @@ test('Android fades finish early while transforms retain the phase timing', () =
 // nothing toggled per phase may change one below the page element.
 test('the phase timing stops at the pages, and the dim reads it back through', () => {
   assert.match(STACKNAV_CSS, /:where\(\.sn-page\)>\*\{--sn-t:0s;--sn-e:linear\}/, 'a zero-specificity barrier an app can lift');
-  // Only what has to be stopped here belongs here: adding the three
-  // --sn-enter-* properties, which never change and so never needed stopping,
-  // was measured at six times the style work per phase.
-  assert.doesNotMatch(STACKNAV_CSS, /:where\(\.sn-page\)>\*\{[^}]*--sn-enter/, 'and nothing that does not need stopping');
   assert.match(STACKNAV_CSS, /\.sn-dim\{[^}]*--sn-t:inherit;--sn-e:inherit;[^}]*\}/);
   assert.match(STACKNAV_CSS, /\.sn-page-upper,\.sn-page-lower\{[^}]*transition-duration:var\(--sn-t,0s\)/, 'the page itself still runs on the container timing');
-});
-
-// A page being inserted has no previous style, so without this it has nothing
-// to transition from and a push would simply land. This is the only thing that
-// can say where an arriving page came from, which is why the engine no longer
-// has to write -- and therefore commit -- a start state of its own.
-test('an arriving page takes its start from @starting-style', () => {
-  const block = STACKNAV_CSS.match(/@starting-style\{(.*?)\}\}/)![1];
-  assert.match(block, /\.sn-container>\.sn-page-upper\{transform:var\(--sn-enter-upper,/, 'a page arriving on top comes from the trailing edge');
-  assert.match(block, /opacity:var\(--sn-enter-fade,1\)/, 'and at the fade the look asks for, so Android fades in');
-  assert.match(block, /\.sn-container>\.sn-page-lower\{transform:var\(--sn-enter-lower,/, 'a page arriving underneath, as popWith mounts one, comes from the parallax');
-  // Two classes, so neither rule can tie with `.sn-page` and lose on order,
-  // which would leave the resting transform as the start and animate nothing.
-  assert.doesNotMatch(block, /(^|\})\.sn-page/, block);
 });
 
 test('busy blocks input with a shield, not with inherited properties on the pages', () => {

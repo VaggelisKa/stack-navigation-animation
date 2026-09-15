@@ -257,10 +257,8 @@ check(f[0].owned.includes('transform@500'), `the browser owns the transform run 
 eq(f[0].duration, '500ms', 'the container tells CSS how long the phase is');
 eq(f[0].ease, 'cubic-bezier(0.32, 0.72, 0, 1)', 'and on what curve');
 check(f[0].shadowed, 'the incoming page carries the shadow');
-// The stack places the page itself, wherever the host had put it, because an
-// entry animation only exists for an element that has just arrived.
-check(!f[0].lowerFollows, 'the stack placed the incoming page after the kept one');
-eq(f[0].zIndex, '1', 'and z-index, not document order, is still what puts it on top');
+check(f[0].lowerFollows, 'the router put the incoming page before the kept one in the DOM');
+eq(f[0].zIndex, '1', 'so z-index, not document order, puts it on top');
 eq(f[0].isolated, 'isolate', 'inside the container\'s own stacking context');
 // A transition of your own may fade a page rather than move it, and the README
 // offers that; the role classes have to cover opacity for the browser to run it.
@@ -273,10 +271,8 @@ check(dimmed > 0.02 && dimmed <= 0.1, `the dim rises to --sn-dim-max (${f.map((r
 check(run.writes <= 20, `a whole 500ms push costs ${run.writes} style writes`);
 eq(run.rest.duration, '0s', 'nothing is animating once it is over');
 eq(run.rest.roles, 0, 'the transition roles are dropped');
-// A covered page is left standing where the pop that reveals it begins, dim and
-// all. That is what a phase starts from, and why one needs nothing resolved.
-eq(run.rest.dims, 2, 'every page keeps its own overlay, ready to fade');
-eq(run.rest.inline, 'translate3d(calc(-30% * var(--sn-dir,1)),0,0)|', 'the covered page rests parallaxed; the top one at the identity');
+eq(run.rest.dims, 0, 'the dim overlay is gone');
+eq(run.rest.inline, '|', 'no inline transform survives');
 eq(run.rest.promoted, 0, 'no page is left promoted at rest');
 eq(run.rest.top, 0, 'the resting page sits at the origin, from CSS');
 
