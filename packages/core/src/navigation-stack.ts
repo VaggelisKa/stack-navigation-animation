@@ -1,4 +1,4 @@
-import { animationsFinished, cssDuration, cssEasing, nextFrame, tween, type CancellableTween, type Easing } from './animate.ts';
+import { animationsFinished, commitStyles, cssDuration, cssEasing, nextFrame, supportsStartingStyle, tween, type CancellableTween, type Easing } from './animate.ts';
 
 /** One mounted page. `key` and `data` belong to the caller; the stack only carries them. */
 export interface StackEntry<T = unknown> {
@@ -112,6 +112,8 @@ export class NavigationStack {
   private _destroyed = false;
   private _activeTransition: { lower: StackEntry | null; upper: StackEntry } | null = null;
   private _queue: Array<{ run: () => void; cancel: () => void }> = [];
+  /** Whether the stylesheet can say where an arriving page comes from, or the engine has to. */
+  private _startState: 'css' | 'write' | undefined;
   private _listeners = new Map<string, Set<Listener<unknown>>>();
 
   constructor({ container, transition, pageClass = 'sn-page' }: NavigationStackOptions) {
@@ -461,8 +463,15 @@ export class NavigationStack {
     this._begin(lower, upper, kind);
     // Where the phase starts is not written, it is already true: a covered page
     // was left standing there when the stack last settled, and a page arriving
-    // takes its start from the stylesheet's `@starting-style`.
-    this._emit('progress', { lower, upper, p: from });
+    // takes its start from the stylesheet's `@starting-style`. Asked once, on
+    // the first transition, because a browser that has never heard of the rule
+    // leaves an arriving page with nothing to come from; there the engine
+    // writes the start state and commits it, exactly as it used to.
+    this._startState ??= supportsStartingStyle() ? 'css' : 'write';
+    if (this._startState === 'write') {
+      this._apply(lower, upper, from);
+      commitStyles(upper.el);
+    } else this._emit('progress', { lower, upper, p: from });
     await this._animate(lower, upper, from, to, animated ? this.transition.duration : 0, this.transition.ease);
     this._end(lower, upper, kind);
   }

@@ -19,4 +19,4 @@ A custom `Transition` needs two changes to match. Write nothing where the styles
 
 The stack also places a page in the container itself now, even one the host had already put there, since an entry animation only exists for an element that has just arrived. Which page paints on top is still `z-index`, not document order.
 
-A browser without `@starting-style` (Baseline since August 2024) still pops, drags and settles; a push lands without animating.
+A browser that has never heard of `@starting-style` (Baseline since August 2024, so Safari before 17.5 and Firefox before 129) is asked once per stack, by offering CSSOM the rule and seeing whether it is rejected. Where it is, the engine writes the start state itself and commits it, exactly as it did before — that browser gets the old cost and the same animation. Nothing about a pop or a drag depends on the rule either way, because their start states are where the pages already rest.

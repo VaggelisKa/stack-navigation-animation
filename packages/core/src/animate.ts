@@ -146,6 +146,33 @@ export function tween({ from, to, duration, ease = (t) => t, onUpdate }: TweenOp
   return promise;
 }
 
+/**
+ * Whether the browser understands `@starting-style`, which is the only way to
+ * say what a page looked like before it was inserted. Where it is not
+ * understood a push has nothing to animate from and would simply land, so the
+ * engine writes that start state itself and commits it, as it did before the
+ * rule existed: slower, but it moves.
+ *
+ * Asked by inserting the rule, because CSSOM rejects an at-rule it does not
+ * know. Somewhere with no stylesheet to ask — a server, a test — the answer is
+ * yes, which costs nothing there and leaves the decision to CSS.
+ */
+export function supportsStartingStyle(doc: Document | null = typeof document === 'undefined' ? null : document): boolean {
+  if (!doc) return true;
+  let style: HTMLStyleElement | undefined;
+  try {
+    style = doc.createElement('style');
+    (doc.head ?? doc.documentElement).append(style);
+    if (!style.sheet) return true;
+    style.sheet.insertRule('@starting-style{.sn-starting-style-probe{opacity:0}}');
+    return true;
+  } catch (e) {
+    return !(e instanceof Error && e.name === 'SyntaxError');
+  } finally {
+    style?.remove();
+  }
+}
+
 /** The next rendering opportunity, or now where there are no frames (a server, a test). */
 export function nextFrame(): Promise<void> {
   return typeof requestAnimationFrame === 'function'

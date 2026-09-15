@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { commitStyles, cubicBezier, easings, isTouchPrimary, linearEasing, prefersReducedMotion, tween } from '../src/animate.ts';
+import { commitStyles, cubicBezier, easings, isTouchPrimary, linearEasing, prefersReducedMotion, supportsStartingStyle, tween } from '../src/animate.ts';
 
 test('cubicBezier is clamped and passes through the endpoints', () => {
   const f = cubicBezier(0.32, 0.72, 0, 1);
@@ -156,6 +156,31 @@ test('commitStyles resolves style without measuring the box', () => {
     globalThis.getComputedStyle = previous;
   }
   assert.deepEqual(reads, ['element', 'opacity'], 'one property, on the element itself, that cannot depend on geometry');
+});
+
+// Where the rule is not understood, a page arriving has nothing to come from
+// and a push would simply land. The engine has to know, so it asks the only
+// thing that can answer: CSSOM rejects an at-rule it has never heard of.
+test('the engine can tell whether the browser knows @starting-style', () => {
+  const removed: string[] = [];
+  const doc = (sheet: unknown) =>
+    ({
+      head: { append: () => {} },
+      createElement: () => ({ sheet, remove: () => removed.push('x') }),
+    }) as unknown as Document;
+
+  assert.equal(supportsStartingStyle(doc({ insertRule: () => 0 })), true, 'a browser that accepts the rule');
+
+  const syntaxError = () => {
+    const e = new Error('unknown at-rule');
+    e.name = 'SyntaxError';
+    throw e;
+  };
+  assert.equal(supportsStartingStyle(doc({ insertRule: syntaxError })), false, 'one that rejects it');
+
+  assert.equal(supportsStartingStyle(doc(null)), true, 'no stylesheet to ask: leave it to CSS');
+  assert.equal(supportsStartingStyle(null), true, 'no document at all, as on a server');
+  assert.equal(removed.length, 3, 'the probe never leaves its <style> behind');
 });
 
 test('commitStyles is a no-op where there is no getComputedStyle', () => {

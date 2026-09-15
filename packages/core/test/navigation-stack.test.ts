@@ -59,6 +59,44 @@ test('push writes the far end of the phase and hides the lower page after', asyn
   assert.equal(a.parentElement, container, 'lower page stays mounted');
 });
 
+// A page arriving takes its start from @starting-style, and a browser that has
+// never heard of the rule leaves it with nothing to come from: the push would
+// simply land. There the engine writes that start state itself and commits it,
+// exactly as it did before the rule existed.
+test('where the browser has no @starting-style, the engine writes the start state itself', async () => {
+  const previous = globalThis.document;
+  globalThis.document = {
+    head: { append: () => {} },
+    createElement: (tag: string) =>
+      tag === 'style'
+        ? {
+            sheet: {
+              insertRule: () => {
+                const e = new Error('unknown at-rule');
+                e.name = 'SyntaxError';
+                throw e;
+              },
+            },
+            remove: () => {},
+          }
+        : makeElement(tag),
+  } as never;
+  try {
+    const s = new NavigationStack({ container, transition: t });
+    await s.push(el('a'));
+    t.log.length = 0;
+    t.duration = 200;
+    await s.push(el('b'));
+    assert.deepEqual(
+      t.log.filter((e) => e[0] === 'apply').map((e) => e[3]),
+      [0, 1, 1],
+      'the near end of the phase is written, then the far end, then the covered page parked',
+    );
+  } finally {
+    globalThis.document = previous;
+  }
+});
+
 test('a transition is told when a page is mounted and unmounted', async () => {
   const seen = [];
   t.mount = (e) => seen.push(['mount', e.el.id]);
