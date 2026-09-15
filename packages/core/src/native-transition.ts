@@ -88,8 +88,12 @@ export interface NativeTransition extends Transition {
   readonly resolved: Readonly<NativeTransitionOptions & { platform: Platform }>;
   /**
    * Re-reads the CSS variables, from `el` or from the container of the last
-   * transition. Called at the start of every transition. Call it directly
-   * after changing `options` or the variables mid-animation.
+   * transition. The stack calls it once per operation, before it touches the
+   * DOM — and so before it mounts anything, which is when a page is given the
+   * start states these values decide. Reading computed
+   * style resolves everything written so far, so doing it first means there is
+   * nothing of the stack's own to resolve. Call it directly after changing
+   * `options` or the variables mid-animation.
    */
   refresh(el?: Element | null): void;
 }
@@ -106,10 +110,12 @@ export interface NativeTransition extends Transition {
  * that is set wins over the JS option, so a stylesheet can slow the animation
  * down or restyle it per theme without the app rebuilding the transition.
  *
- * p is only ever written at the ends of a phase. The stack puts that phase's
- * duration and curve in `--sn-t` / `--sn-e` and CSS interpolates between the
- * two writes, so the animation costs a handful of style writes rather than one
- * per page per frame, and runs on the compositor rather than the main thread.
+ * p is only ever written at the end of a phase, and once more when the stack
+ * comes to rest, so that a covered page is already standing where the next pop
+ * starts. The stack puts that phase's duration and curve in `--sn-t` / `--sn-e`
+ * and CSS interpolates from where the page already was, so the animation costs
+ * a handful of style writes rather than one per page per frame, runs on the
+ * compositor rather than the main thread, and needs nothing resolved to begin.
  */
 export function createNativeTransition(options: Partial<NativeTransitionOptions> = {}): NativeTransition {
   const platform = !options.platform || options.platform === 'auto' ? detectPlatform() : options.platform;
@@ -138,19 +144,44 @@ export function createNativeTransition(options: Partial<NativeTransitionOptions>
       settleVelocityFloor: parseNumber(read(v.settleVelocityFloor)) ?? o.settleVelocityFloor,
       timeScale: parseNumber(read(v.timeScale)) ?? o.timeScale,
     };
-    if (dim?.parentElement) dim.style.setProperty('--sn-dim-fallback', o.dimColor);
   };
 
-  // One overlay, moved to whichever page is underneath. Everything about it
-  // except its opacity is a rule in the stylesheet; JS supplies the fallback colour.
-  let dim: HTMLElement | null = null;
+  /**
+   * Where a page arriving in each role comes from, for the stylesheet's
+   * `@starting-style` rules: a page being inserted has no previous style for
+   * the engine to write to, so only CSS can speak for the moment before it
+   * existed, and only a custom property can carry a configured value there.
+   *
+   * On the page itself, and only at the moment it is mounted. These inherit,
+   * and an inherited custom property that changes on the container costs the
+   * style of every element in every page kept in the stack; pinning them at the
+   * page boundary like `--sn-t` is worse still, because merely declaring three
+   * more custom properties on every page's children was measured at six times
+   * the style work per phase. Written here they never change after the page is
+   * first styled, so they cost nothing and can reach no further than the page
+   * they belong to.
+   */
+  const writeEnter = (entry: StackEntry): void => {
+    entry.el.style.setProperty('--sn-enter-upper', shift(r.travel));
+    entry.el.style.setProperty('--sn-enter-lower', shift(-r.parallax));
+    entry.el.style.setProperty('--sn-enter-fade', String(round(r.fade)));
+  };
+
+  // Every page carries its own overlay, from the moment it is mounted. One
+  // overlay moved onto the page underneath when a phase begins would have no
+  // resolved opacity behind it, and its first write would land at full strength
+  // instead of fading in. Everything about it except its opacity is a rule in
+  // the stylesheet; JS supplies the fallback colour.
+  const dims = /*#__PURE__*/ new WeakMap<HTMLElement, HTMLElement>();
   const dimOf = (lower: StackEntry): HTMLElement => {
+    let dim = dims.get(lower.el);
     if (!dim) {
       dim = document.createElement('div');
       dim.className = 'sn-dim';
       dim.setAttribute('aria-hidden', 'true');
+      dim.style.setProperty('--sn-dim-fallback', o.dimColor);
+      dims.set(lower.el, dim);
     }
-    dim.style.setProperty('--sn-dim-fallback', o.dimColor);
     if (dim.parentElement !== lower.el) lower.el.append(dim);
     return dim;
   };
@@ -159,6 +190,15 @@ export function createNativeTransition(options: Partial<NativeTransitionOptions>
   const round = (n: number): number => Math.round(n * 1e4) / 1e4 || 0;
   /** A share of the page's own width, signed by the stylesheet's reading direction. */
   const shift = (fraction: number): string => `translate3d(calc(${round(fraction * 100)}% * var(--sn-dir,1)),0,0)`;
+  /**
+   * Writes a page's position, and writes nothing where the stylesheet already
+   * puts it: an inline declaration there would only take the value away from
+   * `@starting-style`, which is the one thing that can say where a page
+   * arriving came from.
+   */
+  const moveTo = (el: HTMLElement, fraction: number): void => {
+    el.style.transform = round(fraction) ? shift(fraction) : '';
+  };
 
   return {
     options: o,
@@ -180,8 +220,17 @@ export function createNativeTransition(options: Partial<NativeTransitionOptions>
       return { duration: Math.min(r.settleMax, Math.max(r.settleMin, raw)) * r.timeScale, ease: r.settleEase };
     },
 
+    /** Both of these have to be in place before the page is styled at all. */
+    mount(entry) {
+      writeEnter(entry);
+      dimOf(entry);
+    },
+    unmount(entry) {
+      dims.get(entry.el)?.remove();
+      dims.delete(entry.el);
+    },
+
     begin(lower, upper) {
-      refresh(upper.el.parentElement);
       upper.el.classList.toggle('sn-page-android-fade', r.platform === 'android' && r.fade < 1);
       upper.el.style.boxShadow = `var(--sn-shadow, ${o.shadow})`;
       if (lower) dimOf(lower);
@@ -193,22 +242,26 @@ export function createNativeTransition(options: Partial<NativeTransitionOptions>
      * page, so a resize mid-transition stays honest.
      */
     apply(lower, upper, p) {
-      upper.el.style.transform = shift((1 - p) * r.travel);
+      moveTo(upper.el, (1 - p) * r.travel);
       // Only a look that fades writes opacity: a property that is not written
       // starts no transition, and a page's own opacity is left alone.
-      if (r.fade < 1) upper.el.style.opacity = String(round(r.fade + (1 - r.fade) * p));
+      if (r.fade < 1) upper.el.style.opacity = p >= 1 ? '' : String(round(r.fade + (1 - r.fade) * p));
       if (lower) {
-        lower.el.style.transform = shift(-p * r.parallax);
-        dim!.style.opacity = String(p * r.dimMax);
+        moveTo(lower.el, -p * r.parallax);
+        const opacity = round(p * r.dimMax);
+        dimOf(lower).style.opacity = opacity ? String(opacity) : '';
       }
     },
+    /**
+     * The page that is leaving gives back what the phase lent it. The page
+     * underneath keeps its parallax and its dim: that is where a covered page
+     * rests, and it is the start of the next pop, resolved long before it runs.
+     */
     end(lower, upper) {
       upper.el.classList.remove('sn-page-android-fade');
       upper.el.style.boxShadow = '';
       upper.el.style.transform = '';
       upper.el.style.opacity = '';
-      if (lower) lower.el.style.transform = '';
-      dim?.remove();
     },
   };
 }

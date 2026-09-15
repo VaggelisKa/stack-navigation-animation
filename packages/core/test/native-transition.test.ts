@@ -38,7 +38,8 @@ const shift = (percent: string) => `translate3d(calc(${percent}% * var(--sn-dir,
 
 test('apply moves upper by (1-p) and lower by -p·parallax, with dim', () => {
   const t = createNativeTransition({ platform: 'ios', parallax: 0.3, dimMax: 0.1 });
-  const { lower, upper } = entries();
+  const { container, lower, upper } = entries();
+  t.refresh(container);
   t.begin(lower, upper);
   assert.equal(upper.el.style.boxShadow, `var(--sn-shadow, ${t.options.shadow})`);
   t.apply(lower, upper, 0.5);
@@ -49,17 +50,57 @@ test('apply moves upper by (1-p) and lower by -p·parallax, with dim', () => {
   assert.equal(dim.attrs['aria-hidden'], 'true');
   assert.equal(dim.style.opacity, '0.05');
   t.apply(lower, upper, 1);
-  assert.equal(upper.el.style.transform, shift('0'));
+  assert.equal(upper.el.style.transform, '', 'where the stylesheet already puts the page, nothing is written');
   assert.equal(dim.style.opacity, '0.1');
   t.end(lower, upper);
   assert.equal(upper.el.style.boxShadow, '');
   assert.equal(upper.el.style.transform, '');
-  assert.equal(lower.el.children.length, 0, 'dim overlay removed');
+  assert.equal(lower.el.children.length, 1, 'the overlay belongs to the page, not to the phase');
+  assert.equal(lower.el.style.transform, shift('-30'), 'and the page beneath stays where a covered page rests');
+});
+
+// A phase can only fade something that already has an opacity to fade from. An
+// overlay created when the phase begins has no resolved style behind it, so its
+// first write lands at full strength: the dim would appear rather than arrive.
+test('a page carries its overlay from the moment it is mounted', () => {
+  const t = createNativeTransition({ platform: 'ios' });
+  const { container, lower } = entries();
+  t.refresh(container);
+  t.mount(lower);
+  const dim = lower.el.children[0];
+  assert.equal(dim.classes.has('sn-dim'), true);
+  assert.ok(!dim.style.opacity, 'at the opacity the stylesheet gives it, which is where the fade starts');
+  t.mount(lower);
+  assert.equal(lower.el.children.length, 1, 'and only ever one of them');
+  t.unmount(lower);
+  assert.equal(lower.el.children.length, 0, 'a page leaving takes it with it');
+});
+
+// Only CSS can say what an element looked like before it existed, so the values
+// an @starting-style rule needs have to be somewhere CSS can read them. They go
+// on the page, at the one moment writing an inherited custom property is free:
+// on the container they would reach every element in every page kept in the
+// stack, and stopping them at the page boundary costs more again.
+test('a page is given the start states the stylesheet cannot work out for itself', () => {
+  const t = createNativeTransition({ platform: 'ios' });
+  const { container, lower, upper } = entries();
+  t.refresh(container);
+  t.mount(lower);
+  assert.equal(lower.el.vars['--sn-enter-upper'], shift('100'), 'a page arriving on top comes from the trailing edge');
+  assert.equal(lower.el.vars['--sn-enter-lower'], shift('-30'), 'a page arriving underneath comes from the parallax');
+  assert.equal(lower.el.vars['--sn-enter-fade'], '1');
+  assert.equal(container.vars['--sn-enter-upper'], undefined, 'and never on the container, where a later change would reach every page');
+  Object.assign(container.vars, { '--sn-travel': '25%', '--sn-fade': '0' });
+  t.refresh();
+  t.mount(upper);
+  assert.equal(upper.el.vars['--sn-enter-upper'], shift('25'), 'they follow the variables like everything else');
+  assert.equal(upper.el.vars['--sn-enter-fade'], '0');
 });
 
 test('the Android look slides a short way and fades, without dim or shadow', () => {
   const t = createNativeTransition({ platform: 'android' });
-  const { lower, upper } = entries();
+  const { container, lower, upper } = entries();
+  t.refresh(container);
   t.begin(lower, upper);
   assert.equal(upper.el.classes.has('sn-page-android-fade'), true, 'opacity has its own short, linear timing');
   assert.equal(upper.el.style.boxShadow, 'var(--sn-shadow, none)');
@@ -70,9 +111,9 @@ test('the Android look slides a short way and fades, without dim or shadow', () 
   assert.equal(upper.el.style.transform, shift('12.5'));
   assert.equal(upper.el.style.opacity, '0.5');
   assert.equal(lower.el.style.transform, shift('-12.5'), 'the page beneath moves the same distance');
-  assert.equal(lower.el.children[0].style.opacity, '0');
+  assert.equal(lower.el.children[0].style.opacity, '', 'Android does not dim, so the overlay is never written');
   t.apply(lower, upper, 1);
-  assert.equal(upper.el.style.opacity, '1');
+  assert.equal(upper.el.style.opacity, '', 'fully open is the page\'s own opacity, which is the stylesheet\'s to give');
   t.end(lower, upper);
   assert.equal(upper.el.style.opacity, '', 'the page gets its own opacity back');
   assert.equal(upper.el.classes.has('sn-page-android-fade'), false, 'fade timing is removed after the transition');
@@ -83,6 +124,7 @@ test('Android fade timing is only enabled when the resolved look fades', () => {
     const t = createNativeTransition({ platform });
     const { container, lower, upper } = entries();
     container.vars['--sn-fade'] = '1';
+    t.refresh(container);
     t.begin(lower, upper);
     assert.equal(upper.el.classes.has('sn-page-android-fade'), false);
     t.end(lower, upper);
@@ -91,8 +133,9 @@ test('Android fade timing is only enabled when the resolved look fades', () => {
 
 test('the iOS look never writes opacity, so a page keeps its own', () => {
   const t = createNativeTransition({ platform: 'ios' });
-  const { lower, upper } = entries();
+  const { container, lower, upper } = entries();
   upper.el.style.opacity = '0.8';
+  t.refresh(container);
   t.begin(lower, upper);
   t.apply(lower, upper, 0.5);
   assert.equal(upper.el.style.opacity, '0.8');
@@ -103,6 +146,7 @@ test('travel and fade are CSS variables too', () => {
   const t = createNativeTransition({ platform: 'ios' });
   const { container, lower, upper } = entries();
   Object.assign(container.vars, { '--sn-travel': '50%', '--sn-fade': '0.2' });
+  t.refresh(container);
   t.begin(lower, upper);
   t.apply(lower, upper, 0);
   assert.equal(upper.el.style.transform, shift('50'));
@@ -114,7 +158,8 @@ test('travel and fade are CSS variables too', () => {
 
 test('apply works with no lower page (first push)', () => {
   const t = createNativeTransition({ platform: 'ios' });
-  const { upper } = entries();
+  const { container, upper } = entries();
+  t.refresh(container);
   t.begin(null, upper);
   t.apply(null, upper, 0);
   assert.equal(upper.el.style.transform, shift('100'));
@@ -129,6 +174,7 @@ test('apply reads no layout, so the width never enters JavaScript', () => {
       throw new Error('the transition measured the container');
     },
   });
+  t.refresh(container);
   t.begin(lower, upper);
   t.apply(lower, upper, 0.25);
   t.end(lower, upper);
@@ -137,6 +183,7 @@ test('apply reads no layout, so the width never enters JavaScript', () => {
 test('the curve is handed to CSS, not evaluated for it', () => {
   const t = createNativeTransition({ platform: 'ios' });
   const { container, lower, upper } = entries();
+  t.refresh(container);
   t.begin(lower, upper);
   assert.equal(t.ease.css, 'cubic-bezier(0.32, 0.72, 0, 1)');
   assert.equal(t.settle({ remainingPx: 100, velocity: 900 }).ease.css, 'cubic-bezier(0.2, 0.8, 0.2, 1)');
@@ -158,6 +205,7 @@ test('CSS variables on the container override the JS options', () => {
     '--sn-easing': 'linear',
     '--sn-time-scale': '2',
   });
+  t.refresh(container);
   t.begin(lower, upper);
   assert.equal(t.duration, 400, '200ms × timeScale 2');
   assert.equal(t.ease(0.25), 0.25, 'linear');
@@ -176,6 +224,7 @@ test('unset variables fall through to the JS options', () => {
   const t = createNativeTransition({ platform: 'ios', duration: 300, parallax: 0.5 });
   const { container, lower, upper } = entries();
   container.vars['--sn-duration'] = 'not-a-time';
+  t.refresh(container);
   t.begin(lower, upper);
   assert.equal(t.duration, 300, 'an unparseable value is ignored');
   t.apply(lower, upper, 1);
@@ -187,6 +236,7 @@ test('settle timing and curve come from the variables too', () => {
   const t = createNativeTransition({ platform: 'ios' });
   const { container, lower, upper } = entries();
   Object.assign(container.vars, { '--sn-settle-min': '50ms', '--sn-settle-max': '80ms', '--sn-settle-easing': 'linear' });
+  t.refresh(container);
   t.begin(lower, upper);
   assert.equal(t.settle({ remainingPx: 10, velocity: 5000 }).duration, 50);
   assert.equal(t.settle({ remainingPx: 5000, velocity: 100 }).duration, 80);
@@ -197,6 +247,7 @@ test('settle timing and curve come from the variables too', () => {
 test('refresh re-reads variables changed mid-stack', () => {
   const t = createNativeTransition({ platform: 'ios' });
   const { container, lower, upper } = entries();
+  t.refresh(container);
   t.begin(lower, upper);
   assert.equal(t.duration, 500);
   container.vars['--sn-duration'] = '120ms';
@@ -209,12 +260,14 @@ test('zero is a value, not an absence', () => {
   const t = createNativeTransition({ platform: 'ios', parallax: 0.3, dimMax: 0.1, duration: 500 });
   const { container, lower, upper } = entries();
   Object.assign(container.vars, { '--sn-parallax': '0', '--sn-dim-max': '0', '--sn-duration': '0ms', '--sn-time-scale': '0' });
+  t.refresh(container);
   t.begin(lower, upper);
   t.apply(lower, upper, 1);
   assert.equal(t.resolved.parallax, 0, 'a flat transition is a legitimate thing to ask for');
   assert.equal(t.resolved.dimMax, 0);
   assert.equal(t.duration, 0);
-  assert.equal(lower.el.children[0].style.opacity, '0');
+  assert.equal(lower.el.children[0].style.opacity, '', 'a dim of zero is the overlay left alone');
+  assert.equal(lower.el.style.transform, '', 'and a parallax of zero leaves the page where the stylesheet puts it');
   t.end(lower, upper);
 });
 
@@ -222,7 +275,8 @@ test('ease and settleEase are settable from JS as well', () => {
   const ease = (x: number) => x * x;
   const settleEase = (x: number) => 1 - x;
   const t = createNativeTransition({ platform: 'ios', ease, settleEase });
-  const { upper } = entries();
+  const { container, upper } = entries();
+  t.refresh(container);
   t.begin(null, upper);
   assert.equal(t.ease, ease);
   assert.equal(t.settle({ remainingPx: 100, velocity: 1000 }).ease, settleEase);
@@ -233,6 +287,7 @@ test('an easing the engine cannot read never reaches the tween', () => {
   const t = createNativeTransition({ platform: 'ios' });
   const { container, lower, upper } = entries();
   container.vars['--sn-easing'] = '__proto__';
+  t.refresh(container);
   t.begin(lower, upper);
   assert.equal(typeof t.ease, 'function', 'falls back to the default curve');
   assert.equal(t.ease, easings.ios);

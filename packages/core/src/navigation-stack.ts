@@ -1,4 +1,4 @@
-import { animationsFinished, commitStyles, cssDuration, cssEasing, tween, type CancellableTween, type Easing } from './animate.ts';
+import { animationsFinished, cssDuration, cssEasing, nextFrame, tween, type CancellableTween, type Easing } from './animate.ts';
 
 /** One mounted page. `key` and `data` belong to the caller; the stack only carries them. */
 export interface StackEntry<T = unknown> {
@@ -19,17 +19,34 @@ export interface SettleInput {
  * 1 to 0.
  *
  * `apply` is a declarative write, not a frame. For a timed phase the stack
- * calls it twice, once at each end, and CSS interpolates between them: the
- * stack puts that phase's duration and curve in `--sn-t` / `--sn-e` on the
- * container, which the stylesheet's `transition` rules read. During a drag
- * `--sn-t` is `0s`, so the same write lands instantly. Keep `apply` to
+ * calls it once, at the end, and CSS interpolates from where the pages already
+ * were: the stack puts that phase's duration and curve in `--sn-t` / `--sn-e`
+ * on the container, which the stylesheet's `transition` rules read. During a
+ * drag `--sn-t` is `0s`, so the same write lands instantly. Keep `apply` to
  * `transform` and `opacity` and the browser keeps it off the main thread.
+ *
+ * Nothing writes where a phase *starts*, so a transition has to make sure that
+ * is already true. The stack helps: whenever it comes to rest it calls `apply`
+ * with p = 1 for every covered page, so a covered page stands where a pop
+ * begins. A page arriving is the case JS cannot cover — it had no style a
+ * moment ago — so its start belongs in an `@starting-style` rule, and `apply`
+ * should write nothing at all where the stylesheet already puts a page, or the
+ * inline declaration will outrank it.
  */
 export interface Transition {
   readonly duration: number;
   /** Sampled to report `progress`; its `css` spelling is what drives the pixels. */
   readonly ease: Easing;
   settle(input: SettleInput): { duration: number; ease: Easing };
+  /**
+   * Re-read whatever the transition is configured from. Called once per
+   * operation, before the stack touches the DOM, so that a transition reading
+   * computed style has none of the stack's own writes to resolve.
+   */
+  refresh?(el: Element | null): void;
+  /** Attach anything a page needs for as long as it is mounted, such as chrome that has to exist before the phase that animates it. */
+  mount?(entry: StackEntry): void;
+  unmount?(entry: StackEntry): void;
   begin?(lower: StackEntry | null, upper: StackEntry): void;
   apply(lower: StackEntry | null, upper: StackEntry, p: number): void;
   end?(lower: StackEntry | null, upper: StackEntry): void;
@@ -247,6 +264,7 @@ export class NavigationStack {
   /** Starts a pointer-driven pop. Returns null if the stack cannot pop right now. */
   beginInteractivePop(): InteractivePopHandle | null {
     if (!this.canPop()) return null;
+    this.transition.refresh?.(this.container);
     this._setBusy(true);
     const upper = this.top!;
     const lower = this.entries[this.entries.length - 2];
@@ -310,6 +328,9 @@ export class NavigationStack {
       const cancel = () => reject(new DOMException('NavigationStack has been destroyed', 'AbortError'));
       if (this._destroyed) return cancel();
       const task = async () => {
+        // Before the stack has written anything of its own, so that a
+        // transition reading computed style resolves nothing on our account.
+        this.transition.refresh?.(this.container);
         this._setBusy(true);
         try {
           resolve(await fn());
@@ -343,13 +364,21 @@ export class NavigationStack {
 
   private _mount(el: HTMLElement, index: number, data: unknown, key: string | null, before: HTMLElement | null = null): StackEntry {
     el.classList.add(this.pageClass);
+    // Unconditionally, even for a page the host has already put in the
+    // container: `@starting-style` only speaks for an element that was not
+    // being rendered a moment ago, and the stack cannot know what the host did
+    // with it first. Placing it here is what makes the page arriving new.
     if (before) this.container.insertBefore(el, before);
-    else if (el.parentElement !== this.container) this.container.append(el);
-    return { el, index, key, data };
+    else this.container.append(el);
+    const entry = { el, index, key, data };
+    this.transition.mount?.(entry);
+    return entry;
   }
   private _unmount(entry: StackEntry): StackEntry {
+    this.transition.unmount?.(entry);
     entry.el.classList.remove(this.pageClass, 'sn-page-visible', 'sn-page-upper', 'sn-page-lower');
     entry.el.style.transform = '';
+    entry.el.style.opacity = '';
     entry.el.remove();
     return entry;
   }
@@ -395,16 +424,21 @@ export class NavigationStack {
   }
 
   /**
-   * Hands the run from `from` to `to` over to the browser: commit where the
-   * pages are, say how long and on what curve, write where they are going,
-   * then wait to be told they arrived. No frame of it is ours.
+   * Hands the run from `from` to `to` over to the browser: say how long and on
+   * what curve, write where the pages are going, then wait to be told they
+   * arrived. No frame of it is ours, and neither is the style resolution —
+   * where the pages are leaving from was settled long before this task.
    */
   private async _animate(lower: StackEntry | null, upper: StackEntry, from: number, to: number, duration: number, ease: Easing): Promise<void> {
     if (duration <= 0 || from === to) return this._apply(lower, upper, to);
-    commitStyles(upper.el);
     this._timing(duration, ease);
     this.transition.apply(lower, upper, to);
     const ticker = this._ticker(lower, upper, from, to, duration, ease);
+    // A frame before asking what is running: `getAnimations()` has to resolve
+    // pending style before it can answer, and asking here would resolve the
+    // writes just made — the whole cost this engine is arranged to avoid. By
+    // the next frame the browser has done that work as part of its own.
+    await nextFrame();
     await animationsFinished([upper.el, lower?.el]);
     ticker?.cancel();
     this._timing(0);
@@ -425,7 +459,10 @@ export class NavigationStack {
 
   private async _transition(lower: StackEntry | null, upper: StackEntry, from: number, to: number, animated: boolean, kind: TransitionKind): Promise<void> {
     this._begin(lower, upper, kind);
-    this._apply(lower, upper, from);
+    // Where the phase starts is not written, it is already true: a covered page
+    // was left standing there when the stack last settled, and a page arriving
+    // takes its start from the stylesheet's `@starting-style`.
+    this._emit('progress', { lower, upper, p: from });
     await this._animate(lower, upper, from, to, animated ? this.transition.duration : 0, this.transition.ease);
     this._end(lower, upper, kind);
   }
@@ -436,7 +473,13 @@ export class NavigationStack {
     this.entries.forEach((e, i) => {
       e.index = i;
       e.el.classList.toggle('sn-page-visible', e === top);
-      e.el.style.transform = '';
+      // Only the top goes back to the identity; the rest are parked below.
+      if (e === top) e.el.style.transform = '';
     });
+    // A covered page rests where a covered page belongs, which is also where
+    // the pop that reveals it begins. Writing it now, with no phase running and
+    // nothing transitioning these pages, is what lets that pop start without
+    // resolving any style at all.
+    if (top) for (let i = 0; i < this.entries.length - 1; i++) this.transition.apply(this.entries[i], top, 1);
   }
 }

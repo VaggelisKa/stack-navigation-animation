@@ -43,18 +43,49 @@ test('push mounts the page, marks it top and visible', async () => {
   assert.equal(a.style.transform, '', 'at rest the page sits where the stylesheet puts it');
 });
 
-test('push runs the transition from 0 to 1 and hides the lower page after', async () => {
+test('push writes the far end of the phase and hides the lower page after', async () => {
   const a = el('a'), b = el('b');
   await stack.push(a);
   t.log.length = 0;
   await stack.push(b);
   assert.deepEqual(t.log[0], ['begin', 'a', 'b']);
-  assert.deepEqual(t.log[1], ['apply', 'a', 'b', 0]);
-  assert.deepEqual(t.log[t.log.length - 2], ['apply', 'a', 'b', 1]);
-  assert.deepEqual(t.log[t.log.length - 1], ['end', 'a', 'b']);
+  // Nothing writes where the phase starts: the pages are already standing there.
+  assert.deepEqual(t.log[1], ['apply', 'a', 'b', 1]);
+  assert.deepEqual(t.log[2], ['end', 'a', 'b']);
+  assert.deepEqual(t.log[3], ['apply', 'a', 'b', 1], 'and the covered page is left where the next pop begins');
+  assert.equal(t.log.length, 4);
   assert.ok(!a.classList.contains('sn-page-visible'), 'lower page hidden');
   assert.ok(b.classList.contains('sn-page-visible'));
   assert.equal(a.parentElement, container, 'lower page stays mounted');
+});
+
+test('a transition is told when a page is mounted and unmounted', async () => {
+  const seen = [];
+  t.mount = (e) => seen.push(['mount', e.el.id]);
+  t.unmount = (e) => seen.push(['unmount', e.el.id]);
+  await stack.push(el('a'));
+  await stack.push(el('b'));
+  await stack.pop();
+  assert.deepEqual(seen, [['mount', 'a'], ['mount', 'b'], ['unmount', 'b']]);
+});
+
+// popTo can reveal a page that has been buried for a while, and a phase writes
+// no start state, so "parked" has to mean every covered page and not just the
+// one under the top.
+test('every covered page rests where the pop that reveals it begins', async () => {
+  const { createNativeTransition } = await import('../src/native-transition.ts');
+  const native = createNativeTransition({ platform: 'ios', parallax: 0.3, dimMax: 0.1 });
+  const s = new NavigationStack({ container, transition: native });
+  const a = el('a'), b = el('b'), c = el('c');
+  for (const page of [a, b, c]) await s.push(page, { animated: false });
+  const parked = 'translate3d(calc(-30% * var(--sn-dir,1)),0,0)';
+  assert.equal(a.style.transform, parked);
+  assert.equal(b.style.transform, parked);
+  assert.equal(c.style.transform, '', 'the top sits where the stylesheet puts it');
+  assert.equal(a.children[0].style.opacity, '0.1', 'dimmed, with the fade back already resolved');
+  await s.popTo(1, { animated: false });
+  assert.equal(s.top.el, a);
+  assert.equal(a.style.transform, '', 'and it arrives at rest');
 });
 
 test('push accepts a factory function and carries data', async () => {
@@ -124,7 +155,7 @@ test('reset replaces the stack without animation', async () => {
   const x = el('x'), y = el('y');
   const removed = await stack.reset([x, y]);
   assert.equal(removed.length, 2);
-  assert.equal(t.log.length, 0);
+  assert.deepEqual(t.log, [['apply', 'x', 'y', 1]], 'no phase ran; the new covered page was only parked');
   assert.equal(stack.depth, 2);
   assert.equal(stack.top.el, y);
   assert.ok(y.classList.contains('sn-page-visible'));
@@ -212,8 +243,8 @@ test('the container carries the phase timing for CSS, and 0s the rest of the tim
   await stack.push(el('a'));
   const seen = timings();
   await stack.push(el('b'));
-  assert.deepEqual(seen[0], [0, '0s', 'linear'], 'the near end lands instantly');
-  assert.deepEqual(seen[1], [1, '300ms', 'cubic-bezier(0.32, 0.72, 0, 1)'], 'the far end is a 300ms run on the iOS curve');
+  assert.deepEqual(seen[0], [1, '300ms', 'cubic-bezier(0.32, 0.72, 0, 1)'], 'the only end written is a 300ms run on the iOS curve');
+  assert.deepEqual(seen[1], [1, '0s', 'linear'], 'parking the covered page afterwards animates nothing');
   assert.equal(container.style.getPropertyValue('--sn-t'), '0s', 'and nothing is animating once it is over');
 });
 
@@ -251,7 +282,7 @@ test('progress still ends at the target, and nothing ticks when nobody listens',
   const applied = [];
   t.apply = (l, u, p) => applied.push(p);
   await stack.push(el('c'));
-  assert.deepEqual(applied, [0, 1], 'with no listeners the stack writes the two ends and stops');
+  assert.deepEqual(applied, [1, 1, 1], 'with no listeners the stack writes the far end, then parks the two covered pages');
 });
 
 test('on() returns an unsubscribe function', async () => {
@@ -327,7 +358,7 @@ test('replace swaps the top page without animation', async () => {
   assert.equal(removed.el, b);
   assert.equal(b.parentElement, null);
   assert.deepEqual(stack.entries.map((e) => e.el.id), ['a', 'c']);
-  assert.equal(t.log.length, 0, 'no transition ran');
+  assert.deepEqual(t.log, [['apply', 'a', 'c', 1]], 'no transition ran; the page beneath was only parked');
   assert.ok(c.classList.contains('sn-page-visible'));
   assert.equal(events[0].removed[0].el, b);
 });
@@ -362,13 +393,18 @@ test('remove drops a page beneath the top silently', async () => {
   assert.equal(stack.entryOf('nope'), null);
 });
 
-test('the stack reads a transition\'s timing only after begin() has run', async () => {
-  // The iOS transition resolves its CSS variables in begin(), so a stack that
-  // read duration or ease first would apply every variable one transition late.
+test('the stack re-reads a transition\'s configuration before it touches the DOM', async () => {
+  // The iOS transition resolves its CSS variables in refresh(), and resolving
+  // them means resolving style. Asking first, while nothing of the stack's is
+  // pending, is what keeps that read from costing anything; asking later would
+  // also apply every variable one transition late.
   const { createNativeTransition } = await import('../src/native-transition.ts');
   const inner = createNativeTransition({ platform: 'ios', duration: 500 });
   const reads = [];
   const spy = {
+    refresh: (e) => (reads.push('refresh'), inner.refresh(e)),
+    mount: (entry) => inner.mount(entry),
+    unmount: (entry) => inner.unmount(entry),
     begin: (l, u) => (reads.push('begin'), inner.begin(l, u)),
     apply: (l, u, p) => inner.apply(l, u, p),
     end: (l, u) => (reads.push('end'), inner.end(l, u)),
@@ -389,13 +425,13 @@ test('the stack reads a transition\'s timing only after begin() has run', async 
   await s.push(el('a'), { animated: false });
   reads.length = 0;
   await s.push(el('b'));
-  assert.deepEqual(reads.slice(0, 2), ['begin', 'duration:250'], 'the very first animated push already sees 250ms');
+  assert.deepEqual(reads.slice(0, 3), ['refresh', 'begin', 'duration:250'], 'the very first animated push already sees 250ms');
 
   reads.length = 0;
   const h = s.beginInteractivePop();
   h.update(0.4);
   await h.finish({ complete: true, velocity: 100 });
-  assert.deepEqual(reads.slice(0, 2), ['begin', 'settle:80'], 'and so does the settle after a swipe');
+  assert.deepEqual(reads.slice(0, 3), ['refresh', 'begin', 'settle:80'], 'and so does the settle after a swipe');
 });
 
 
@@ -437,9 +473,12 @@ for (const operation of ['pop', 'popTo', 'popWith']) {
   });
 }
 
-// The forced layout this used to do was the single most expensive thing in a
-// push: it laid out the page being mounted, inside the navigation task.
-test('an animated push commits both ends of the phase without forcing layout', async () => {
+// The commit this used to do was the single most expensive thing in a push. It
+// resolved the style of the page being mounted, inside the navigation task, so
+// that the start state it had just written would count as a state of its own.
+// Nothing writes a start state any more, so nothing has to be resolved: on an
+// eight-deep stack of heavy pages this was about 6 ms of blocking work.
+test('an animated push resolves no style and forces no layout', async () => {
   const a = el('a'), b = el('b');
   await stack.push(a);
   t.log.length = 0;
@@ -451,11 +490,19 @@ test('an animated push commits both ends of the phase without forcing layout', a
       },
     });
   }
-  await stack.push(b);
+  const previous = globalThis.getComputedStyle;
+  globalThis.getComputedStyle = () => {
+    throw new Error('the push resolved style');
+  };
+  try {
+    await stack.push(b);
+  } finally {
+    globalThis.getComputedStyle = previous;
+  }
   assert.equal(stack.depth, 2);
   assert.deepEqual(
     t.log.filter((e) => e[0] === 'apply').map((e) => e[3]),
-    [0, 1],
-    'the phase still starts at 0 and ends at 1, so the browser has two states to interpolate',
+    [1, 1],
+    'the far end of the phase, and then the covered page parked where the next pop starts',
   );
 });

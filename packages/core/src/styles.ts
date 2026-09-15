@@ -12,6 +12,15 @@
  * pointer puts it; for a push, a pop or the settle after a release it is that
  * phase's length and `transition` runs it out, on the compositor.
  *
+ * Where a phase *starts* is never written, because it is already true. A page
+ * under the top rests parallaxed and dimmed, which is exactly where a pop
+ * begins, and a page arriving takes its start from `@starting-style` below,
+ * which is exactly where a push begins. That is the whole reason this engine
+ * does not have to resolve style inside the navigation task: there is nothing
+ * of its own left to commit. A start state written inline instead would also
+ * outrank `@starting-style`, so the transition writes an empty string wherever
+ * a page belongs at the value the stylesheet already gives it.
+ *
  * The string is kept minified because it ships inside every consumer's JS
  * bundle (`injectStyles()` is the default path); `scripts/write-css.mjs`
  * expands it into the readable `dist/stacknav.css`. What each rule is for:
@@ -40,7 +49,24 @@
  *   `:where()` gives the rule no specificity, so a stylesheet that wants the
  *   values inside its own pages can lift the barrier with
  *   `.sn-page > * { --sn-t: inherit; --sn-e: inherit }` and pay that cost
- *   knowingly.
+ *   knowingly. Keep this rule to the properties that have to be stopped here:
+ *   adding the three `--sn-enter-*` properties to it, which never change and so
+ *   never needed stopping, was measured at six times the style work per phase —
+ *   declaring a custom property on an element appears to cost its subtree the
+ *   cheap path the browser otherwise takes for an inherited change.
+ * - `@starting-style`: where a page arriving comes from. A newly inserted
+ *   element has no previous style, so without this it has nothing to
+ *   transition from and simply appears; with it, a push is the browser's work
+ *   and the engine never writes a start state. `.sn-container > .sn-page-upper`
+ *   rather than `.sn-page-upper` because at one class it would tie with
+ *   `.sn-page` and lose on order, leaving the resting transform as the start.
+ *   The `--sn-enter-*` values are the transition's own travel, parallax and
+ *   fade, written on each page as it is mounted — the one moment writing them
+ *   is free, and the reason they can inherit without being stopped. The
+ *   fallbacks are the iOS preset, so the rule is right even for a page put in
+ *   the container by something other than this engine.
+ *   A browser without `@starting-style` still pops and drags; a push lands
+ *   without animating.
  * - `.sn-page-visible`: the top page, and both pages during a transition.
  * - `.sn-page-upper` / `.sn-page-lower`: the two pages taking part in the
  *   transition in flight. Only these transition, and only these are promoted,
@@ -75,6 +101,8 @@ export const STACKNAV_CSS =
   ':where(.sn-page)>*{--sn-t:0s;--sn-e:linear}' +
   '.sn-page-visible{visibility:visible}' +
   '.sn-page-upper,.sn-page-lower{will-change:transform;transition-property:transform,opacity;transition-duration:var(--sn-t,0s);transition-timing-function:var(--sn-e,linear)}' +
+  '@starting-style{.sn-container>.sn-page-upper{transform:var(--sn-enter-upper,translate3d(calc(100% * var(--sn-dir,1)),0,0));opacity:var(--sn-enter-fade,1)}' +
+  '.sn-container>.sn-page-lower{transform:var(--sn-enter-lower,translate3d(calc(-30% * var(--sn-dir,1)),0,0))}}' +
   '.sn-page-upper{z-index:1}' +
   '.sn-page-upper.sn-page-android-fade{transition-duration:var(--sn-t,0s),calc(var(--sn-t,0s) * 83 / 450);transition-timing-function:var(--sn-e,linear),linear}' +
   '.sn-dim{position:fixed;inset:0;z-index:2147483647;pointer-events:none;background:var(--sn-dim-color,var(--sn-dim-fallback,#000));opacity:0;--sn-t:inherit;--sn-e:inherit;transition:opacity var(--sn-t,0s) var(--sn-e,linear)}' +
