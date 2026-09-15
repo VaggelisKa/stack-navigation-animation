@@ -128,6 +128,7 @@ For full control, provide `resolveDirection` using the strategy helpers from
 | `transition` | `{}` | Default `createNativeTransition` options. |
 | `swipeBack` | `'browser'` | Browser edge-gesture policy. |
 | `injectStyles` | `true` | Injects the core stylesheet. |
+| `manageFocus` | `false` | Moves focus into the page arriving on top, and back on a pop. |
 | `animated` | `true` | `false`, `'touch'`, or a predicate can disable animation. |
 
 Set `animated: 'touch'` to animate only when the primary pointer is coarse, or
@@ -185,6 +186,14 @@ If your app needs a custom `RouteReuseStrategy`, extend
 `StackNavRouteReuseStrategy` and provide the subclass after
 `provideStackNav()`. Without a compatible strategy, the directive cannot keep
 the page that is animating out.
+
+With `manageFocus: true`, one detail follows from the same mechanism. Angular
+takes the outgoing page out of the DOM before the stack is told about the new
+one, and the browser drops focus to the body at that moment, so there is no
+focused control left for the stack to record. Coming back to a page therefore
+focuses the page element rather than the control the user had left, which still
+starts a screen reader at the top of the page that returned. The reattached
+element is back in the document before focus moves, so that much is reliable.
 
 Browser-owned state may reset when Angular detaches and reattaches an element:
 iframes can reload, videos can pause, and CSS keyframe animations can restart.

@@ -1,4 +1,5 @@
 import { animationsFinished, commitStyles, cssDuration, cssEasing, tween, type CancellableTween, type Easing } from './animate.ts';
+import { moveFocus, rememberFocus, releaseFocus } from './focus.ts';
 
 /** One mounted page. `key` and `data` belong to the caller; the stack only carries them. */
 export interface StackEntry<T = unknown> {
@@ -75,6 +76,15 @@ export interface NavigationStackOptions {
   container: HTMLElement;
   transition: Transition;
   pageClass?: string;
+  /**
+   * Moves focus with the pages, the way a native stack does: into the page
+   * arriving on top, and back to whatever had focus inside a page when that
+   * page is revealed again. A page with nothing focusable of its own is given
+   * `tabindex="-1"` for as long as it is mounted, so a screen reader reads
+   * from the top of it. Off by default, because a page that manages its own
+   * focus should keep doing so.
+   */
+  manageFocus?: boolean;
 }
 
 type Listener<E> = (detail: E) => void;
@@ -93,15 +103,17 @@ export class NavigationStack {
   entries: StackEntry[] = [];
   busy = false;
   private _destroyed = false;
+  private readonly _manageFocus: boolean;
   private _activeTransition: { lower: StackEntry | null; upper: StackEntry } | null = null;
   private _queue: Array<{ run: () => void; cancel: () => void }> = [];
   private _listeners = new Map<string, Set<Listener<unknown>>>();
 
-  constructor({ container, transition, pageClass = 'sn-page' }: NavigationStackOptions) {
+  constructor({ container, transition, pageClass = 'sn-page', manageFocus = false }: NavigationStackOptions) {
     if (!container || !transition) throw new Error('NavigationStack needs { container, transition }');
     this.container = container;
     this.transition = transition;
     this.pageClass = pageClass;
+    this._manageFocus = manageFocus;
     container.classList.add('sn-container');
   }
 
@@ -146,12 +158,14 @@ export class NavigationStack {
   push<T = unknown>(elOrFactory: HTMLElement | (() => HTMLElement), { animated = true, data = null, key = null, source = 'api' }: MountOptions<T> = {}): Promise<StackEntry> {
     return this._run(async () => {
       const el = typeof elOrFactory === 'function' ? elOrFactory() : elOrFactory;
+      this._remember();
       this._forget(el);
       const lower = this.top;
       const upper = this._mount(el, this.entries.length, data, key);
       this.entries.push(upper);
       await this._transition(lower, upper, 0, 1, animated, 'push');
       this._settle();
+      this._focus(false);
       this._emit('push', { entry: upper, entries: this.entries.slice(), source });
       return upper;
     });
@@ -183,6 +197,7 @@ export class NavigationStack {
         const entry = this._mount(el, 0, data, key);
         this.entries.push(entry);
         this._settle();
+        this._focus(false);
         this._emit('push', { entry, entries: this.entries.slice(), source });
         return null;
       }
@@ -201,11 +216,13 @@ export class NavigationStack {
     return this._run(async () => {
       const old = this.top;
       if (old && old.el === el) return null;
+      this._remember();
       this._forget(el);
       const removed = old ? [this._unmount(this.entries.pop()!)] : [];
       const entry = this._mount(el, this.entries.length, data, key);
       this.entries.push(entry);
       this._settle();
+      this._focus(false);
       this._emit('replace', { entry, removed, entries: this.entries.slice(), source });
       return removed[0] || null;
     });
@@ -224,9 +241,11 @@ export class NavigationStack {
   /** Removes a mounted page without animation, wherever it sits. Returns its entry, or null. */
   remove(el: HTMLElement, { source = 'api' }: { source?: NavigationSource } = {}): Promise<StackEntry | null> {
     return this._run(async () => {
+      const revealing = this.top?.el === el;
       const entry = this._forget(el);
       if (!entry) return null;
       this._settle();
+      if (revealing) this._focus(true);
       this._emit('pop', { entry, removed: [entry], entries: this.entries.slice(), source });
       return entry;
     });
@@ -239,6 +258,10 @@ export class NavigationStack {
       while (this.entries.length) removed.push(this._unmount(this.entries.pop()!));
       elements.forEach((el, i) => this.entries.push(this._mount(el, i, null, null)));
       this._settle();
+      // A reset is also how a host puts a stack back as it was -- the Angular
+      // port resumes an outlet this way -- so the top page gets its own focus
+      // back where there is one to give.
+      if (this.entries.length) this._focus(true);
       this._emit('reset', { entries: this.entries.slice(), removed, source });
       return removed;
     });
@@ -270,6 +293,7 @@ export class NavigationStack {
           this._unmount(upper);
         }
         this._settle();
+        if (complete) this._focus(true);
         this._setBusy(false);
         if (complete) this._emit('pop', { entry: upper, removed: [upper], entries: this.entries.slice(), source: 'gesture' });
         this._drain();
@@ -337,6 +361,7 @@ export class NavigationStack {
     if (this._destroyed) return upper;
     removed.push(this._unmount(upper));
     this._settle();
+    this._focus(true);
     this._emit('pop', { entry: upper, removed, entries: this.entries.slice(), source });
     return upper;
   }
@@ -348,6 +373,7 @@ export class NavigationStack {
     return { el, index, key, data };
   }
   private _unmount(entry: StackEntry): StackEntry {
+    if (this._manageFocus) releaseFocus(entry.el);
     entry.el.classList.remove(this.pageClass, 'sn-page-visible', 'sn-page-upper', 'sn-page-lower');
     entry.el.style.transform = '';
     entry.el.remove();
@@ -359,6 +385,15 @@ export class NavigationStack {
     if (i < 0) return null;
     const [entry] = this.entries.splice(i, 1);
     return this._unmount(entry);
+  }
+
+  /** `manageFocus`: what has focus inside the page about to go beneath the top. */
+  private _remember(): void {
+    if (this._manageFocus) rememberFocus(this.top);
+  }
+  /** `manageFocus`: focus the page that is now on top. `restore` is a reveal, so its own focus comes back. */
+  private _focus(restore: boolean): void {
+    if (this._manageFocus && !this._destroyed) moveFocus(this.container, this.top, restore);
   }
 
   /**

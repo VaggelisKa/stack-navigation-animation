@@ -62,6 +62,8 @@ export interface NativeStackOptions {
   transition?: Partial<NativeTransitionOptions>;
   /** Default browser. Disabled requests document-wide browser swipe suppression. */
   swipeBack?: SwipeBackMode;
+  /** Moves focus into the page arriving on top, and back to the revealed page's own focus on a pop. Default false. */
+  manageFocus?: boolean;
 }
 
 export interface NativeStack extends NavigationStack {
@@ -81,9 +83,9 @@ export interface NativeStack extends NavigationStack {
  * as two backs at once. Apps that own the edge -- an installed PWA, a native
  * webview -- can drive `beginInteractivePop()` from their own pointer handling.
  */
-export function createNativeStack({ container, transition = {}, swipeBack = 'browser' }: NativeStackOptions): NativeStack {
+export function createNativeStack({ container, transition = {}, swipeBack = 'browser', manageFocus = false }: NativeStackOptions): NativeStack {
   const t = createNativeTransition(transition);
-  const stack = new NavigationStack({ container, transition: t }) as NativeStack;
+  const stack = new NavigationStack({ container, transition: t, manageFocus }) as NativeStack;
   let mode: SwipeBackMode | undefined;
   let release: (() => void) | undefined;
   let destroyed = false;

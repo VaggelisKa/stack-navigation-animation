@@ -58,6 +58,20 @@ export function makeElement(tag = 'div'): any {
     setAttribute(k, v) {
       el.attrs[k] = v;
     },
+    getAttribute: (k) => el.attrs[k] ?? null,
+    hasAttribute: (k) => k in el.attrs,
+    removeAttribute(k) {
+      delete el.attrs[k];
+    },
+    contains(node) {
+      for (let n = node; n; n = n.parentElement) if (n === el) return true;
+      return false;
+    },
+    // Focus is only what the focus tests need: the document remembers the last
+    // element focused, and an element out of the tree is not connected.
+    focus() {
+      globalThis.document.activeElement = el;
+    },
     addEventListener(type, fn) {
       (el.listeners[type] ||= new Set()).add(fn);
     },
@@ -71,6 +85,7 @@ export function makeElement(tag = 'div'): any {
     },
     setPointerCapture() {},
   };
+  Object.defineProperty(el, 'isConnected', { get: () => !!el.parentElement });
   Object.defineProperty(el, 'className', {
     get: () => [...classes].join(' '),
     set: (v: string) => {
@@ -82,7 +97,7 @@ export function makeElement(tag = 'div'): any {
 }
 
 export function installGlobals() {
-  globalThis.document = { createElement: makeElement };
+  globalThis.document = { createElement: makeElement, body: makeElement('body'), activeElement: null, hidden: false };
   globalThis.performance ||= { now: () => Date.now() };
   globalThis.matchMedia = () => ({ matches: false });
   // Custom properties inherit, so walk up until one element declares the name.

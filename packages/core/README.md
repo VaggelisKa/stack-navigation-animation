@@ -51,8 +51,14 @@ supports.
 
 ## Navigation stack
 
-`createNativeStack({ container, transition?, swipeBack? })` returns a
-`NavigationStack` configured with the native transition.
+`createNativeStack({ container, transition?, swipeBack?, manageFocus? })`
+returns a `NavigationStack` configured with the native transition.
+
+`manageFocus` is off by default. Turn it on and the stack moves focus the way a
+native stack does: into the page arriving on top, and back to whatever had focus
+inside a page when that page is revealed again. A page with nothing focusable of
+its own is given `tabindex="-1"` while it is mounted, and focus that has already
+moved outside the container is never taken back.
 
 | Member | Purpose |
 | --- | --- |
