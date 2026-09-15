@@ -406,6 +406,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
       container,
       transition: { ...this.config.transition, ...(untracked(this.transition) || {}) },
       swipeBack: untracked(this.swipeBack) ?? this.config.swipeBack,
+      manageFocus: this.config.manageFocus,
     }));
     if (this.config.injectStyles) injectStyles(this.document);
     stack.on('pop', (e) => this.onStackRemoved(e.removed, e.source));

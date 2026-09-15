@@ -83,6 +83,13 @@ export interface StackNavConfig {
   /** Inserts the engine's stylesheet at runtime. Default true. Turn it off if you import `stacknav.css`. */
   injectStyles?: boolean;
   /**
+   * Moves focus with the pages, the way a native stack does: into the page
+   * arriving on top, and back to whatever had focus inside a page when that
+   * page is revealed again. Default false, because a page that manages its own
+   * focus should keep doing so.
+   */
+  manageFocus?: boolean;
+  /**
    * Whether to animate at all. Default true. `prefers-reduced-motion` is
    * honoured either way.
    *
@@ -107,6 +114,7 @@ export interface ResolvedStackNavConfig {
   transition: Partial<NativeTransitionOptions>;
   swipeBack: SwipeBackMode;
   injectStyles: boolean;
+  manageFocus: boolean;
   /** Asked before every navigation. */
   animated: () => boolean;
 }
@@ -149,6 +157,7 @@ export function resolveConfig(c: StackNavConfig): ResolvedStackNavConfig {
     transition: c.transition ?? {},
     swipeBack: c.swipeBack ?? 'browser',
     injectStyles: c.injectStyles ?? true,
+    manageFocus: c.manageFocus ?? false,
     animated: resolveAnimated(c.animated),
   };
 }
