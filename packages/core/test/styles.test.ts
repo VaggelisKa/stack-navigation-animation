@@ -137,6 +137,15 @@ test('a shadow root without adoptedStyleSheets gets a style element of its own',
   assert.equal(stylesIn(doc.head).length, 0, 'the document head is left alone');
 });
 
+test('a shadow root in a windowless document gets a style element, not a foreign sheet', () => {
+  // `createHTMLDocument()` has no window, so there is no realm to construct a sheet in.
+  const doc = makeDocument();
+  const root = makeShadowRoot(doc, { adoptedStyleSheets: true });
+  assert.doesNotThrow(() => injectStyles(root));
+  assert.equal(root.adoptedStyleSheets.length, 0);
+  assert.equal(stylesIn(root).length, 1);
+});
+
 test('no target is a no-op, as on a server', () => {
   assert.doesNotThrow(() => injectStyles(null));
 });

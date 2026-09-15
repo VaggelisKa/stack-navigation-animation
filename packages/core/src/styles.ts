@@ -132,11 +132,14 @@ export function injectStyles(
 ): void {
   if (!target || target.getElementById(STACKNAV_STYLE_ID)) return;
   const doc = isDocument(target) ? target : target.ownerDocument;
-  if (!isDocument(target) && target.adoptedStyleSheets) {
-    // Constructed in the target's own realm; a sheet from another one cannot be adopted.
+  // Constructed in the target's own realm; a sheet from another one cannot be
+  // adopted. A document without a window (`createHTMLDocument()`) has no realm
+  // to construct one in, so it takes the `<style>` element instead.
+  const Sheet = doc.defaultView?.CSSStyleSheet;
+  if (!isDocument(target) && target.adoptedStyleSheets && Sheet) {
     let sheet = sheets.get(doc);
     if (!sheet) {
-      sheet = new ((doc.defaultView ?? globalThis).CSSStyleSheet)();
+      sheet = new Sheet();
       sheet.replaceSync(STACKNAV_CSS);
       sheets.set(doc, sheet);
     }
