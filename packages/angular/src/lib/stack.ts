@@ -23,6 +23,7 @@ import {
   Router,
   RouterOutlet,
   ActivatedRoute,
+  destroyDetachedRouteHandle,
   type ActivatedRouteSnapshot,
   type DetachedRouteHandle,
 } from '@angular/router';
@@ -41,7 +42,7 @@ import {
 import { Subscription } from 'rxjs';
 import { STACKNAV_CONFIG } from './config';
 import { StackNavHistory } from './history';
-import { StackNavRouteReuseStrategy, destroyHandle, type PageKeeper } from './route-reuse-strategy';
+import { StackNavRouteReuseStrategy, type PageKeeper } from './route-reuse-strategy';
 import { checkSetup, checkStrategy, warn } from './setup-checks';
 
 declare const ngDevMode: boolean | undefined;
@@ -210,7 +211,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     // detached ones belong to nobody else.
     for (const page of this.byInstance.values()) {
       page.stopScroll();
-      if (page.handle) destroyHandle(page.handle);
+      if (page.handle) destroyDetachedRouteHandle(page.handle);
     }
     this.byInstance.clear();
     this.byEl.clear();
@@ -567,7 +568,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     const handle = page.handle;
     page.handle = null;
     this.forget(page);
-    if (handle) destroyHandle(handle);
+    if (handle) destroyDetachedRouteHandle(handle);
   }
 }
 

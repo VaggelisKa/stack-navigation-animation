@@ -1,6 +1,10 @@
-import { Injectable, type ComponentRef } from '@angular/core';
-import * as router from '@angular/router';
-import { BaseRouteReuseStrategy, type ActivatedRouteSnapshot, type DetachedRouteHandle } from '@angular/router';
+import { Injectable } from '@angular/core';
+import {
+  BaseRouteReuseStrategy,
+  destroyDetachedRouteHandle,
+  type ActivatedRouteSnapshot,
+  type DetachedRouteHandle,
+} from '@angular/router';
 
 /**
  * What a stack tells the strategy about the pages it keeps. `StackNav`
@@ -64,7 +68,7 @@ export class StackNavRouteReuseStrategy extends BaseRouteReuseStrategy {
     if (handle) {
       for (const stack of this.stacks) if (stack.keep(route, handle)) return;
       // Nobody claimed it, so nobody would ever destroy it.
-      destroyHandle(handle);
+      destroyDetachedRouteHandle(handle);
     } else {
       for (const stack of this.stacks) if (stack.release(route)) return;
     }
@@ -87,9 +91,10 @@ export class StackNavRouteReuseStrategy extends BaseRouteReuseStrategy {
 
   /**
    * The router's experimental injector cleanup
-   * (`withExperimentalAutoCleanupInjectors`, router 21.1+) asks for these so
-   * that the lazy injectors behind kept pages are not destroyed under them.
-   * Not on the base class in every supported router, so not an override.
+   * (`withExperimentalAutoCleanupInjectors`) asks for these so that the lazy
+   * injectors behind kept pages are not destroyed under them. The router
+   * calls it optionally and `BaseRouteReuseStrategy` does not declare it, so
+   * it is not an override.
    */
   retrieveStoredRouteHandles(): DetachedRouteHandle[] {
     const handles: DetachedRouteHandle[] = [];
@@ -106,17 +111,4 @@ export class StackNavRouteReuseStrategy extends BaseRouteReuseStrategy {
 
 function urlOf(s: ActivatedRouteSnapshot): string {
   return s.url.map((u) => u.toString()).join('/');
-}
-
-/**
- * Destroys a detached page for good. Router 22 exports the function that
- * knows the handle's shape and also destroys the route's own injector (the
- * one behind `Route.resources`); older routers have neither, and the
- * component ref is all a handle holds there.
- * @internal
- */
-export function destroyHandle(handle: DetachedRouteHandle): void {
-  const destroy = (router as { destroyDetachedRouteHandle?: (h: DetachedRouteHandle) => void }).destroyDetachedRouteHandle;
-  if (destroy) destroy(handle);
-  else (handle as { componentRef?: ComponentRef<unknown> }).componentRef?.destroy();
 }

@@ -15,6 +15,8 @@ API.
 pnpm add @stacknav/angular
 ```
 
+Angular 22 is required.
+
 ## Quick start
 
 Register stacknav alongside the router:
