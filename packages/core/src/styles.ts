@@ -14,7 +14,20 @@
  *
  * The string is kept minified because it ships inside every consumer's JS
  * bundle (`injectStyles()` is the default path); `scripts/write-css.mjs`
- * expands it into the readable `dist/stacknav.css`. What each rule is for:
+ * expands it into the readable `dist/stacknav.css`.
+ *
+ * The whole sheet sits in `@layer stacknav`. `injectStyles()` appends it to the
+ * end of `<head>`, so without a layer it would land after the app's own
+ * stylesheets and win every tie on order. Layered rules lose to unlayered ones
+ * whatever their specificity or position, so an app restyling `.sn-page` needs
+ * no `!important` and no load-order care. An app that puts its own CSS in
+ * layers should declare the order itself, `@layer stacknav, app;`, so that its
+ * layer comes after this one. Nothing here relies on winning against the app:
+ * the one `!important` in the sheet, on `--sn-t` under
+ * `prefers-reduced-motion`, is aimed at the inline style the engine writes, and
+ * an `!important` author declaration beats a normal inline one from any layer.
+ *
+ * What each rule is for:
  *
  * Nothing the engine toggles per phase may change an inherited property, or a
  * custom property, that the pages' content can see. Custom properties inherit,
@@ -37,10 +50,11 @@
  * - `:where(.sn-page)>*`: the barrier. A page itself reads `--sn-t` / `--sn-e`
  *   off the container, but its children pin them, so a phase starting is a
  *   style change to a handful of elements rather than to the whole stack.
- *   `:where()` gives the rule no specificity, so a stylesheet that wants the
- *   values inside its own pages can lift the barrier with
- *   `.sn-page > * { --sn-t: inherit; --sn-e: inherit }` and pay that cost
- *   knowingly.
+ *   A stylesheet that wants the values inside its own pages lifts the barrier
+ *   with `.sn-page > * { --sn-t: inherit; --sn-e: inherit }` and pays that cost
+ *   knowingly; unlayered, that rule wins on the layer alone. `:where()` keeps
+ *   the rule at zero specificity so it also loses to anything an app writes
+ *   inside its own layer, once that layer is ordered after `stacknav`.
  * - `.sn-page-visible`: the top page, and both pages during a transition.
  * - `.sn-page-upper` / `.sn-page-lower`: the two pages taking part in the
  *   transition in flight. Only these transition, and only these are promoted,
@@ -67,8 +81,12 @@
  * - `prefers-reduced-motion`: forces the phase duration to zero in CSS. The
  *   `!important` is intentional: it must override the inline `--sn-t` written
  *   by the engine, including when the preference changes during a transition.
+ *   Being in a layer does not weaken it. Layers only order normal declarations
+ *   (and, in reverse, important ones); an important author declaration outranks
+ *   a normal inline style wherever it is declared.
  */
 export const STACKNAV_CSS =
+  '@layer stacknav{' +
   '.sn-container{position:relative;overflow:hidden;isolation:isolate}' +
   '.sn-container:dir(rtl){--sn-dir:-1}' +
   '.sn-page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;visibility:hidden;transform:translate3d(0,0,0)}' +
@@ -79,7 +97,8 @@ export const STACKNAV_CSS =
   '.sn-page-upper.sn-page-android-fade{transition-duration:var(--sn-t,0s),calc(var(--sn-t,0s) * 83 / 450);transition-timing-function:var(--sn-e,linear),linear}' +
   '.sn-dim{position:fixed;inset:0;z-index:2147483647;pointer-events:none;background:var(--sn-dim-color,var(--sn-dim-fallback,#000));opacity:0;--sn-t:inherit;--sn-e:inherit;transition:opacity var(--sn-t,0s) var(--sn-e,linear)}' +
   '.sn-busy::after{content:"";position:absolute;inset:0;z-index:2147483647;user-select:none;-webkit-user-select:none}' +
-  '@media(prefers-reduced-motion:reduce){.sn-container{--sn-t:0s!important}}';
+  '@media(prefers-reduced-motion:reduce){.sn-container{--sn-t:0s!important}}' +
+  '}';
 
 export const STACKNAV_STYLE_ID = 'stacknav-styles';
 

@@ -2,8 +2,29 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { STACKNAV_CSS } from '../src/styles.ts';
 
+// The sheet is appended to the end of <head>, so without a layer it would beat
+// an app rule of equal specificity on order alone. One layer, wrapping
+// everything, keeps unlayered app CSS in charge.
+test('the whole sheet is one cascade layer', () => {
+  assert.ok(STACKNAV_CSS.startsWith('@layer stacknav{'), STACKNAV_CSS.slice(0, 40));
+  assert.ok(STACKNAV_CSS.endsWith('}'));
+  assert.equal(STACKNAV_CSS.match(/@layer/g)!.length, 1, 'the sheet is not split across layers');
+  // Nothing between the braces escapes the layer: the rules balance on their
+  // own, so the closing brace is the layer's.
+  let depth = 0;
+  for (const [i, char] of [...STACKNAV_CSS.slice('@layer stacknav{'.length, -1)].entries()) {
+    if (char === '{') depth++;
+    else if (char === '}') depth--;
+    assert.ok(depth >= 0, `left the layer at index ${i}`);
+  }
+  assert.equal(depth, 0, 'the rules inside the layer balance');
+});
+
 test('the stylesheet disables browser-owned transitions for reduced motion', () => {
-  assert.match(STACKNAV_CSS, /@media\(prefers-reduced-motion:reduce\)/);
+  assert.match(STACKNAV_CSS, /@media\(prefers-reduced-motion:reduce\)\{\.sn-container\{--sn-t:0s!important\}\}/);
+  // `!important` outranks the engine's inline `--sn-t` from inside the layer
+  // too: layers order normal declarations, and an important author declaration
+  // beats a normal inline one wherever it is declared.
   assert.match(STACKNAV_CSS, /--sn-t:0s!important/);
 });
 

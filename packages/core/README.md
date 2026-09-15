@@ -42,6 +42,11 @@ pages mounted, preserving their scroll position, form values, and UI state.
 `injectStyles()` adds the required CSS once. You can import
 `@stacknav/core/stacknav.css` instead.
 
+The sheet lives in `@layer stacknav`, so your own CSS overrides it without
+`!important` or extra specificity, whatever the load order. If your app uses
+cascade layers of its own, declare `@layer stacknav, app;` first so your layer
+comes after ours.
+
 ## Navigation stack
 
 `createNativeStack({ container, transition?, swipeBack? })` returns a
