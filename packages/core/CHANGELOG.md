@@ -1,5 +1,15 @@
 # @stacknav/core
 
+## 0.6.0
+
+### Minor Changes
+
+- [#39](https://github.com/VaggelisKa/stack-navigation-animation/pull/39) [`acf1f01`](https://github.com/VaggelisKa/stack-navigation-animation/commit/acf1f013476a9497308b839f138a6af8a655d2c1) - `injectStyles(target?, { nonce })` now accepts a `ShadowRoot` as well as a `Document`, adopting a constructed sheet where `adoptedStyleSheets` is supported and falling back to a `<style>` element, and puts a `nonce` on that element for pages with a strict `style-src`. The Angular stack passes `CSP_NONCE` through and injects into the shadow root the stack is in.
+
+- [#38](https://github.com/VaggelisKa/stack-navigation-animation/pull/38) [`7b42092`](https://github.com/VaggelisKa/stack-navigation-animation/commit/7b420924c0199a16d8c2762f2a7dbdfdf5125f02) - Ship the engine stylesheet inside `@layer stacknav`, so an app's own CSS overrides it regardless of load order or specificity.
+
+- [#42](https://github.com/VaggelisKa/stack-navigation-animation/pull/42) [`9ffc602`](https://github.com/VaggelisKa/stack-navigation-animation/commit/9ffc602be515721590cee58068e12ebcb26e9903) - Add opt-in focus management. With `manageFocus: true` the stack moves focus into the page arriving on top and gives it back to the revealed page on a pop, the way a native stack does; it is off by default and never takes focus that has moved outside the container.
+
 ## 0.5.2
 
 ### Patch Changes

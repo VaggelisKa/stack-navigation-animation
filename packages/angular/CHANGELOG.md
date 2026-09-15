@@ -1,5 +1,21 @@
 # @stacknav/angular
 
+## 1.0.0
+
+### Major Changes
+
+- [#40](https://github.com/VaggelisKa/stack-navigation-animation/pull/40) [`6bd2f05`](https://github.com/VaggelisKa/stack-navigation-animation/commit/6bd2f05c2ce163f7edb23bb33bcf1c79a958015c) - Angular 22 is now required. The `@angular/*` peer ranges narrow from `>=19.0.0` to `^22.0.0`, and the fallbacks that existed only for older routers are gone.
+
+### Minor Changes
+
+- [#42](https://github.com/VaggelisKa/stack-navigation-animation/pull/42) [`9ffc602`](https://github.com/VaggelisKa/stack-navigation-animation/commit/9ffc602be515721590cee58068e12ebcb26e9903) - Add opt-in focus management. With `manageFocus: true` the stack moves focus into the page arriving on top and gives it back to the revealed page on a pop, the way a native stack does; it is off by default and never takes focus that has moved outside the container.
+
+### Patch Changes
+
+- [#39](https://github.com/VaggelisKa/stack-navigation-animation/pull/39) [`acf1f01`](https://github.com/VaggelisKa/stack-navigation-animation/commit/acf1f013476a9497308b839f138a6af8a655d2c1) - `injectStyles(target?, { nonce })` now accepts a `ShadowRoot` as well as a `Document`, adopting a constructed sheet where `adoptedStyleSheets` is supported and falling back to a `<style>` element, and puts a `nonce` on that element for pages with a strict `style-src`. The Angular stack passes `CSP_NONCE` through and injects into the shadow root the stack is in.
+- Updated dependencies [[`acf1f01`](https://github.com/VaggelisKa/stack-navigation-animation/commit/acf1f013476a9497308b839f138a6af8a655d2c1), [`7b42092`](https://github.com/VaggelisKa/stack-navigation-animation/commit/7b420924c0199a16d8c2762f2a7dbdfdf5125f02), [`9ffc602`](https://github.com/VaggelisKa/stack-navigation-animation/commit/9ffc602be515721590cee58068e12ebcb26e9903)]:
+  - @stacknav/core@0.6.0
+
 ## 0.5.1
 
 ### Patch Changes
