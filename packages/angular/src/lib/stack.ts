@@ -1,5 +1,6 @@
 import { DOCUMENT, Location } from '@angular/common';
 import {
+  CSP_NONCE,
   Directive,
   ElementRef,
   ErrorHandler,
@@ -135,6 +136,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly document = inject(DOCUMENT);
+  private readonly nonce = inject(CSP_NONCE, { optional: true });
   private readonly errorHandler = inject(ErrorHandler);
   private readonly strategy = inject(RouteReuseStrategy);
   /** The route of the page this outlet lives in: the root route for a top-level outlet. */
@@ -409,7 +411,11 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
       swipeBack: untracked(this.swipeBack) ?? this.config.swipeBack,
       manageFocus: this.config.manageFocus,
     }));
-    if (this.config.injectStyles) injectStyles(this.document);
+    if (this.config.injectStyles) {
+      // Nothing in the document head reaches a stack inside a shadow root, so aim at the root the container is in.
+      const root = container.getRootNode() as ShadowRoot | null;
+      injectStyles(root?.host ? root : this.document, { nonce: this.nonce });
+    }
     stack.on('pop', (e) => this.onStackRemoved(e.removed, e.source));
     stack.on('replace', (e) => this.onStackRemoved(e.removed, e.source));
     stack.on('reset', (e) => this.onStackRemoved(e.removed, e.source));

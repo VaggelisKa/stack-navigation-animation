@@ -102,15 +102,50 @@ export const STACKNAV_CSS =
 
 export const STACKNAV_STYLE_ID = 'stacknav-styles';
 
+/** Where the stylesheet can go: a document's head, or a shadow root. */
+export type StyleTarget = Document | ShadowRoot;
+
+export interface InjectStylesOptions {
+  /** Goes on the `<style>` element, for pages served with a strict `style-src`. */
+  nonce?: string | null;
+}
+
+/** One constructed sheet per document, shared by every shadow root in it. */
+const sheets = /*#__PURE__*/ new WeakMap<Document, CSSStyleSheet>();
+
+const isDocument = (target: StyleTarget): target is Document => 'createElement' in target;
+
 /**
- * Inserts the engine's stylesheet into `doc` once. Framework ports call this so
- * apps need no stylesheet import. Apps that ship `stacknav.css` themselves can
- * skip it.
+ * Inserts the engine's stylesheet into `target` once. Framework ports call this
+ * so apps need no stylesheet import. Apps that ship `stacknav.css` themselves
+ * can skip it.
+ *
+ * A document gets a `<style id="stacknav-styles">` in its head, carrying
+ * `options.nonce` when one is given. A shadow root, whose contents the document
+ * head cannot reach, gets a constructed sheet through `adoptedStyleSheets`, or
+ * the same `<style>` element where that is unsupported. Injecting twice into
+ * the same target does nothing the second time.
  */
-export function injectStyles(doc: Document | null = typeof document === 'undefined' ? null : document): void {
-  if (!doc || doc.getElementById(STACKNAV_STYLE_ID)) return;
+export function injectStyles(
+  target: StyleTarget | null = typeof document === 'undefined' ? null : document,
+  options: InjectStylesOptions = {},
+): void {
+  if (!target || target.getElementById(STACKNAV_STYLE_ID)) return;
+  const doc = isDocument(target) ? target : target.ownerDocument;
+  if (!isDocument(target) && target.adoptedStyleSheets) {
+    // Constructed in the target's own realm; a sheet from another one cannot be adopted.
+    let sheet = sheets.get(doc);
+    if (!sheet) {
+      sheet = new ((doc.defaultView ?? globalThis).CSSStyleSheet)();
+      sheet.replaceSync(STACKNAV_CSS);
+      sheets.set(doc, sheet);
+    }
+    if (!target.adoptedStyleSheets.includes(sheet)) target.adoptedStyleSheets = [...target.adoptedStyleSheets, sheet];
+    return;
+  }
   const style = doc.createElement('style');
   style.id = STACKNAV_STYLE_ID;
+  if (options.nonce) style.setAttribute('nonce', options.nonce);
   style.textContent = STACKNAV_CSS;
-  (doc.head ?? doc.documentElement).append(style);
+  (isDocument(target) ? (target.head ?? target.documentElement) : target).append(style);
 }

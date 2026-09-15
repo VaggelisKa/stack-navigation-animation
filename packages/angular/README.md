@@ -43,6 +43,9 @@ direction is inferred, and `StackNavRouteReuseStrategy` keeps inactive pages
 alive. Continue to navigate with `routerLink`, `router.navigate()`, and
 Angular's `Location` service.
 
+The styles go into the shadow root the stack is in when it is in one, and carry
+`CSP_NONCE` when you provide that token.
+
 For input binding and reliable history restoration after a guard rejects Back,
 these Router features are recommended:
 
@@ -127,7 +130,7 @@ For full control, provide `resolveDirection` using the strategy helpers from
 | `routeReuse` | `true` | Installs `StackNavRouteReuseStrategy`. |
 | `transition` | `{}` | Default `createNativeTransition` options. |
 | `swipeBack` | `'browser'` | Browser edge-gesture policy. |
-| `injectStyles` | `true` | Injects the core stylesheet. |
+| `injectStyles` | `true` | Injects the core stylesheet, tagged with `CSP_NONCE` when that token is provided. |
 | `manageFocus` | `false` | Moves focus into the page arriving on top, and back on a pop. |
 | `animated` | `true` | `false`, `'touch'`, or a predicate can disable animation. |
 

@@ -96,6 +96,45 @@ export function makeElement(tag = 'div'): any {
   return el;
 }
 
+// A document just complete enough for injectStyles(): createElement, a head,
+// and an id lookup that walks what has been appended.
+export function makeDocument(): any {
+  const find = (node: any, id: string): any => {
+    if (node.id === id) return node;
+    for (const child of node.children) {
+      const hit = find(child, id);
+      if (hit) return hit;
+    }
+    return null;
+  };
+  const doc: any = {
+    head: makeElement('head'),
+    documentElement: makeElement('html'),
+    createElement: makeElement,
+    getElementById: (id: string) => find(doc.head, id) ?? find(doc.documentElement, id),
+  };
+  return doc;
+}
+
+// A shadow root: an element container with a host, and adoptedStyleSheets only
+// where the test asks for it, which is how a browser without support behaves.
+export function makeShadowRoot(doc: any, { adoptedStyleSheets = false } = {}): any {
+  const root: any = makeElement('#shadow-root');
+  root.host = makeElement('div');
+  root.ownerDocument = doc;
+  root.getElementById = (id: string) => root.children.find((c: any) => c.id === id) ?? null;
+  if (adoptedStyleSheets) root.adoptedStyleSheets = [];
+  return root;
+}
+
+// The constructed-stylesheet half of the browser API: enough for replaceSync.
+export class FakeCSSStyleSheet {
+  cssText = '';
+  replaceSync(css: string) {
+    this.cssText = css;
+  }
+}
+
 export function installGlobals() {
   globalThis.document = { createElement: makeElement, body: makeElement('body'), activeElement: null, hidden: false };
   globalThis.performance ||= { now: () => Date.now() };
