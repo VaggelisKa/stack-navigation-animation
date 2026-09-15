@@ -123,6 +123,46 @@ test('the borrowed tabindex leaves with the page, and a page of its own is left 
   assert.equal(a.getAttribute('tabindex'), null, 'unmounting takes the borrowed attribute back');
 });
 
+test('a remembered element that refuses focus hands it to the page', async () => {
+  const stack = stackWith(true);
+  const a = page('a'), b = page('b');
+  await stack.push(a);
+  const input = field(a);
+  input.focus();
+  await stack.push(b);
+  // Disabled, hidden, or no longer focusable: the browser leaves focus alone.
+  input.focus = () => {};
+  await stack.pop();
+  assert.equal(document.activeElement, a);
+});
+
+test('a tabindex the app changed while the page was mounted is left alone', async () => {
+  const stack = stackWith(true);
+  const a = page('a');
+  await stack.push(a);
+  assert.equal(a.getAttribute('tabindex'), '-1');
+  a.setAttribute('tabindex', '0');
+  await stack.replace(page('c'));
+  assert.equal(a.getAttribute('tabindex'), '0');
+});
+
+test('reset focuses the top page it leaves, restoring what that page had', async () => {
+  const stack = stackWith(true);
+  const a = page('a'), b = page('b'), c = page('c');
+  await stack.push(a);
+  const input = field(a);
+  input.focus();
+  await stack.push(b);
+  // What a host suspending and resuming a stack does: unmount everything, then
+  // mount the same pages again.
+  await stack.reset([]);
+  assert.equal(stack.depth, 0);
+  await stack.reset([a]);
+  assert.equal(document.activeElement, input, 'the resumed page gets its own focus back');
+  await stack.reset([a, c]);
+  assert.equal(document.activeElement, c);
+});
+
 test('replace focuses the page that takes the top', async () => {
   const stack = stackWith(true);
   const a = page('a'), c = page('c');

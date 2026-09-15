@@ -258,6 +258,10 @@ export class NavigationStack {
       while (this.entries.length) removed.push(this._unmount(this.entries.pop()!));
       elements.forEach((el, i) => this.entries.push(this._mount(el, i, null, null)));
       this._settle();
+      // A reset is also how a host puts a stack back as it was -- the Angular
+      // port resumes an outlet this way -- so the top page gets its own focus
+      // back where there is one to give.
+      if (this.entries.length) this._focus(true);
       this._emit('reset', { entries: this.entries.slice(), removed, source });
       return removed;
     });

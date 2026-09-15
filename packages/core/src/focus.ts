@@ -47,8 +47,15 @@ export function moveFocus(container: HTMLElement, page: StackEntry | null, resto
   // and the browser has already dropped focus to the body.
   if (active && active !== doc.body && active.isConnected !== false && !within(container, active)) return;
   const previous = restore ? remembered.get(page.el) : undefined;
-  const target = previous && previous.isConnected !== false && within(page.el, previous) ? (previous as HTMLElement) : focusable(page.el);
-  target.focus?.({ preventScroll: true });
+  if (previous && previous.isConnected !== false && within(page.el, previous)) {
+    (previous as HTMLElement).focus?.({ preventScroll: true });
+    // Asking is not getting: an element disabled, hidden or no longer focusable
+    // since it was remembered takes nothing, and the browser says so by leaving
+    // focus where it was. Then the page itself is the answer, as if the element
+    // had gone altogether.
+    if (doc.activeElement === previous) return;
+  }
+  focusable(page.el).focus?.({ preventScroll: true });
 }
 
 /** A page is only focusable if it says so, so say so for it. */
@@ -60,7 +67,11 @@ function focusable(el: HTMLElement): HTMLElement {
   return el;
 }
 
-/** Called for every page the stack unmounts: a borrowed attribute is not the page's to keep. */
+/**
+ * Called for every page the stack unmounts: a borrowed attribute is not the
+ * page's to keep. A page whose `tabindex` has changed since it was borrowed is
+ * saying the app owns it now, so the borrowing is simply forgotten.
+ */
 export function releaseFocus(el: HTMLElement): void {
-  if (borrowed.delete(el)) el.removeAttribute?.('tabindex');
+  if (borrowed.delete(el) && el.getAttribute?.('tabindex') === '-1') el.removeAttribute?.('tabindex');
 }
