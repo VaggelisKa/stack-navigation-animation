@@ -31,6 +31,7 @@ import {
 import {
   createNativeStack,
   injectStyles,
+  isIOSBrowser,
   segmentsOf,
   type Direction,
   type NativeStack,
@@ -50,6 +51,9 @@ declare const ngDevMode: boolean | undefined;
 
 /** `Node.ELEMENT_NODE`, without the global: a server render has none. */
 const ELEMENT_NODE = 1;
+
+/** How many scrollers one page may have recorded before `watchScroll` sweeps the dead ones. */
+const SCROLL_WATCH_LIMIT = 32;
 
 /** What the stack knows about a page, passed to direction strategies. */
 export interface StackNavRouteRef extends RouteRef {
@@ -460,10 +464,11 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     page.routeRef = this.routeRefOf(route.snapshot, page.key);
     // Placed already: by the resume, or by an interactive pop the router is catching up with.
     const alreadyOnScreen = resumed || (reused && !this.stack.busy && this.stack.top?.el === page.el);
+    const trigger = nav?.trigger ?? 'imperative';
     let direction = this.config.resolve({
       from: from?.routeRef ?? null,
       to: page.routeRef,
-      trigger: nav?.trigger ?? 'imperative',
+      trigger,
       historyDelta: nav?.historyDelta,
       hint: nav?.hint,
       stack: this.entries.map((p) => p.key),
@@ -471,7 +476,17 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     // After a swipe the page beneath is already showing and the one that left
     // is gone. A pop onto anything else has nothing to pop, so just show the page.
     if (!leaving && this.stack.top && direction === 'pop' && !reused) direction = 'replace';
-    const animated = !alreadyOnScreen && this.config.animated() && (nav?.animated ?? true) && (this.entries.length > 0 || !!leaving);
+    // Safari's edge swipe animates its own snapshot of the previous page and
+    // only then fires popstate, so animating the pop as well plays it twice --
+    // the same reason `attachBrowserHistory` defaults `animateHistoryPop` off
+    // there. An explicit `info: { stacknav: { animated: true } }` still wins;
+    // the config predicate is asked last and can only narrow.
+    const animatesByDefault = !(trigger === 'history' && isIOSBrowser());
+    const animated =
+      !alreadyOnScreen &&
+      (this.entries.length > 0 || !!leaving) &&
+      (nav?.animated ?? animatesByDefault) &&
+      this.config.animated({ trigger, from: from?.routeRef ?? null, to: page.routeRef });
 
     const current = this.router.getCurrentNavigation();
     page.url = current ? this.router.serializeUrl(current.finalUrl ?? current.extractedUrl) : this.router.url;
@@ -594,7 +609,17 @@ function watchScroll(el: HTMLElement): Pick<Page, 'scroll' | 'stopScroll'> {
   const scroll = new Map<Element, [number, number]>();
   const onScroll = (e: Event) => {
     const t = e.target as Element | null;
-    if (t && t.nodeType === ELEMENT_NODE) scroll.set(t, [t.scrollTop, t.scrollLeft]);
+    if (!t || t.nodeType !== ELEMENT_NODE) return;
+    // `restoreScroll` is the only other thing that drops dead entries, and it
+    // runs only when the page is reached again: a page that stays on screen for
+    // a long time while its scrollers churn -- a virtual list, a tab strip --
+    // would hold every element it ever scrolled, strongly, until it is popped.
+    // Sweeping is a cheap `isConnected` read per entry, and it happens only
+    // when a scroller new to the map would push it past more entries than a
+    // real page has scrollers, so an ordinary scroll event is still one `set`
+    // and no DOM walk.
+    if (scroll.size >= SCROLL_WATCH_LIMIT && !scroll.has(t)) for (const seen of scroll.keys()) if (!seen.isConnected) scroll.delete(seen);
+    scroll.set(t, [t.scrollTop, t.scrollLeft]);
   };
   el.addEventListener('scroll', onScroll, { capture: true, passive: true });
   return { scroll, stopScroll: () => el.removeEventListener('scroll', onScroll, { capture: true }) };

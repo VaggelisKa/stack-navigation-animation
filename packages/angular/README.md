@@ -135,7 +135,20 @@ For full control, provide `resolveDirection` using the strategy helpers from
 | `animated` | `true` | `false`, `'touch'`, or a predicate can disable animation. |
 
 Set `animated: 'touch'` to animate only when the primary pointer is coarse, or
-pass a function that is evaluated before each navigation.
+pass a function that is evaluated before each navigation. The function is given
+that navigation's `{ trigger, from, to }`, so it can answer per navigation; a
+function taking no arguments still works.
+
+```ts
+provideStackNav({ animated: ({ trigger }) => trigger === 'imperative' });
+```
+
+On an iOS browser a navigation the browser's own back triggered is not
+animated: Safari's edge swipe already animates its snapshot of the previous
+page and fires `popstate` afterwards, so animating the pop too plays it twice.
+That is a default, not a policy: a navigation carrying an explicit
+`info: { stacknav: { animated: true } }` hint still animates. The `animated`
+predicate is asked after both and can only turn animation off.
 
 Transition settings can also be CSS custom properties. CSS wins over the
 matching JavaScript option:
