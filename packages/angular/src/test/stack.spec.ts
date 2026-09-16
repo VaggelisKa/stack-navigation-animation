@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { provideLocationMocks } from '@angular/common/testing';
 import { Component, Directive, viewChild, type OnDestroy } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
@@ -13,7 +14,7 @@ import {
   type Routes,
 } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { provideStackNav, type StackNavConfig } from '../lib/config';
+import { provideStackNav, type StackNavAnimationContext, type StackNavConfig } from '../lib/config';
 import { StackNavHistory } from '../lib/history';
 import { StackNav, type StackNavActivation } from '../lib/stack';
 
@@ -289,6 +290,39 @@ describe('StackNav', () => {
     await go(fixture, router, '/a');
     await go(fixture, router, '/b');
     expect(host.activations.every((a) => !a.animated)).toBe(true);
+  });
+
+  it('asks the app about each navigation, telling it which pages it is between', async () => {
+    const seen: StackNavAnimationContext[] = [];
+    const { fixture, router } = setup({
+      animated: (c) => {
+        seen.push(c);
+        return true;
+      },
+    });
+    await go(fixture, router, '/a');
+    // The first page of a stack never animates, and the question is never put:
+    // the predicate is asked last, only once animating is still possible.
+    expect(seen).toEqual([]);
+
+    await go(fixture, router, '/b');
+    expect(seen.length).toBe(1);
+    expect(seen[0].trigger).toBe('imperative');
+    expect(seen[0].from?.key).toBe('a');
+    expect(seen[0].to.key).toBe('b');
+    // The route refs are the ones the direction strategies were given, numbers
+    // and route data included.
+    expect(seen[0].to.level).toBe(1);
+
+    const navigated = navigationSettled(router);
+    TestBed.inject(Location).back();
+    await navigated;
+    await settle(fixture);
+    // A browser back is a different question, and says so.
+    expect(seen.length).toBe(2);
+    expect(seen[1]).toMatchObject({ trigger: 'history' });
+    expect(seen[1].from?.key).toBe('b');
+    expect(seen[1].to.key).toBe('a');
   });
 
   it('honours the per-navigation `animated: false` hint', async () => {

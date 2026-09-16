@@ -4,11 +4,14 @@ import { provideLocationMocks } from '@angular/common/testing';
 import { Router, RouteReuseStrategy, provideRouter } from '@angular/router';
 import { always, createDirectionResolver, isTouchPrimary } from '@stacknav/core';
 import { describe, expect, it } from 'vitest';
-import { defaultKeyOf, defaultLevelOf, provideStackNav, resolveConfig, STACKNAV_CONFIG } from '../lib/config';
+import { defaultKeyOf, defaultLevelOf, provideStackNav, resolveConfig, STACKNAV_CONFIG, type StackNavAnimationContext } from '../lib/config';
 import { StackNavRouteReuseStrategy } from '../lib/route-reuse-strategy';
 
 @Component({ template: '' })
 class Blank {}
+
+/** The least a navigation can tell the `animated` predicate. */
+const ctx: StackNavAnimationContext = { trigger: 'imperative', from: null, to: { key: '/', segments: [] } };
 
 describe('resolveConfig', () => {
   it('fills in every default an app may leave out', () => {
@@ -22,7 +25,7 @@ describe('resolveConfig', () => {
     expect(c.transition).toEqual({});
     expect(c.levelOf).toBe(defaultLevelOf);
     expect(c.keyOf).toBe(defaultKeyOf);
-    expect(c.animated()).toBe(true);
+    expect(c.animated(ctx)).toBe(true);
     expect(typeof c.resolve).toBe('function');
   });
 
@@ -52,12 +55,23 @@ describe('resolveConfig', () => {
   it('wires `animated: "touch"` to the core\'s own pointer test, and a function straight through', () => {
     expect(resolveConfig({ animated: 'touch' }).animated).toBe(isTouchPrimary);
     let on = false;
-    const animated = resolveConfig({ animated: () => on }).animated;
+    const animated = resolveConfig({ animated: (c) => on && c.trigger === 'imperative' }).animated;
     // Asked again before every navigation, so the app can change its mind.
-    expect(animated()).toBe(false);
+    expect(animated(ctx)).toBe(false);
     on = true;
-    expect(animated()).toBe(true);
-    expect(resolveConfig({ animated: false }).animated()).toBe(false);
+    expect(animated(ctx)).toBe(true);
+    expect(animated({ ...ctx, trigger: 'history' })).toBe(false);
+    expect(resolveConfig({ animated: false }).animated(ctx)).toBe(false);
+  });
+
+  it('still takes a predicate written before this option had a context', () => {
+    // `animated` used to be asked with no arguments. Such a predicate is a
+    // zero-argument function, which JavaScript is happy to call with one, so
+    // it keeps working untouched -- and an app is free to migrate later.
+    const zeroArg = () => false;
+    const animated = resolveConfig({ animated: zeroArg }).animated;
+    expect(animated).toBe(zeroArg);
+    expect(animated(ctx)).toBe(false);
   });
 
   it('reads the route number only when it is a number', () => {
