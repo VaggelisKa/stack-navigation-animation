@@ -11,6 +11,6 @@
     "@stacknav/core": "workspace:*"
   },
   "devDependencies": {
-    "esbuild": "^0.28.0"
+    "esbuild": "catalog:"
   }
 }
