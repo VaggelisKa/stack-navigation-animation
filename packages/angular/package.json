@@ -3,6 +3,13 @@
   "version": "1.0.1",
   "description": "Native-style (iOS and Android) push/pop transitions on Angular's own router outlet, with pages kept alive beneath the top one, built on @stacknav/core.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VaggelisKa/stack-navigation-animation.git",
+    "directory": "packages/angular"
+  },
+  "homepage": "https://github.com/VaggelisKa/stack-navigation-animation/tree/main/packages/angular#readme",
+  "bugs": "https://github.com/VaggelisKa/stack-navigation-animation/issues",
   "keywords": [
     "angular",
     "router",
