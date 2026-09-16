@@ -357,4 +357,42 @@ await page.waitForFunction(() => document.querySelector('lab-home input[value="b
 await page.waitForFunction(() => getComputedStyle(document.documentElement).overscrollBehaviorX === 'auto');
 eq((await policy()).overscroll, 'auto', 'keyboard selection releases viewport suppression');
 
+// ---- 13. an iOS browser must not animate the browser's own back ------------
+// Safari animates its own snapshot of the previous page during the edge swipe
+// and fires popstate afterwards, so a pop of ours on top of that plays the
+// transition twice. The check has to come last: `navigator.platform` is what
+// the engine reads, and the only reliable way to change it is an init script,
+// which stays on the page for the rest of the run.
+section('iOS browser back');
+await page.addInitScript(() => Object.defineProperty(navigator, 'platform', { get: () => 'iPhone' }));
+await deepLink('/');
+await page.waitForSelector('app-home');
+await transitioned(() => page.click('.sn-page-visible a:has-text("Item 3")'), '20-ios-push');
+eq((await state()).url, '/items/3', 'a push still animates on the spoofed iOS browser');
+// The pop still runs -- the page is still removed and the kept one revealed --
+// so what says it was not animated is the timing the container hands CSS, and
+// that the whole thing is over inside the task that started it rather than the
+// 500ms the same back took above.
+await page.evaluate(() => {
+  const outlet = document.querySelector('.sn-container');
+  globalThis.__snSeen = { start: performance.now(), end: 0, durations: [] };
+  globalThis.__snObs = new MutationObserver(() => {
+    globalThis.__snSeen.end = performance.now();
+    globalThis.__snSeen.durations.push(getComputedStyle(outlet).getPropertyValue('--sn-t').trim());
+  });
+  globalThis.__snObs.observe(outlet, { attributes: true, attributeFilter: ['class'], subtree: true });
+});
+await page.goBack();
+await page.waitForFunction(() => location.pathname === '/');
+const iosBack = await state();
+const iosSeen = await page.evaluate(() => (globalThis.__snObs.disconnect(), globalThis.__snSeen));
+const iosElapsed = Math.round(iosSeen.end - iosSeen.start);
+eq(iosBack.pages.join(','), 'app-home', 'browser back still popped to the kept home');
+eq(iosBack.busy, false, 'nothing is animating after the history pop');
+check(
+  iosSeen.durations.length > 0 && iosSeen.durations.every((d) => d === '0s'),
+  `the history pop gave CSS no duration to run (${iosSeen.durations.join(' ') || 'the pop was not seen at all'})`,
+);
+check(iosElapsed < 100, `and was over in ${iosElapsed}ms, not the 500ms of an animated pop`);
+
 await finish();

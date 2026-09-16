@@ -8,9 +8,26 @@ import {
   type DirectionResolver,
   type DirectionStrategy,
   type NativeTransitionOptions,
+  type NavigationTrigger,
+  type RouteRef,
   type SwipeBackMode,
 } from '@stacknav/core';
 import { StackNavRouteReuseStrategy } from './route-reuse-strategy';
+
+/**
+ * What the `animated` predicate is told about the navigation it is asked
+ * about. Kept to what the stack knows for certain before it decides, so the
+ * answer can depend on the navigation rather than only on the device: a
+ * back-button pop and a push to the same page are different questions.
+ */
+export interface StackNavAnimationContext {
+  /** `imperative`: the app navigated. `history`: the browser's back or forward. */
+  trigger: NavigationTrigger;
+  /** the page being left, null when the stack is empty */
+  from: RouteRef | null;
+  /** the page arriving */
+  to: RouteRef;
+}
 
 /** Everything `provideStackNav()` accepts. All optional. */
 export interface StackNavConfig {
@@ -96,14 +113,21 @@ export interface StackNavConfig {
    * `'touch'` animates only where the primary pointer is coarse — a phone or a
    * tablet — and navigates instantly on a desktop, which is the usual reason to
    * ask. A function is asked again before every navigation, so it can decide on
-   * whatever the app knows: a user setting, the window's width, a route.
+   * whatever the app knows: a user setting, the window's width, a route. It is
+   * handed that navigation's `{ trigger, from, to }`; a function that takes no
+   * arguments, which is all this option used to accept, still works.
    *
    * ```ts
    * provideStackNav({ animated: 'touch' });
    * provideStackNav({ animated: () => settings.pageTransitions() });
+   * provideStackNav({ animated: ({ to }) => !to.data?.['instant'] });
    * ```
+   *
+   * This is asked last, and only narrows: it cannot animate a navigation the
+   * stack has already decided against, such as a back-button pop on an iOS
+   * browser, which animates its own snapshot before the router hears about it.
    */
-  animated?: boolean | 'touch' | (() => boolean);
+  animated?: boolean | 'touch' | ((ctx: StackNavAnimationContext) => boolean);
 }
 
 export interface ResolvedStackNavConfig {
@@ -115,8 +139,8 @@ export interface ResolvedStackNavConfig {
   swipeBack: SwipeBackMode;
   injectStyles: boolean;
   manageFocus: boolean;
-  /** Asked before every navigation. */
-  animated: () => boolean;
+  /** Asked before every navigation, with that navigation's context. */
+  animated: (ctx: StackNavAnimationContext) => boolean;
 }
 
 export const STACKNAV_CONFIG = /*#__PURE__*/ new InjectionToken<ResolvedStackNavConfig>('STACKNAV_CONFIG', {
@@ -162,7 +186,9 @@ export function resolveConfig(c: StackNavConfig): ResolvedStackNavConfig {
   };
 }
 
-function resolveAnimated(animated: StackNavConfig['animated']): () => boolean {
+function resolveAnimated(animated: StackNavConfig['animated']): (ctx: StackNavAnimationContext) => boolean {
+  // A predicate written before this option took a context is a zero-argument
+  // function, which ignores the one it is now passed: both shapes call the same.
   if (typeof animated === 'function') return animated;
   if (animated === 'touch') return isTouchPrimary;
   const on = animated ?? true;
