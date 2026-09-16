@@ -13,7 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
+  check:
+    name: Test, build, typecheck, lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -24,7 +25,39 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
-      - run: pnpm typecheck
+      # Before the typechecks: @stacknav/angular resolves @stacknav/core through
+      # the types the core's build emits.
       - run: pnpm build:all
-      - run: pnpm --filter @stacknav/angular-demo exec playwright-core install --with-deps chromium
+      - run: pnpm typecheck
+      - run: pnpm lint
+
+  e2e:
+    # One job per engine, so a failure names the browser that failed instead of
+    # hiding behind the other one.
+    name: e2e (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:all
+      # Only the engine this job runs: WebKit needs system libraries Chromium
+      # does not, and `--with-deps` installs exactly the ones it asks for.
+      - run: pnpm --filter @stacknav/angular-demo exec playwright-core install --with-deps ${{ matrix.browser }}
       - run: pnpm --filter @stacknav/angular-demo e2e
+        env:
+          E2E_BROWSER: ${{ matrix.browser }}
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-shots-${{ matrix.browser }}
+          path: apps/angular-demo/e2e/shots/${{ matrix.browser }}
+          if-no-files-found: ignore

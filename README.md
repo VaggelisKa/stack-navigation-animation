@@ -100,8 +100,14 @@ API, browser-history integration, interactive transitions, and customization.
 ```sh
 pnpm install
 pnpm test
+pnpm typecheck
+pnpm lint
 pnpm build:all
 pnpm e2e
 ```
+
+`pnpm e2e` drives Chromium by default. Set `E2E_BROWSER=webkit` to run the same
+suites on WebKit (CI runs both, one job each); install the engine first with
+`pnpm --filter @stacknav/angular-demo exec playwright-core install webkit`.
 
 Run the demos locally with `pnpm dev:demo` or `pnpm dev:angular`.

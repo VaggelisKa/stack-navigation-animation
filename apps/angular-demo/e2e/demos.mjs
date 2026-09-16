@@ -6,7 +6,7 @@
 import { fileURLToPath } from 'node:url';
 import { launch } from './harness.mjs';
 
-const { page, base, check, eq, section, flush, state, busy, settled, transitioned, scrollTop, setScroll, interactivePop, finish } = await launch();
+const { page, base, check, eq, section, flush, media, state, busy, settled, transitioned, scrollTop, setScroll, interactivePop, finish } = await launch();
 const count = async (sel) => (await flush(), page.locator(sel).count());
 const waitCount = (sel, n) => page.waitForFunction(([sel, n]) => document.querySelectorAll(sel).length >= n, [sel, n], { timeout: 8000 });
 const text = async (sel) => (await flush(), page.locator(sel).first().textContent().then((t) => t?.trim()));
@@ -175,9 +175,9 @@ await page.waitForSelector('app-home');
 await openDemo('Lab');
 await page.click('.sn-page-visible label:has-text("Slow motion")');
 await transitioned(() => page.goBack(), 'lab-back');
-let t0 = Date.now();
+const t0 = Date.now();
 mid = await openDemo('Gallery');
-let elapsed = Date.now() - t0;
+const elapsed = Date.now() - t0;
 check(elapsed > 1500, `slow motion reached the outlet's transition (${elapsed}ms)`);
 await waitCount('.gal-tile:not(.skel-tile)', 30);
 mid = await transitioned(() => page.click('.sn-page-visible .gal-tile[aria-label="Low tide 5"], .sn-page-visible .gal-tile >> nth=4'), 'gallery-photo-mid');
@@ -556,7 +556,7 @@ const homeLight = await colours('.sn-page-visible .page');
 await openDemo('Lab');
 const labLight = await colours('.sn-page-visible .page.lab');
 
-await page.emulateMedia({ colorScheme: 'dark' });
+await media({ colorScheme: 'dark' });
 await flush();
 const labDark = await colours('.sn-page-visible .page.lab');
 for (const part of ['page', 'hdr', 'item']) eq(labDark[part], labLight[part], `the lab's ${part} ignores the dark scheme`);
@@ -564,6 +564,6 @@ await page.screenshot({ path: fileURLToPath(new URL('./shots/lab-dark-scheme.png
 await transitioned(() => page.goBack(), 'demos-dark-scheme');
 const homeDark = await colours('.sn-page-visible .page');
 for (const part of ['page', 'hdr', 'item']) check(homeDark[part] !== homeLight[part], `the demos list follows the dark scheme (${part}: ${homeDark[part]})`);
-await page.emulateMedia({ colorScheme: 'light' });
+await media({ colorScheme: 'light' });
 
 await finish();
