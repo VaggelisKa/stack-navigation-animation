@@ -12,10 +12,10 @@
     "./stacknav.css": "./dist/stacknav.css",
     "./package.json": "./package.json"
   },
-  "files": ["dist", "src"],
+  "files": ["dist", "src", "LICENSE"],
   "sideEffects": ["*.css"],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node scripts/write-css.mjs",
+    "build": "tsc -p tsconfig.build.json && node scripts/write-css.mjs && node ../../scripts/copy-license.mjs",
     "test": "node --test \"test/**/*.test.ts\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "size": "node scripts/size.mjs"

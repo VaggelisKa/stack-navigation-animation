@@ -1,11 +1,11 @@
 // End-to-end check of @stacknav/angular against the built demo (dist/browser).
-// Run `ng build` first. Uses the preinstalled Chromium through playwright-core.
+// Run `ng build` first. Drives the engine `E2E_BROWSER` names (see harness.mjs).
 // This suite covers the router mechanics on the small pages; demos.mjs drives
 // the demo apps.
 import { join } from 'node:path';
 import { launch } from './harness.mjs';
 
-const { page, base, check, eq, section, state, settled, transitioned, interactivePop, scrollTop, shots, finish } = await launch();
+const { page, base, check, eq, section, media, state, settled, transitioned, interactivePop, scrollTop, shots, finish } = await launch();
 
 // A deep link from elsewhere: about:blank first, so no same-origin entry sits behind it.
 const deepLink = async (path) => {
@@ -25,7 +25,7 @@ eq(s.visible.join(','), 'app-home', 'home visible');
 // engine supplies timing. This also lets a preference change stop a run that
 // JavaScript has already started.
 section('reduced motion');
-await page.emulateMedia({ reducedMotion: 'reduce' });
+await media({ reducedMotion: 'reduce' });
 const reducedDuration = await page.evaluate(() => {
   const outlet = document.querySelector('.sn-container');
   const current = outlet.querySelector('.sn-page-visible');
@@ -43,7 +43,7 @@ s = await state();
 eq(s.title, 'Item 3', 'reduced-motion navigation still completes');
 await page.goBack();
 await settled();
-await page.emulateMedia({ reducedMotion: 'no-preference' });
+await media({ reducedMotion: 'no-preference' });
 
 // ---- 2. push from the tree: / -> /items/3 ----------------------------------
 await page.click('text=+');
@@ -318,14 +318,26 @@ const mode = (value) => page.locator(`lab-home input[name="swipe-back"][value="$
 const policy = () => page.evaluate(() => ({
   strip: document.querySelectorAll('.sn-container > .sn-edge').length,
   touch: getComputedStyle(document.querySelector('lab-home')).touchAction,
-  overscroll: getComputedStyle(document.documentElement).overscrollBehaviorX,
+  // `.overscrollBehaviorX` is `undefined` on an engine without the property;
+  // read it by name so an unsupported engine reports '' rather than undefined.
+  overscroll: getComputedStyle(document.documentElement).getPropertyValue('overscroll-behavior-x'),
+  mode: globalThis.__snStack.swipeBack,
   historyLength: history.length,
   url: location.pathname,
 }));
+// WebKit (Safari 26) ships no `overscroll-behavior` at all, so `disabled` mode
+// has nothing to set there: `setProperty` on the root is a no-op and the
+// browser keeps its gesture. That is the library's documented "best effort", so
+// the viewport-policy assertions only run on an engine that has the property;
+// the mode itself, and everything suppression must not break, is checked on both.
+const suppressible = await page.evaluate(() => CSS.supports('overscroll-behavior-x', 'contain'));
+const relaxed = suppressible ? 'auto' : '';
+const policyCheck = (actual, expected, msg) => (suppressible ? eq(actual, expected, msg) : console.log(`skip ${msg} (no overscroll-behavior in this engine)`));
 const initial = await policy();
 eq(initial.strip, 0, 'the library ships no edge strip');
 eq(initial.touch, 'auto', 'no mode claims the page’s touch handling');
-eq(initial.overscroll, 'auto', 'browser mode leaves the document alone');
+eq(initial.mode, 'browser', 'the stack starts in browser mode');
+policyCheck(initial.overscroll, relaxed, 'browser mode leaves the document alone');
 // The mode custom code used to ask for is gone from the API, not just the UI.
 eq(
   await page.evaluate(() => {
@@ -334,9 +346,10 @@ eq(
   'TypeError',
   'custom is no longer a mode',
 );
-eq((await policy()).overscroll, 'auto', 'a refused mode leaves the policy as it was');
+policyCheck((await policy()).overscroll, relaxed, 'a refused mode leaves the policy as it was');
 await mode('disabled').check();
-await page.waitForFunction(() => getComputedStyle(document.documentElement).overscrollBehaviorX === 'contain');
+await page.waitForFunction(() => globalThis.__snStack.swipeBack === 'disabled');
+policyCheck((await policy()).overscroll, 'contain', 'disabled mode suppresses the viewport gesture');
 eq((await policy()).historyLength, initial.historyLength, 'switching modes does not rewrite history');
 await page.screenshot({ path: join(shots, 'swipe-back-modes.png'), fullPage: true });
 // Suppressing the browser gesture must not touch any other way back.
@@ -354,8 +367,9 @@ eq((await state()).url, '/lab', 'an app-driven interactive pop works in disabled
 await mode('disabled').focus();
 await page.keyboard.press('ArrowUp');
 await page.waitForFunction(() => document.querySelector('lab-home input[value="browser"]').checked);
-await page.waitForFunction(() => getComputedStyle(document.documentElement).overscrollBehaviorX === 'auto');
-eq((await policy()).overscroll, 'auto', 'keyboard selection releases viewport suppression');
+await page.waitForFunction(() => globalThis.__snStack.swipeBack === 'browser');
+eq((await policy()).mode, 'browser', 'keyboard selection reaches the stack');
+policyCheck((await policy()).overscroll, relaxed, 'keyboard selection releases viewport suppression');
 
 // ---- 13. an iOS browser must not animate the browser's own back ------------
 // Safari animates its own snapshot of the previous page during the edge swipe

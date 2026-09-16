@@ -4,3 +4,5 @@ out-tsc/
 .angular/
 .DS_Store
 apps/angular-demo/e2e/shots/
+# Copied from the root LICENSE at build time so it ships in the tarball.
+packages/core/LICENSE
