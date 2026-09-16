@@ -111,3 +111,9 @@ suites on WebKit (CI runs both, one job each); install the engine first with
 `pnpm --filter @stacknav/angular-demo exec playwright-core install webkit`.
 
 Run the demos locally with `pnpm dev:demo` or `pnpm dev:angular`.
+
+External dependency versions live in the [pnpm catalog](https://pnpm.io/catalogs)
+in `pnpm-workspace.yaml`; the manifests refer to them as `catalog:`, so a version
+bump happens in one place. `packages/angular`'s `peerDependencies` stay as
+literal ranges on purpose - they are deliberately wider than the versions we
+develop against.

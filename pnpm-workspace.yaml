@@ -1,6 +1,55 @@
 packages:
   - packages/*
   - apps/*
+
+# Single source of truth for external dependency versions across the workspace.
+# Bump a range here and every manifest that refers to it with `catalog:` follows.
+#
+# Publishing: `catalog:` is safe in the published manifests. ng-packagr copies
+# packages/angular/package.json into dist/ verbatim (the `catalog:` and
+# `workspace:` strings survive that copy), but `pnpm pack`/`pnpm publish`
+# rewrites the manifest it packs - including the one under
+# publishConfig.directory - so the tarball carries real ranges. `changeset
+# publish` shells out to `pnpm publish`, so the release script goes through the
+# same rewrite. Verified with `pnpm pack` on both packages.
+#
+# packages/angular's peerDependencies deliberately stay literal: they are wider
+# (^22.0.0, rxjs ^7.4.0) than the versions we develop against, and narrowing
+# them to the catalog range would be a breaking change for consumers.
+catalog:
+  # Angular toolchain - bump these together.
+  '@angular/build': ^22.1.0
+  '@angular/cli': ^22.1.0
+  '@angular/common': ^22.1.0
+  '@angular/compiler': ^22.1.0
+  '@angular/compiler-cli': ^22.1.0
+  '@angular/core': ^22.1.0
+  '@angular/platform-browser': ^22.1.0
+  '@angular/router': ^22.1.0
+  ng-packagr: ^22.1.0
+  rxjs: ^7.8.0
+  tslib: ^2.8.0
+  typescript: ~6.0.0
+  zone.js: ^0.16.0
+
+  # Build and test tooling.
+  '@types/node': ^22.0.0
+  esbuild: ^0.28.0
+  jsdom: ^27.0.0
+  playwright-core: ^1.55.0
+  vitest: ^4.0.8
+
+  # Lint.
+  '@eslint/js': ^10.0.1
+  'angular-eslint': ^22.5.0
+  eslint: ^10.10.0
+  globals: ^17.12.0
+  typescript-eslint: ^8.70.0
+
+  # Release.
+  '@changesets/changelog-github': ^1.0.1
+  '@changesets/cli': ^3.0.2
+
 onlyBuiltDependencies:
   - esbuild
   - '@parcel/watcher'
