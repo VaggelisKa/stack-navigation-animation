@@ -42,6 +42,27 @@
  *   of its own, so that the `z-index` below stays among the pages.
  * - `.sn-container:dir(rtl)`: reading direction is a CSS question, so the
  *   transform the engine writes is signed by `--sn-dir` rather than by JS.
+ *   `:dir()` is the right test -- it asks for the element's own resolved
+ *   directionality, however it was arrived at, `dir=auto` on a page of Arabic
+ *   text included -- but it only landed in Chrome 120 and Safari 16.4, while
+ *   the floor this package supports is the cascade layers one, Chrome 99 /
+ *   Safari 15.4 / Firefox 97. Between the two there are browsers that keep the
+ *   sheet and silently drop this rule, and an RTL stack there swipes and pushes
+ *   the wrong way, so the `dir=rtl` attribute -- how all but a handful of apps
+ *   declare it -- gets a rule of its own for them, matching the container
+ *   either carrying the attribute or sitting under one that does, since the
+ *   attribute does not inherit the way the direction it sets does.
+ * - `@supports not selector(:dir(rtl))`: that fallback, and only where the
+ *   real test is missing. It has to be a rule of its own -- an unknown
+ *   pseudo-class invalidates the entire selector list it appears in, so
+ *   combining the two would drop the fallback on exactly the browsers it is
+ *   for -- and being a separate rule it cannot be overridden by a `:dir()`
+ *   rule that does not match. An attribute is a coarser question than the
+ *   pseudo-class answers: `dir=auto` never matches it, and a `dir=ltr` island
+ *   inside an RTL page matches the descendant form even though the container
+ *   reads LTR. The `@supports` guard keeps that approximation from reaching
+ *   browsers that can do better. Its own support (Chrome 83, Safari 14.1,
+ *   Firefox 69) is below the floor, so no supported browser loses the rule.
  * - `.sn-page`: absolutely fills the container and is its own scroll container.
  *   `visibility: hidden` keeps pages beneath the top
  *   mounted (scroll position, form state) but out of sight and out of the
@@ -89,6 +110,7 @@ export const STACKNAV_CSS =
   '@layer stacknav{' +
   '.sn-container{position:relative;overflow:hidden;isolation:isolate}' +
   '.sn-container:dir(rtl){--sn-dir:-1}' +
+  '@supports not selector(:dir(rtl)){[dir=rtl] .sn-container,.sn-container[dir=rtl]{--sn-dir:-1}}' +
   '.sn-page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;visibility:hidden;transform:translate3d(0,0,0)}' +
   ':where(.sn-page)>*{--sn-t:0s;--sn-e:linear}' +
   '.sn-page-visible{visibility:visible}' +

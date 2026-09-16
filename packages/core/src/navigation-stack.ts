@@ -1,6 +1,15 @@
 import { animationsFinished, commitStyles, cssDuration, cssEasing, tween, type CancellableTween, type Easing } from './animate.ts';
 import { moveFocus, rememberFocus, releaseFocus } from './focus.ts';
 
+/**
+ * Slack added to a phase's own length before the wait for it gives up. It
+ * covers the frames either side of the run that are not in the duration: the
+ * transition starting on the next style resolution, and `finished` settling
+ * after the last one. Ten frames at 60 Hz, so a loaded main thread does not
+ * make the watchdog fire on an animation that is merely late.
+ */
+const WATCHDOG_MARGIN = 150;
+
 /** One mounted page. `key` and `data` belong to the caller; the stack only carries them. */
 export interface StackEntry<T = unknown> {
   el: HTMLElement;
@@ -433,6 +442,19 @@ export class NavigationStack {
    * Hands the run from `from` to `to` over to the browser: commit where the
    * pages are, say how long and on what curve, write where they are going,
    * then wait to be told they arrived. No frame of it is ours.
+   *
+   * The wait is bounded, because the whole stack hangs on it: `busy` stays
+   * true, the click shield stays over the container, and every queued
+   * operation stays queued until it returns. An animation on an element the
+   * browser stops rendering part-way through never reports finishing and is
+   * never cancelled either, and that is enough to strand a stack for good. The
+   * bound is generous rather than tight -- half as long again as the phase,
+   * plus {@link WATCHDOG_MARGIN} for the fixed costs (the transition starts a
+   * frame or two after the write, `finished` settles a frame or two after it
+   * ends) -- because firing it early cuts a real animation short: `_end`
+   * removes the transitioning classes, so the pages jump to where they were
+   * headed. At these numbers only an animation that is not coming back can
+   * lose the race.
    */
   private async _animate(lower: StackEntry | null, upper: StackEntry, from: number, to: number, duration: number, ease: Easing): Promise<void> {
     if (duration <= 0 || from === to) return this._apply(lower, upper, to);
@@ -440,7 +462,9 @@ export class NavigationStack {
     this._timing(duration, ease);
     this.transition.apply(lower, upper, to);
     const ticker = this._ticker(lower, upper, from, to, duration, ease);
-    await animationsFinished([upper.el, lower?.el]);
+    // `undefined` keeps the properties the stylesheet transitions, which is
+    // what `animationsFinished` defaults to; only the watchdog is ours to set.
+    await animationsFinished([upper.el, lower?.el], undefined, duration * 1.5 + WATCHDOG_MARGIN);
     ticker?.cancel();
     this._timing(0);
     this._emit('progress', { lower, upper, p: to });

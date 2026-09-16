@@ -21,6 +21,21 @@ test('the whole sheet is one cascade layer', () => {
   assert.equal(depth, 0, 'the rules inside the layer balance');
 });
 
+// `:dir()` is newer than the sheet's floor (Chrome 120 / Safari 16.4 against
+// Chrome 99 / Safari 15.4), and a browser in between keeps the layer and drops
+// the rule, so an RTL stack there would push and swipe the wrong way. The
+// attribute fallback covers it, but it has to be a rule of its own: an unknown
+// pseudo-class invalidates the whole selector list it is written in.
+test('reading direction has an attribute fallback for browsers without :dir()', () => {
+  assert.match(STACKNAV_CSS, /\.sn-container:dir\(rtl\)\{--sn-dir:-1\}/);
+  const fallback = STACKNAV_CSS.match(/@supports not selector\(:dir\(rtl\)\)\{([^{]*)\{--sn-dir:-1\}\}/);
+  assert.ok(fallback, 'the fallback is guarded by @supports, so it never overrides a :dir() that works');
+  // Both shapes: `dir` does not inherit the way the direction it sets does, so
+  // the container may carry the attribute or sit under something that does.
+  assert.deepEqual(fallback[1].split(','), ['[dir=rtl] .sn-container', '.sn-container[dir=rtl]']);
+  assert.doesNotMatch(fallback[1], /:dir\(/, 'no pseudo-class in the fallback selector list: one unknown item drops all of it');
+});
+
 test('the stylesheet disables browser-owned transitions for reduced motion', () => {
   assert.match(STACKNAV_CSS, /@media\(prefers-reduced-motion:reduce\)\{\.sn-container\{--sn-t:0s!important\}\}/);
   // `!important` outranks the engine's inline `--sn-t` from inside the layer
