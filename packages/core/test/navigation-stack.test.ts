@@ -459,3 +459,40 @@ test('an animated push commits both ends of the phase without forcing layout', a
     'the phase still starts at 0 and ends at 1, so the browser has two states to interpolate',
   );
 });
+
+// A transition on an element the browser stops rendering part-way through
+// leaves an animation that never finishes and is never cancelled. Awaiting it
+// used to strand the stack: busy forever, the click shield up, and every
+// queued operation stuck behind it.
+test('an animation that never finishes does not strand the stack', async () => {
+  const a = el('a'), b = el('b'), c = el('c');
+  await stack.push(a);
+  t.duration = 20; // plus the watchdog margin: this test waits ~180 ms, once
+  // Never settles and never rejects, so only the watchdog can end the wait.
+  const forever = new Promise(() => {});
+  for (const page of [a, b]) page.getAnimations = () => [{ transitionProperty: 'transform', finished: forever }];
+  const pushed = stack.push(b);
+  assert.equal(stack.busy, true);
+  const queued = stack.push(c); // behind the stuck one, to show the queue drains too
+  await pushed;
+  await queued;
+  assert.equal(stack.busy, false);
+  assert.equal(container.classList.contains('sn-busy'), false, 'the click shield comes down');
+  assert.equal(stack.depth, 3);
+  assert.equal(stack.top.el, c);
+});
+
+test('the watchdog does not cut short an animation that is still running', async () => {
+  const a = el('a'), b = el('b');
+  await stack.push(a);
+  t.duration = 20;
+  let finish;
+  const finished = new Promise((resolve) => { finish = resolve; });
+  for (const page of [a, b]) page.getAnimations = () => [{ transitionProperty: 'transform', finished }];
+  const pushed = stack.push(b);
+  await new Promise((r) => setTimeout(r, 40));
+  assert.equal(stack.busy, true, 'still waiting on the animation, well before the watchdog');
+  finish();
+  await pushed;
+  assert.equal(stack.busy, false);
+});

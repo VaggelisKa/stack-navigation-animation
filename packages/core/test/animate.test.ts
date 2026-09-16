@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { commitStyles, cubicBezier, easings, isTouchPrimary, linearEasing, prefersReducedMotion, tween } from '../src/animate.ts';
+import { animationsFinished, commitStyles, cubicBezier, easings, isTouchPrimary, linearEasing, prefersReducedMotion, tween } from '../src/animate.ts';
 
 test('cubicBezier is clamped and passes through the endpoints', () => {
   const f = cubicBezier(0.32, 0.72, 0, 1);
@@ -156,6 +156,53 @@ test('commitStyles resolves style without measuring the box', () => {
     globalThis.getComputedStyle = previous;
   }
   assert.deepEqual(reads, ['element', 'opacity'], 'one property, on the element itself, that cannot depend on geometry');
+});
+
+// ------------------------------------------------------- animationsFinished
+/** An element running one transition on `property`, reporting through `finished`. */
+const animating = (finished: Promise<unknown>, property = 'transform') =>
+  ({ getAnimations: () => [{ transitionProperty: property, finished }] }) as unknown as HTMLElement;
+
+const pending = new Promise<never>(() => {});
+/** Resolves to 'pending' if `promise` has not settled within a couple of macrotasks. */
+const settledSoon = (promise: Promise<unknown>) =>
+  Promise.race([promise.then(() => 'settled'), new Promise((r) => setTimeout(() => r('pending'), 20))]);
+
+test('animationsFinished waits only for the named properties, and for nothing without them', async () => {
+  assert.equal(await settledSoon(animationsFinished([null, undefined, {} as HTMLElement])), 'settled', 'nothing running');
+  assert.equal(await settledSoon(animationsFinished([animating(pending, 'width')])), 'settled', 'a property nobody asked about');
+  assert.equal(await settledSoon(animationsFinished([animating(pending)])), 'pending');
+});
+
+// The stack hangs on this wait, so an animation that never reports back must
+// not hold it for the lifetime of the tab.
+test('animationsFinished gives up after its timeout', async () => {
+  const started = Date.now();
+  await animationsFinished([animating(pending)], undefined, 30);
+  assert.ok(Date.now() - started >= 25, `waited ${Date.now() - started}ms`);
+  assert.equal(await settledSoon(animationsFinished([animating(pending)], undefined, 0)), 'pending', 'no timeout means wait');
+});
+
+test('a finished animation wins the race and leaves no timer behind', async () => {
+  const timers = new Set<unknown>();
+  const [setT, clearT] = [globalThis.setTimeout, globalThis.clearTimeout];
+  globalThis.setTimeout = ((fn: () => void, ms: number) => {
+    const id = setT(fn, ms);
+    timers.add(id);
+    return id;
+  }) as typeof setTimeout;
+  globalThis.clearTimeout = ((id: unknown) => {
+    timers.delete(id);
+    return clearT(id as Parameters<typeof clearTimeout>[0]);
+  }) as typeof clearTimeout;
+  try {
+    // A rejected `finished` is an interrupted animation, which counts as finished.
+    await animationsFinished([animating(Promise.resolve()), animating(Promise.reject(new Error('interrupted')), 'opacity')], undefined, 60_000);
+    assert.equal(timers.size, 0, 'the watchdog timer is cleared, so it neither fires nor holds the process open');
+  } finally {
+    globalThis.setTimeout = setT;
+    globalThis.clearTimeout = clearT;
+  }
 });
 
 test('commitStyles is a no-op where there is no getComputedStyle', () => {

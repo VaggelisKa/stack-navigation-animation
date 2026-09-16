@@ -179,8 +179,21 @@ export function commitStyles(el: HTMLElement): void {
  *
  * Only the named properties are waited on, so an app is free to keep its own
  * animation running on a page without stalling the stack.
+ *
+ * `timeout` (ms) is a watchdog: the wait also ends after that long, whatever
+ * the animations say. Nothing here can promise that `finished` settles. A
+ * transition on an element the browser stops rendering mid-run -- a page hidden
+ * by an app's own CSS, a container detached and re-attached, a `display` change
+ * on an ancestor -- leaves an animation that neither finishes nor is cancelled,
+ * and a caller awaiting it waits for the lifetime of the tab. The caller stays
+ * in charge of the number, because only it knows how long the run should have
+ * taken. Zero, the default, waits forever.
  */
-export function animationsFinished(els: Array<HTMLElement | null | undefined>, properties: readonly string[] = ['transform', 'opacity']): Promise<void> {
+export function animationsFinished(
+  els: Array<HTMLElement | null | undefined>,
+  properties: readonly string[] = ['transform', 'opacity'],
+  timeout = 0,
+): Promise<void> {
   const running: Array<Promise<unknown>> = [];
   for (const el of els) {
     if (typeof el?.getAnimations !== 'function') continue;
@@ -189,7 +202,13 @@ export function animationsFinished(els: Array<HTMLElement | null | undefined>, p
       if (property && properties.includes(property)) running.push(animation.finished.catch(() => {}));
     }
   }
-  return running.length ? Promise.all(running).then(() => {}) : Promise.resolve();
+  if (!running.length) return Promise.resolve();
+  const all = Promise.all(running).then(() => {});
+  if (!(timeout > 0)) return all;
+  // The timer is cleared on both outcomes, so the normal path -- the animations
+  // winning the race, every time -- leaves nothing pending behind it.
+  let timer: ReturnType<typeof setTimeout>;
+  return Promise.race([all, new Promise<void>((resolve) => { timer = setTimeout(resolve, timeout); })]).finally(() => clearTimeout(timer));
 }
 
 /** `matchMedia`, and false where there is none: a server, a test. */
