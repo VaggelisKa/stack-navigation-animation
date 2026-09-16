@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ES2022",
+    "module": "preserve",
     "moduleResolution": "bundler",
     "lib": ["ES2022", "DOM"],
     "strict": true,
@@ -13,19 +13,19 @@
     "esModuleInterop": true,
     "experimentalDecorators": false,
     "importHelpers": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "inlineSources": true,
-    "types": []
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "types": ["vitest/globals"],
+    "paths": {
+      // The tests run before anything is built, so they read the core's source
+      // rather than the `dist` its package.json points at.
+      "@stacknav/core": ["../core/src/index.ts"]
+    }
   },
   "angularCompilerOptions": {
     "strictTemplates": true,
     "strictInjectionParameters": true,
-    "strictInputAccessModifiers": true,
-    "compilationMode": "partial"
+    "strictInputAccessModifiers": true
   },
-  "files": ["src/public-api.ts"],
-  "include": ["src/**/*.ts"],
-  "exclude": ["**/*.spec.ts", "src/test/**"]
+  "include": ["src/**/*.ts"]
 }

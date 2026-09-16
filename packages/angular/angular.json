@@ -1,0 +1,35 @@
+{
+  "$schema": "../../node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "cli": { "analytics": false, "cache": { "enabled": false } },
+  "projects": {
+    "stacknav-angular": {
+      "projectType": "library",
+      "root": "",
+      "sourceRoot": "src",
+      "prefix": "sn",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "src/public-api.ts",
+            "tsConfig": "tsconfig.spec.json",
+            "polyfills": []
+          },
+          "configurations": { "development": { "optimization": false } },
+          "defaultConfiguration": "development"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "runner": "vitest",
+            "tsConfig": "tsconfig.spec.json",
+            "include": ["test/**/*.spec.ts"],
+            "providersFile": "src/test/test-providers.ts",
+            "watch": false
+          }
+        }
+      }
+    }
+  }
+}
