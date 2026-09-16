@@ -1,5 +1,30 @@
 # @stacknav/angular
 
+## 1.0.1
+
+### Patch Changes
+
+- [#45](https://github.com/VaggelisKa/stack-navigation-animation/pull/45) [`6f13365`](https://github.com/VaggelisKa/stack-navigation-animation/commit/6f1336582d3b25045242d959b638a80167a65825) - Stop double-animating the browser's back button on iOS. Safari animates its own snapshot of the previous page during the edge swipe and only then fires `popstate`, so the pop the outlet ran on top of that played the transition a second time; `@stacknav/core`'s `attachBrowserHistory` has always defaulted `animateHistoryPop` off there, and the directive now agrees. A history-triggered navigation on an iOS browser is no longer animated by default, and a navigation that asks for it with `info: { stacknav: { animated: true } }` still is.
+  
+  The `animated` option's predicate now receives the navigation it is being asked about — `{ trigger, from, to }` — so an app can decide per navigation rather than only per device. A predicate that takes no arguments, which is all the option accepted before, keeps working unchanged.
+  
+  `watchScroll` also prunes itself. It records a scroll offset per scroller in a page, and only `restoreScroll` dropped elements the page had replaced, which runs when the page is reached again: a page that stays on screen for a long time while its scrollers churn — a virtual list, a tab strip — held every element it had ever scrolled. Recording now sweeps disconnected elements once the map outgrows any real page's scroller count, without walking the DOM on the scroll path.
+
+- [#47](https://github.com/VaggelisKa/stack-navigation-animation/pull/47) [`497eaf9`](https://github.com/VaggelisKa/stack-navigation-animation/commit/497eaf975a7cd559ab0a1330674845a35fbb40ee) - Both packages now ship the MIT `LICENSE` inside their tarball and are published
+  with npm provenance. The manifests have always said MIT, but the file the terms
+  actually live in was only in the repository: anyone reading the package from a
+  `node_modules` directory, a vendored copy or an offline mirror had the badge and
+  not the text. The release workflow now signs each publish, so npm can show what
+  commit and what workflow run a version was built from.
+
+- [#50](https://github.com/VaggelisKa/stack-navigation-animation/pull/50) [`91170f1`](https://github.com/VaggelisKa/stack-navigation-animation/commit/91170f164f987f786dad933031a4cecba753c37a) - Back animates again. The previous release stopped animating any history-triggered navigation on an iOS browser, to avoid doubling up on the snapshot Safari slides across during its edge-swipe gesture. The reasoning held only for the swipe, and `popstate` never says that is what happened: the edge swipe, the browser's own Back button and an app calling `location.back()` from a back button of its own all reach the page as one event with one shape. Refusing all three to spare the one left every back in the app an instant cut with nothing moving, which is much the worse trade. It reached further than iPhones, too -- `isIOSBrowser()` answers for iPadOS as well, which reports itself as `MacIntel`, so any Mac reporting touch points was caught by a rule about a gesture it does not have.
+  
+  Every navigation animates by default again. An app that does want the swipe handled can say so itself, in the `animated` predicate, which is told what triggered the navigation: `animated: ({ trigger }) => !(trigger === 'history' && isIOSBrowser())`.
+  
+  `@stacknav/core`'s `attachBrowserHistory` still defaults `animateHistoryPop` to off on iOS browsers. That default predates this and is documented, so it is left alone, but it rests on the same reasoning and an app driving the stack itself may want to pass `animateHistoryPop: true`.
+- Updated dependencies [[`497eaf9`](https://github.com/VaggelisKa/stack-navigation-animation/commit/497eaf975a7cd559ab0a1330674845a35fbb40ee), [`e40760c`](https://github.com/VaggelisKa/stack-navigation-animation/commit/e40760c97b1e927be8f929f5b66196676786efa9)]:
+  - @stacknav/core@0.6.1
+
 ## 1.0.0
 
 ### Major Changes
