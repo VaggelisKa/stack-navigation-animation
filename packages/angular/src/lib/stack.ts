@@ -31,7 +31,6 @@ import {
 import {
   createNativeStack,
   injectStyles,
-  isIOSBrowser,
   segmentsOf,
   type Direction,
   type NativeStack,
@@ -476,16 +475,23 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     // After a swipe the page beneath is already showing and the one that left
     // is gone. A pop onto anything else has nothing to pop, so just show the page.
     if (!leaving && this.stack.top && direction === 'pop' && !reused) direction = 'replace';
-    // Safari's edge swipe animates its own snapshot of the previous page and
-    // only then fires popstate, so animating the pop as well plays it twice --
-    // the same reason `attachBrowserHistory` defaults `animateHistoryPop` off
-    // there. An explicit `info: { stacknav: { animated: true } }` still wins;
-    // the config predicate is asked last and can only narrow.
-    const animatesByDefault = !(trigger === 'history' && isIOSBrowser());
+    // A navigation animates unless something says not to: the hint carried on
+    // the navigation, then the app's own predicate, asked last and able only to
+    // narrow. Nothing here treats the browser's back button as a special case.
+    // iOS Safari does animate a snapshot of its own during an edge swipe, and a
+    // pop on top of that plays the transition twice -- but `popstate` reports
+    // only that history moved, never what moved it. The edge swipe, the
+    // toolbar's back button and an app calling `location.back()` from a back
+    // button of its own arrive as one event with one shape, and the last of
+    // those is how most apps go back, with nothing animating underneath it.
+    // Refusing all three to spare the one leaves every back button dead, which
+    // is the worse trade by far. An app that wants the swipe case handled can
+    // say so now that the predicate is told what triggered the navigation:
+    // `animated: ({ trigger }) => !(trigger === 'history' && isIOSBrowser())`.
     const animated =
       !alreadyOnScreen &&
       (this.entries.length > 0 || !!leaving) &&
-      (nav?.animated ?? animatesByDefault) &&
+      (nav?.animated ?? true) &&
       this.config.animated({ trigger, from: from?.routeRef ?? null, to: page.routeRef });
 
     const current = this.router.getCurrentNavigation();

@@ -371,42 +371,74 @@ await page.waitForFunction(() => globalThis.__snStack.swipeBack === 'browser');
 eq((await policy()).mode, 'browser', 'keyboard selection reaches the stack');
 policyCheck((await policy()).overscroll, relaxed, 'keyboard selection releases viewport suppression');
 
-// ---- 13. an iOS browser must not animate the browser's own back ------------
-// Safari animates its own snapshot of the previous page during the edge swipe
-// and fires popstate afterwards, so a pop of ours on top of that plays the
-// transition twice. The check has to come last: `navigator.platform` is what
-// the engine reads, and the only reliable way to change it is an init script,
-// which stays on the page for the rest of the run.
-section('iOS browser back');
+// ---- 13. a pop must still move, whoever asked for it -----------------------
+// The pop is the half of the animation an app sees most, and popstate is how
+// most backs arrive: the browser's own button, and an app's own button calling
+// `location.back()`. Both have to move pixels. It is checked on a browser
+// spoofed as iOS, because that is where a rule meant for Safari's edge swipe --
+// which draws a snapshot of its own, and reaches the page as the same event as
+// every other back -- once turned every pop into an instant cut. What follows
+// asserts the motion rather than the state on purpose: a stack that jumps
+// straight to the end still mounts, unmounts and settles exactly like one that
+// animates, so nothing above this line can tell them apart. The spoof comes
+// last in the file: `navigator.platform` is what the engine reads, an init
+// script is the only reliable way to change it, and it stays for the rest of
+// the run.
+section("a pop moves, on the browser back and the app's own");
 await page.addInitScript(() => Object.defineProperty(navigator, 'platform', { get: () => 'iPhone' }));
 await deepLink('/');
 await page.waitForSelector('app-home');
-await transitioned(() => page.click('.sn-page-visible a:has-text("Item 3")'), '20-ios-push');
-eq((await state()).url, '/items/3', 'a push still animates on the spoofed iOS browser');
-// The pop still runs -- the page is still removed and the kept one revealed --
-// so what says it was not animated is the timing the container hands CSS, and
-// that the whole thing is over inside the task that started it rather than the
-// 500ms the same back took above.
-await page.evaluate(() => {
-  const outlet = document.querySelector('.sn-container');
-  globalThis.__snSeen = { start: performance.now(), end: 0, durations: [] };
-  globalThis.__snObs = new MutationObserver(() => {
-    globalThis.__snSeen.end = performance.now();
-    globalThis.__snSeen.durations.push(getComputedStyle(outlet).getPropertyValue('--sn-t').trim());
+
+/**
+ * Runs `act` and reports how far the page on top travelled, and on what
+ * timing. The sampler decides for itself when it is finished -- it runs until
+ * it has seen the container go busy and come back -- because the driver cannot:
+ * asking from out here whether the stack has settled can arrive before the
+ * transition has even begun, and on WebKit it does.
+ */
+const motion = async (act) => {
+  await page.evaluate(() => {
+    const outlet = document.querySelector('.sn-container');
+    const m = (globalThis.__snMotion = { durations: [], xs: [], started: false, done: false });
+    const deadline = performance.now() + 4000;
+    const tick = () => {
+      const busy = outlet.classList.contains('sn-busy');
+      const upper = outlet.querySelector('.sn-page-upper');
+      if (upper) {
+        m.durations.push(getComputedStyle(outlet).getPropertyValue('--sn-t').trim());
+        m.xs.push(new DOMMatrixReadOnly(getComputedStyle(upper).transform).m41);
+      }
+      m.started ||= busy;
+      if ((m.started && !busy) || performance.now() > deadline) return void (m.done = true);
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
   });
-  globalThis.__snObs.observe(outlet, { attributes: true, attributeFilter: ['class'], subtree: true });
-});
-await page.goBack();
-await page.waitForFunction(() => location.pathname === '/');
-const iosBack = await state();
-const iosSeen = await page.evaluate(() => (globalThis.__snObs.disconnect(), globalThis.__snSeen));
-const iosElapsed = Math.round(iosSeen.end - iosSeen.start);
-eq(iosBack.pages.join(','), 'app-home', 'browser back still popped to the kept home');
-eq(iosBack.busy, false, 'nothing is animating after the history pop');
-check(
-  iosSeen.durations.length > 0 && iosSeen.durations.every((d) => d === '0s'),
-  `the history pop gave CSS no duration to run (${iosSeen.durations.join(' ') || 'the pop was not seen at all'})`,
-);
-check(iosElapsed < 100, `and was over in ${iosElapsed}ms, not the 500ms of an animated pop`);
+  await act();
+  await page.waitForFunction(() => globalThis.__snMotion.done);
+  return page.evaluate(() => {
+    const m = globalThis.__snMotion;
+    return {
+      frames: m.xs.length,
+      travel: m.xs.length ? Math.round(Math.max(...m.xs) - Math.min(...m.xs)) : 0,
+      durations: [...new Set(m.durations)],
+    };
+  });
+};
+
+for (const [label, act] of [
+  ["the browser's own back", () => page.goBack()],
+  ["an in-app back button calling location.back()", () => page.click('.sn-page-visible button:has-text("Back")')],
+]) {
+  await transitioned(() => page.click('.sn-page-visible a:has-text("Item 3")'), null);
+  eq((await state()).url, '/items/3', 'pushed a page for the pop to take back off');
+  const m = await motion(act);
+  eq((await state()).url, '/', `${label} popped back to home`);
+  check(m.travel > 100, `${label} slid the page out (${m.travel}px across ${m.frames} frames)`);
+  check(
+    m.durations.some((d) => d && d !== '0s'),
+    `and handed CSS a duration to run it with (${m.durations.join(' ') || 'the pop was never seen'})`,
+  );
+}
 
 await finish();

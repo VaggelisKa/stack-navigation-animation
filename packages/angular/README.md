@@ -143,12 +143,24 @@ function taking no arguments still works.
 provideStackNav({ animated: ({ trigger }) => trigger === 'imperative' });
 ```
 
-On an iOS browser a navigation the browser's own back triggered is not
-animated: Safari's edge swipe already animates its snapshot of the previous
-page and fires `popstate` afterwards, so animating the pop too plays it twice.
-That is a default, not a policy: a navigation carrying an explicit
-`info: { stacknav: { animated: true } }` hint still animates. The `animated`
-predicate is asked after both and can only turn animation off.
+Every navigation animates by default, including one the browser's Back button
+triggered. If you want to skip the transitions the browser already draws for
+itself, the trigger is there to ask about. iOS Safari animates a snapshot of
+the previous page during its edge swipe, so a pop on top of that plays twice:
+
+```ts
+import { isIOSBrowser } from '@stacknav/core';
+
+provideStackNav({
+  animated: ({ trigger }) => !(trigger === 'history' && isIOSBrowser()),
+});
+```
+
+stacknav does not do this for you, because `popstate` does not say what moved
+history. The edge swipe, the browser's own Back button and an app calling
+`location.back()` from a back button of its own all arrive as the same event,
+and only the first has anything animating beneath it. Which trade your app
+wants is yours to pick.
 
 Transition settings can also be CSS custom properties. CSS wins over the
 matching JavaScript option:

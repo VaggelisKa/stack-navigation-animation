@@ -123,9 +123,22 @@ export interface StackNavConfig {
    * provideStackNav({ animated: ({ to }) => !to.data?.['instant'] });
    * ```
    *
-   * This is asked last, and only narrows: it cannot animate a navigation the
-   * stack has already decided against, such as a back-button pop on an iOS
-   * browser, which animates its own snapshot before the router hears about it.
+   * This is asked last, and only narrows: it cannot animate a navigation an
+   * explicit `info: { stacknav: { animated: false } }` hint has already ruled
+   * out. Knowing the trigger is what lets an app turn off the transitions the
+   * browser is already drawing for itself -- iOS Safari animates a snapshot of
+   * the previous page during its edge swipe, and a pop on top of that plays
+   * twice:
+   *
+   * ```ts
+   * import { isIOSBrowser } from '@stacknav/core';
+   * provideStackNav({ animated: ({ trigger }) => !(trigger === 'history' && isIOSBrowser()) });
+   * ```
+   *
+   * That is a decision only the app can make, because `popstate` does not say
+   * what moved history: the swipe, the toolbar button and the app's own
+   * `location.back()` all arrive the same way, and only the first of them has
+   * anything animating underneath it.
    */
   animated?: boolean | 'touch' | ((ctx: StackNavAnimationContext) => boolean);
 }
