@@ -1,5 +1,15 @@
 # @stacknav/core
 
+## 0.6.2
+
+### Patch Changes
+
+- [#51](https://github.com/VaggelisKa/stack-navigation-animation/pull/51) [`c189b9e`](https://github.com/VaggelisKa/stack-navigation-animation/commit/c189b9ef93c760395897c50164b6b7766b2032fb) - Point the published manifests at the repository. npm rejects a provenance
+  attestation whose `repository.url` does not match the repository that built the
+  tarball, and both manifests had no `repository` field at all, so the 0.6.1 /
+  1.0.1 publish failed with E422. The packages now carry `repository`, `homepage`
+  and `bugs`.
+
 ## 0.6.1
 
 ### Patch Changes
