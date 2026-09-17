@@ -1,4 +1,12 @@
-import { animationsFinished, commitStyles, cssDuration, cssEasing, tween, type CancellableTween, type Easing } from './animate.ts';
+import {
+  animationsFinished,
+  commitStyles,
+  cssDuration,
+  cssEasing,
+  tween,
+  type CancellableTween,
+  type Easing,
+} from './animate.ts';
 import { moveFocus, rememberFocus, releaseFocus } from './focus.ts';
 
 /**
@@ -57,12 +65,38 @@ export interface MountOptions<T = unknown> {
   source?: NavigationSource;
 }
 
-export interface PushEvent { entry: StackEntry; entries: StackEntry[]; source: NavigationSource }
-export interface PopEvent { entry: StackEntry; removed: StackEntry[]; entries: StackEntry[]; source: NavigationSource }
-export interface ReplaceEvent { entry: StackEntry; removed: StackEntry[]; entries: StackEntry[]; source: NavigationSource }
-export interface ResetEvent { entries: StackEntry[]; removed: StackEntry[]; source: NavigationSource }
-export interface TransitionEvent { lower: StackEntry | null; upper: StackEntry; kind: TransitionKind }
-export interface ProgressEvent { lower: StackEntry | null; upper: StackEntry; p: number }
+export interface PushEvent {
+  entry: StackEntry;
+  entries: StackEntry[];
+  source: NavigationSource;
+}
+export interface PopEvent {
+  entry: StackEntry;
+  removed: StackEntry[];
+  entries: StackEntry[];
+  source: NavigationSource;
+}
+export interface ReplaceEvent {
+  entry: StackEntry;
+  removed: StackEntry[];
+  entries: StackEntry[];
+  source: NavigationSource;
+}
+export interface ResetEvent {
+  entries: StackEntry[];
+  removed: StackEntry[];
+  source: NavigationSource;
+}
+export interface TransitionEvent {
+  lower: StackEntry | null;
+  upper: StackEntry;
+  kind: TransitionKind;
+}
+export interface ProgressEvent {
+  lower: StackEntry | null;
+  upper: StackEntry;
+  p: number;
+}
 
 export interface StackEvents {
   push: PushEvent;
@@ -117,8 +151,14 @@ export class NavigationStack {
   private _queue: Array<{ run: () => void; cancel: () => void }> = [];
   private _listeners = new Map<string, Set<Listener<unknown>>>();
 
-  constructor({ container, transition, pageClass = 'sn-page', manageFocus = false }: NavigationStackOptions) {
-    if (!container || !transition) throw new Error('NavigationStack needs { container, transition }');
+  constructor({
+    container,
+    transition,
+    pageClass = 'sn-page',
+    manageFocus = false,
+  }: NavigationStackOptions) {
+    if (!container || !transition)
+      throw new Error('NavigationStack needs { container, transition }');
     this.container = container;
     this.transition = transition;
     this.pageClass = pageClass;
@@ -141,7 +181,11 @@ export class NavigationStack {
   }
   /** The entry holding `el`, or the entry with `key`, if either is mounted. */
   entryOf(elOrKey: HTMLElement | string): StackEntry | null {
-    return this.entries.find((e) => (typeof elOrKey === 'string' ? e.key === elOrKey : e.el === elOrKey)) || null;
+    return (
+      this.entries.find((e) =>
+        typeof elOrKey === 'string' ? e.key === elOrKey : e.el === elOrKey,
+      ) || null
+    );
   }
 
   on<K extends keyof StackEvents>(event: K, fn: Listener<StackEvents[K]>): () => void {
@@ -164,7 +208,10 @@ export class NavigationStack {
    * once the transition has finished. An element already mounted lower in the
    * stack is moved to the top.
    */
-  push<T = unknown>(elOrFactory: HTMLElement | (() => HTMLElement), { animated = true, data = null, key = null, source = 'api' }: MountOptions<T> = {}): Promise<StackEntry> {
+  push<T = unknown>(
+    elOrFactory: HTMLElement | (() => HTMLElement),
+    { animated = true, data = null, key = null, source = 'api' }: MountOptions<T> = {},
+  ): Promise<StackEntry> {
     return this._run(async () => {
       const el = typeof elOrFactory === 'function' ? elOrFactory() : elOrFactory;
       this._remember();
@@ -186,7 +233,10 @@ export class NavigationStack {
   }
 
   /** Pops until `depth` entries remain (≥ 1). Intermediate pages are removed without animation. */
-  popTo(depth: number, { animated = true, source = 'api' }: { animated?: boolean; source?: NavigationSource } = {}): Promise<StackEntry | null> {
+  popTo(
+    depth: number,
+    { animated = true, source = 'api' }: { animated?: boolean; source?: NavigationSource } = {},
+  ): Promise<StackEntry | null> {
     return this._run(async () => {
       if (depth < 1 || this.entries.length <= depth) return null;
       return this._popRevealing(depth, animated, source);
@@ -200,7 +250,10 @@ export class NavigationStack {
    * exists (for example a fresh instance after a deep link) still arrives with
    * a pop.
    */
-  popWith<T = unknown>(el: HTMLElement, { animated = true, data = null, key = null, source = 'api' }: MountOptions<T> = {}): Promise<StackEntry | null> {
+  popWith<T = unknown>(
+    el: HTMLElement,
+    { animated = true, data = null, key = null, source = 'api' }: MountOptions<T> = {},
+  ): Promise<StackEntry | null> {
     return this._run(async () => {
       if (!this.entries.length) {
         const entry = this._mount(el, 0, data, key);
@@ -221,7 +274,10 @@ export class NavigationStack {
   }
 
   /** Swaps the top page for `el` without animation. Returns the removed entry. */
-  replace<T = unknown>(el: HTMLElement, { data = null, key = null, source = 'api' }: MountOptions<T> = {}): Promise<StackEntry | null> {
+  replace<T = unknown>(
+    el: HTMLElement,
+    { data = null, key = null, source = 'api' }: MountOptions<T> = {},
+  ): Promise<StackEntry | null> {
     return this._run(async () => {
       const old = this.top;
       if (old && old.el === el) return null;
@@ -241,14 +297,21 @@ export class NavigationStack {
    * Convenience for ports that already resolved the direction: `push`, `pop`
    * (via `popWith`) or `replace`.
    */
-  present<T = unknown>(el: HTMLElement, direction: 'push' | 'pop' | 'replace', opts: MountOptions<T> = {}): Promise<StackEntry | null> {
+  present<T = unknown>(
+    el: HTMLElement,
+    direction: 'push' | 'pop' | 'replace',
+    opts: MountOptions<T> = {},
+  ): Promise<StackEntry | null> {
     if (direction === 'pop') return this.popWith(el, opts);
     if (direction === 'replace') return this.replace(el, opts);
     return this.push(el, opts);
   }
 
   /** Removes a mounted page without animation, wherever it sits. Returns its entry, or null. */
-  remove(el: HTMLElement, { source = 'api' }: { source?: NavigationSource } = {}): Promise<StackEntry | null> {
+  remove(
+    el: HTMLElement,
+    { source = 'api' }: { source?: NavigationSource } = {},
+  ): Promise<StackEntry | null> {
     return this._run(async () => {
       const revealing = this.top?.el === el;
       const entry = this._forget(el);
@@ -261,7 +324,10 @@ export class NavigationStack {
   }
 
   /** Replaces the whole stack without animation. Returns the removed entries. */
-  reset(elements: HTMLElement[], { source = 'api' }: { source?: NavigationSource } = {}): Promise<StackEntry[]> {
+  reset(
+    elements: HTMLElement[],
+    { source = 'api' }: { source?: NavigationSource } = {},
+  ): Promise<StackEntry[]> {
     return this._run(async () => {
       const removed: StackEntry[] = [];
       while (this.entries.length) removed.push(this._unmount(this.entries.pop()!));
@@ -304,7 +370,13 @@ export class NavigationStack {
         this._settle();
         if (complete) this._focus(true);
         this._setBusy(false);
-        if (complete) this._emit('pop', { entry: upper, removed: [upper], entries: this.entries.slice(), source: 'gesture' });
+        if (complete)
+          this._emit('pop', {
+            entry: upper,
+            removed: [upper],
+            entries: this.entries.slice(),
+            source: 'gesture',
+          });
         this._drain();
       },
     };
@@ -340,7 +412,8 @@ export class NavigationStack {
   /** Serializes operations: while a transition runs, later calls wait their turn. */
   private _run<R>(fn: () => Promise<R>): Promise<R> {
     return new Promise<R>((resolve, reject) => {
-      const cancel = () => reject(new DOMException('NavigationStack has been destroyed', 'AbortError'));
+      const cancel = () =>
+        reject(new DOMException('NavigationStack has been destroyed', 'AbortError'));
       if (this._destroyed) return cancel();
       const task = async () => {
         this._setBusy(true);
@@ -361,7 +434,11 @@ export class NavigationStack {
     if (!this._destroyed && !this.busy && this._queue.length) this._queue.shift()!.run();
   }
 
-  private async _popRevealing(depth: number, animated: boolean, source: NavigationSource): Promise<StackEntry> {
+  private async _popRevealing(
+    depth: number,
+    animated: boolean,
+    source: NavigationSource,
+  ): Promise<StackEntry> {
     const upper = this.entries.pop()!; // the visible page: it animates out
     const removed: StackEntry[] = [];
     while (this.entries.length > depth) removed.push(this._unmount(this.entries.pop()!)); // intermediate pages: removed without animation
@@ -375,7 +452,13 @@ export class NavigationStack {
     return upper;
   }
 
-  private _mount(el: HTMLElement, index: number, data: unknown, key: string | null, before: HTMLElement | null = null): StackEntry {
+  private _mount(
+    el: HTMLElement,
+    index: number,
+    data: unknown,
+    key: string | null,
+    before: HTMLElement | null = null,
+  ): StackEntry {
     el.classList.add(this.pageClass);
     if (before) this.container.insertBefore(el, before);
     else if (el.parentElement !== this.container) this.container.append(el);
@@ -456,7 +539,14 @@ export class NavigationStack {
    * headed. At these numbers only an animation that is not coming back can
    * lose the race.
    */
-  private async _animate(lower: StackEntry | null, upper: StackEntry, from: number, to: number, duration: number, ease: Easing): Promise<void> {
+  private async _animate(
+    lower: StackEntry | null,
+    upper: StackEntry,
+    from: number,
+    to: number,
+    duration: number,
+    ease: Easing,
+  ): Promise<void> {
     if (duration <= 0 || from === to) return this._apply(lower, upper, to);
     commitStyles(upper.el);
     this._timing(duration, ease);
@@ -477,15 +567,42 @@ export class NavigationStack {
    * reading `--sn-t` / `--sn-e` and the `sn-page-upper` / `sn-page-lower`
    * classes in CSS, which keeps it on the compositor too.
    */
-  private _ticker(lower: StackEntry | null, upper: StackEntry, from: number, to: number, duration: number, ease: Easing): CancellableTween | null {
+  private _ticker(
+    lower: StackEntry | null,
+    upper: StackEntry,
+    from: number,
+    to: number,
+    duration: number,
+    ease: Easing,
+  ): CancellableTween | null {
     if (!this._listeners.get('progress')?.size) return null;
-    return tween({ from, to, duration, ease, onUpdate: (p) => this._emit('progress', { lower, upper, p }) });
+    return tween({
+      from,
+      to,
+      duration,
+      ease,
+      onUpdate: (p) => this._emit('progress', { lower, upper, p }),
+    });
   }
 
-  private async _transition(lower: StackEntry | null, upper: StackEntry, from: number, to: number, animated: boolean, kind: TransitionKind): Promise<void> {
+  private async _transition(
+    lower: StackEntry | null,
+    upper: StackEntry,
+    from: number,
+    to: number,
+    animated: boolean,
+    kind: TransitionKind,
+  ): Promise<void> {
     this._begin(lower, upper, kind);
     this._apply(lower, upper, from);
-    await this._animate(lower, upper, from, to, animated ? this.transition.duration : 0, this.transition.ease);
+    await this._animate(
+      lower,
+      upper,
+      from,
+      to,
+      animated ? this.transition.duration : 0,
+      this.transition.ease,
+    );
     this._end(lower, upper, kind);
   }
 

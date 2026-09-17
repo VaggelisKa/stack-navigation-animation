@@ -12,7 +12,11 @@ export const routes: Routes = [
   ...DEMO_ROUTES,
   // The route tree decides these: /items/:id is beneath / (push), and /items/:id/reviews beneath that.
   { path: 'items/:id', component: Item },
-  { path: 'items/:id/reviews', component: Reviews, canDeactivate: [(page: Reviews) => !page.lock()] },
+  {
+    path: 'items/:id/reviews',
+    component: Reviews,
+    canDeactivate: [(page: Reviews) => !page.lock()],
+  },
   // Numbered screens: /settings and /about sit at the same tree depth as /,
   // but their numbers place settings above home and about above settings.
   { path: 'settings', component: Settings, data: { stackLevel: 2 } },

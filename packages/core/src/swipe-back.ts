@@ -16,7 +16,11 @@ export function suppressBrowserSwipe(container: HTMLElement): () => void {
   const property = 'overscroll-behavior-x';
   let state = suppressions.get(root);
   if (!state) {
-    state = { count: 0, value: root.style.getPropertyValue(property), priority: root.style.getPropertyPriority(property) };
+    state = {
+      count: 0,
+      value: root.style.getPropertyValue(property),
+      priority: root.style.getPropertyPriority(property),
+    };
     suppressions.set(root, state);
     root.style.setProperty(property, 'contain', 'important');
   }
@@ -28,7 +32,11 @@ export function suppressBrowserSwipe(container: HTMLElement): () => void {
     if (--state.count) return;
     suppressions.delete(root);
     // Do not overwrite a newer declaration installed by the application.
-    if (root.style.getPropertyValue(property) !== 'contain' || root.style.getPropertyPriority(property) !== 'important') return;
+    if (
+      root.style.getPropertyValue(property) !== 'contain' ||
+      root.style.getPropertyPriority(property) !== 'important'
+    )
+      return;
     if (state.value) root.style.setProperty(property, state.value, state.priority);
     else root.style.removeProperty(property);
   };

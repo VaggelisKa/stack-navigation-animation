@@ -62,19 +62,19 @@ inside a page when that page is revealed again. A page with nothing focusable of
 its own is given `tabindex="-1"` while it is mounted, and focus that has already
 moved outside the container is never taken back.
 
-| Member | Purpose |
-| --- | --- |
-| `push(page, options?)` | Adds a page. A mounted page is moved to the top. |
-| `pop(options?)` | Removes the top page, unless it is the root. |
-| `popTo(depth, options?)` | Pops until the requested number of pages remain. |
-| `popWith(page, options?)` | Pops while revealing a supplied or previously mounted page. |
-| `replace(page, options?)` | Replaces the top page without a transition. |
-| `present(page, direction, options?)` | Applies a resolved `push`, `pop`, or `replace`. |
-| `remove(page)` | Removes a mounted page without a transition. |
-| `reset(pages)` | Replaces the entire stack without a transition. |
-| `beginInteractivePop()` | Starts a pop controlled by your own gesture. |
-| `on(event, listener)` | Subscribes to stack and transition events. |
-| `destroy()` | Removes every page and releases the stack. |
+| Member                               | Purpose                                                     |
+| ------------------------------------ | ----------------------------------------------------------- |
+| `push(page, options?)`               | Adds a page. A mounted page is moved to the top.            |
+| `pop(options?)`                      | Removes the top page, unless it is the root.                |
+| `popTo(depth, options?)`             | Pops until the requested number of pages remain.            |
+| `popWith(page, options?)`            | Pops while revealing a supplied or previously mounted page. |
+| `replace(page, options?)`            | Replaces the top page without a transition.                 |
+| `present(page, direction, options?)` | Applies a resolved `push`, `pop`, or `replace`.             |
+| `remove(page)`                       | Removes a mounted page without a transition.                |
+| `reset(pages)`                       | Replaces the entire stack without a transition.             |
+| `beginInteractivePop()`              | Starts a pop controlled by your own gesture.                |
+| `on(event, listener)`                | Subscribes to stack and transition events.                  |
+| `destroy()`                          | Removes every page and releases the stack.                  |
 
 Pages may be elements or factories. Navigation options can include `animated`,
 `data`, `key`, and `source`. Operations are serialized, so a call made during a
@@ -123,13 +123,13 @@ const direction = resolve({
 
 The default strategies run in this order:
 
-| Strategy | Resolves from |
-| --- | --- |
-| `byHint()` | An explicit direction on the navigation. |
-| `byBrowserHistory()` | Browser back or forward history. |
-| `byKeptStack()` | A target already kept beneath the current page. |
-| `byRouteNumber()` | Numeric route levels. |
-| `byRouteTree()` | Ancestor, descendant, and sibling route segments. |
+| Strategy             | Resolves from                                     |
+| -------------------- | ------------------------------------------------- |
+| `byHint()`           | An explicit direction on the navigation.          |
+| `byBrowserHistory()` | Browser back or forward history.                  |
+| `byKeptStack()`      | A target already kept beneath the current page.   |
+| `byRouteNumber()`    | Numeric route levels.                             |
+| `byRouteTree()`      | Ancestor, descendant, and sibling route segments. |
 
 `defaultStrategies({ direction, siblings })` creates that list and can insert
 one application rule before the route-number and route-tree guesses.
@@ -143,20 +143,20 @@ creates route segments from a URL.
 browser. Set `platform: 'ios'` or `'android'` to force one. The transition
 honors `prefers-reduced-motion`.
 
-| Option | CSS property | iOS default | Android default |
-| --- | --- | --- | --- |
-| `duration` | `--sn-duration` | `500` ms | `450` ms |
-| `ease` | `--sn-easing` | iOS curve | Android curve |
-| `travel` | `--sn-travel` | `1` | `0.25` |
-| `parallax` | `--sn-parallax` | `0.3` | `0.25` |
-| `fade` | `--sn-fade` | `1` | `0` |
-| `dimColor` | `--sn-dim-color` | `#000` | `#000` |
-| `dimMax` | `--sn-dim-max` | `0.1` | `0` |
-| `shadow` | `--sn-shadow` | iOS edge shadow | `none` |
-| `settleMin` / `settleMax` | `--sn-settle-min` / `--sn-settle-max` | `120` / `400` ms | `120` / `400` ms |
-| `settleEase` | `--sn-settle-easing` | iOS settle curve | Android settle curve |
-| `settleVelocityFloor` | `--sn-settle-velocity-floor` | `900` px/s | `900` px/s |
-| `timeScale` | `--sn-time-scale` | `1` | `1` |
+| Option                    | CSS property                          | iOS default      | Android default      |
+| ------------------------- | ------------------------------------- | ---------------- | -------------------- |
+| `duration`                | `--sn-duration`                       | `500` ms         | `450` ms             |
+| `ease`                    | `--sn-easing`                         | iOS curve        | Android curve        |
+| `travel`                  | `--sn-travel`                         | `1`              | `0.25`               |
+| `parallax`                | `--sn-parallax`                       | `0.3`            | `0.25`               |
+| `fade`                    | `--sn-fade`                           | `1`              | `0`                  |
+| `dimColor`                | `--sn-dim-color`                      | `#000`           | `#000`               |
+| `dimMax`                  | `--sn-dim-max`                        | `0.1`            | `0`                  |
+| `shadow`                  | `--sn-shadow`                         | iOS edge shadow  | `none`               |
+| `settleMin` / `settleMax` | `--sn-settle-min` / `--sn-settle-max` | `120` / `400` ms | `120` / `400` ms     |
+| `settleEase`              | `--sn-settle-easing`                  | iOS settle curve | Android settle curve |
+| `settleVelocityFloor`     | `--sn-settle-velocity-floor`          | `900` px/s       | `900` px/s           |
+| `timeScale`               | `--sn-time-scale`                     | `1`              | `1`                  |
 
 CSS properties override JavaScript options and are read at the start of each
 transition:

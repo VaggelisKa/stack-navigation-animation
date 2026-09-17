@@ -49,10 +49,15 @@ export interface DirectionResolver {
   readonly fallback: Direction;
 }
 
-const isDirection = (v: DirectionOpinion): v is Direction => v === 'push' || v === 'pop' || v === 'replace';
+const isDirection = (v: DirectionOpinion): v is Direction =>
+  v === 'push' || v === 'pop' || v === 'replace';
 
 /** Calls each strategy in turn. The first direction returned wins, else `fallback`. */
-export function resolveDirection(strategies: readonly DirectionStrategy[], ctx: NavigationContext, fallback: Direction = 'push'): Direction {
+export function resolveDirection(
+  strategies: readonly DirectionStrategy[],
+  ctx: NavigationContext,
+  fallback: Direction = 'push',
+): Direction {
   for (const s of strategies) {
     const d = s(ctx);
     if (isDirection(d)) return d;
@@ -61,8 +66,12 @@ export function resolveDirection(strategies: readonly DirectionStrategy[], ctx: 
 }
 
 /** Bundles strategies and a fallback into a single resolver function. */
-export function createDirectionResolver(strategies: readonly DirectionStrategy[] = defaultStrategies(), fallback: Direction = 'push'): DirectionResolver {
-  const resolver = ((ctx: NavigationContext) => resolveDirection(strategies, ctx, fallback)) as DirectionResolver;
+export function createDirectionResolver(
+  strategies: readonly DirectionStrategy[] = defaultStrategies(),
+  fallback: Direction = 'push',
+): DirectionResolver {
+  const resolver = ((ctx: NavigationContext) =>
+    resolveDirection(strategies, ctx, fallback)) as DirectionResolver;
   Object.defineProperty(resolver, 'strategies', { value: strategies.slice(), enumerable: true });
   Object.defineProperty(resolver, 'fallback', { value: fallback, enumerable: true });
   return resolver;
@@ -98,33 +107,40 @@ export interface SiblingOptions {
  * For apps that number their screens (`level: 1`, `level: 2`, …): a higher
  * number pushes, a lower one pops. No answer unless both pages carry a number.
  */
-export const byRouteNumber = ({ siblings = 'replace' }: SiblingOptions = {}): DirectionStrategy => (ctx) => {
-  const a = ctx.from?.level;
-  const b = ctx.to.level;
-  if (typeof a !== 'number' || typeof b !== 'number') return undefined;
-  if (b > a) return 'push';
-  if (b < a) return 'pop';
-  return siblings;
-};
+export const byRouteNumber =
+  ({ siblings = 'replace' }: SiblingOptions = {}): DirectionStrategy =>
+  (ctx) => {
+    const a = ctx.from?.level;
+    const b = ctx.to.level;
+    if (typeof a !== 'number' || typeof b !== 'number') return undefined;
+    if (b > a) return 'push';
+    if (b < a) return 'pop';
+    return siblings;
+  };
 
 /**
  * Reads the route tree: a descendant of the current page pushes, an ancestor
  * pops. Otherwise a deeper page pushes and a shallower one pops. Requires
  * `segments` on both pages.
  */
-export const byRouteTree = ({ siblings = 'replace' }: SiblingOptions = {}): DirectionStrategy => (ctx) => {
-  const a = ctx.from?.segments;
-  const b = ctx.to.segments;
-  if (!a || !b) return undefined;
-  if (isPrefix(a, b)) return b.length > a.length ? 'push' : siblings;
-  if (isPrefix(b, a)) return 'pop';
-  if (b.length > a.length) return 'push';
-  if (b.length < a.length) return 'pop';
-  return siblings;
-};
+export const byRouteTree =
+  ({ siblings = 'replace' }: SiblingOptions = {}): DirectionStrategy =>
+  (ctx) => {
+    const a = ctx.from?.segments;
+    const b = ctx.to.segments;
+    if (!a || !b) return undefined;
+    if (isPrefix(a, b)) return b.length > a.length ? 'push' : siblings;
+    if (isPrefix(b, a)) return 'pop';
+    if (b.length > a.length) return 'push';
+    if (b.length < a.length) return 'pop';
+    return siblings;
+  };
 
 /** Always returns the same direction. Useful as the last entry in a list. */
-export const always = (direction: Direction): DirectionStrategy => () => direction;
+export const always =
+  (direction: Direction): DirectionStrategy =>
+  () =>
+    direction;
 
 export interface DefaultStrategyOptions extends SiblingOptions {
   /**
@@ -141,7 +157,10 @@ export interface DefaultStrategyOptions extends SiblingOptions {
  * the kept stack, then `direction` if one was passed, then route numbering,
  * then the route tree.
  */
-export const defaultStrategies = ({ direction, siblings }: DefaultStrategyOptions = {}): DirectionStrategy[] => [
+export const defaultStrategies = ({
+  direction,
+  siblings,
+}: DefaultStrategyOptions = {}): DirectionStrategy[] => [
   byHint(),
   byBrowserHistory(),
   byKeptStack(),

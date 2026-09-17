@@ -1,5 +1,12 @@
 import type { Routes } from '@angular/router';
-import { ShopCart, ShopCatalog, ShopCheckout, ShopOrder, ShopProduct, resolveProduct } from './shop';
+import {
+  ShopCart,
+  ShopCatalog,
+  ShopCheckout,
+  ShopOrder,
+  ShopProduct,
+  resolveProduct,
+} from './shop';
 
 export const SHOP_ROUTES: Routes = [
   { path: '', component: ShopCatalog },

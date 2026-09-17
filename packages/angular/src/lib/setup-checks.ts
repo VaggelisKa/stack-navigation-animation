@@ -19,7 +19,10 @@ export function warn(code: string, message: string): void {
 }
 
 /** Called once per stack, when it is created, with the outlet element. Development only. */
-export function checkSetup(outlet: HTMLElement, canceledNavigationResolution: string | undefined): void {
+export function checkSetup(
+  outlet: HTMLElement,
+  canceledNavigationResolution: string | undefined,
+): void {
   if (canceledNavigationResolution === undefined) {
     warn(
       'canceled-navigation',
@@ -35,7 +38,7 @@ export function checkSetup(outlet: HTMLElement, canceledNavigationResolution: st
     if (!host || !host.isConnected || host.offsetHeight > 0 || host.offsetWidth === 0) return;
     warn(
       'no-height',
-      "the element around <router-outlet stackNav> is 0px tall, so its pages have nothing to fill and the screen looks empty. " +
+      'the element around <router-outlet stackNav> is 0px tall, so its pages have nothing to fill and the screen looks empty. ' +
         "The router puts each page next to the outlet, so that element is the pages' scroll container and needs a height of its own, " +
         'e.g. style="height: 100dvh", or a parent that gives it one.',
     );

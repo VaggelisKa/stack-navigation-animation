@@ -4,14 +4,25 @@ import { provideLocationMocks } from '@angular/common/testing';
 import { Router, RouteReuseStrategy, provideRouter } from '@angular/router';
 import { always, createDirectionResolver, isTouchPrimary } from '@stacknav/core';
 import { describe, expect, it } from 'vitest';
-import { defaultKeyOf, defaultLevelOf, provideStackNav, resolveConfig, STACKNAV_CONFIG, type StackNavAnimationContext } from '../lib/config';
+import {
+  defaultKeyOf,
+  defaultLevelOf,
+  provideStackNav,
+  resolveConfig,
+  STACKNAV_CONFIG,
+  type StackNavAnimationContext,
+} from '../lib/config';
 import { StackNavRouteReuseStrategy } from '../lib/route-reuse-strategy';
 
 @Component({ template: '' })
 class Blank {}
 
 /** The least a navigation can tell the `animated` predicate. */
-const ctx: StackNavAnimationContext = { trigger: 'imperative', from: null, to: { key: '/', segments: [] } };
+const ctx: StackNavAnimationContext = {
+  trigger: 'imperative',
+  from: null,
+  to: { key: '/', segments: [] },
+};
 
 describe('resolveConfig', () => {
   it('fills in every default an app may leave out', () => {
@@ -32,7 +43,15 @@ describe('resolveConfig', () => {
   it('keeps the options the app did give', () => {
     const keyOf = () => 'k';
     const resolveDirection = createDirectionResolver([always('pop')], 'pop');
-    const c = resolveConfig({ infoKey: 'sn', swipeBack: 'disabled', injectStyles: false, manageFocus: true, keyOf, resolveDirection, transition: { duration: 10 } });
+    const c = resolveConfig({
+      infoKey: 'sn',
+      swipeBack: 'disabled',
+      injectStyles: false,
+      manageFocus: true,
+      keyOf,
+      resolveDirection,
+      transition: { duration: 10 },
+    });
     expect(c.infoKey).toBe('sn');
     expect(c.swipeBack).toBe('disabled');
     expect(c.injectStyles).toBe(false);
@@ -47,7 +66,9 @@ describe('resolveConfig', () => {
     // `direction` used to take the whole resolver. Accepting a list here would
     // now mean asking it fourth, which changes an app's behaviour in silence.
     expect(() => resolveConfig({ direction: [] as never })).toThrow(TypeError);
-    expect(() => resolveConfig({ direction: { strategies: [] } as never })).toThrow(/resolveDirection/);
+    expect(() => resolveConfig({ direction: { strategies: [] } as never })).toThrow(
+      /resolveDirection/,
+    );
     // One rule of your own is still exactly what `direction` takes.
     expect(() => resolveConfig({ direction: () => 'push' })).not.toThrow();
   });
@@ -97,15 +118,23 @@ describe('defaultKeyOf', () => {
 
 describe('provideStackNav', () => {
   it('installs the resolved config and the route reuse strategy', () => {
-    TestBed.configureTestingModule({ providers: [provideRouter([]), provideLocationMocks(), provideStackNav({ infoKey: 'sn' })] });
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideLocationMocks(), provideStackNav({ infoKey: 'sn' })],
+    });
     expect(TestBed.inject(STACKNAV_CONFIG).infoKey).toBe('sn');
     // Without the strategy the router destroys every page it leaves, so
     // nothing could animate out: installing it is not optional by accident.
     expect(TestBed.inject(RouteReuseStrategy)).toBeInstanceOf(StackNavRouteReuseStrategy);
   });
 
-  it('leaves the router\'s own strategy alone when asked to', () => {
-    TestBed.configureTestingModule({ providers: [provideRouter([]), provideLocationMocks(), provideStackNav({ routeReuse: false })] });
+  it("leaves the router's own strategy alone when asked to", () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideLocationMocks(),
+        provideStackNav({ routeReuse: false }),
+      ],
+    });
     expect(TestBed.inject(RouteReuseStrategy)).not.toBeInstanceOf(StackNavRouteReuseStrategy);
   });
 

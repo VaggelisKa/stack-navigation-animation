@@ -58,28 +58,55 @@ export type NativeTransitionPreset = Readonly<Omit<NativeTransitionOptions, 'pla
  *   upper page fades through the first part of it. No shadow, no dim.
  */
 export function nativeTransitionPreset(platform: Platform): NativeTransitionPreset {
-  const shared = { settleMin: 120, settleMax: 400, settleVelocityFloor: 900, timeScale: 1, dimColor: '#000' };
+  const shared = {
+    settleMin: 120,
+    settleMax: 400,
+    settleVelocityFloor: 900,
+    timeScale: 1,
+    dimColor: '#000',
+  };
   return platform === 'android'
-    ? { ...shared, duration: 450, ease: easings.android, travel: 0.25, parallax: 0.25, fade: 0, dimMax: 0, shadow: 'none', settleEase: easings.androidSettle }
-    : { ...shared, duration: 500, ease: easings.ios, travel: 1, parallax: 0.3, fade: 1, dimMax: 0.1, shadow: '-3px 0 14px rgba(0,0,0,0.16)', settleEase: easings.easeOut };
+    ? {
+        ...shared,
+        duration: 450,
+        ease: easings.android,
+        travel: 0.25,
+        parallax: 0.25,
+        fade: 0,
+        dimMax: 0,
+        shadow: 'none',
+        settleEase: easings.androidSettle,
+      }
+    : {
+        ...shared,
+        duration: 500,
+        ease: easings.ios,
+        travel: 1,
+        parallax: 0.3,
+        fade: 1,
+        dimMax: 0.1,
+        shadow: '-3px 0 14px rgba(0,0,0,0.16)',
+        settleEase: easings.easeOut,
+      };
 }
 
 /** The CSS custom property behind each option. */
-export const NATIVE_TRANSITION_CSS_VARS: Readonly<Record<keyof NativeTransitionPreset, string>> = /*#__PURE__*/ Object.freeze({
-  duration: '--sn-duration',
-  ease: '--sn-easing',
-  travel: '--sn-travel',
-  parallax: '--sn-parallax',
-  fade: '--sn-fade',
-  dimColor: '--sn-dim-color',
-  dimMax: '--sn-dim-max',
-  shadow: '--sn-shadow',
-  settleMin: '--sn-settle-min',
-  settleMax: '--sn-settle-max',
-  settleEase: '--sn-settle-easing',
-  settleVelocityFloor: '--sn-settle-velocity-floor',
-  timeScale: '--sn-time-scale',
-});
+export const NATIVE_TRANSITION_CSS_VARS: Readonly<Record<keyof NativeTransitionPreset, string>> =
+  /*#__PURE__*/ Object.freeze({
+    duration: '--sn-duration',
+    ease: '--sn-easing',
+    travel: '--sn-travel',
+    parallax: '--sn-parallax',
+    fade: '--sn-fade',
+    dimColor: '--sn-dim-color',
+    dimMax: '--sn-dim-max',
+    shadow: '--sn-shadow',
+    settleMin: '--sn-settle-min',
+    settleMax: '--sn-settle-max',
+    settleEase: '--sn-settle-easing',
+    settleVelocityFloor: '--sn-settle-velocity-floor',
+    timeScale: '--sn-time-scale',
+  });
 
 export interface NativeTransition extends Transition {
   /** The JS options: the platform's preset with the caller's merged in. `platform` is the one chosen. Mutable at runtime. */
@@ -111,9 +138,16 @@ export interface NativeTransition extends Transition {
  * two writes, so the animation costs a handful of style writes rather than one
  * per page per frame, and runs on the compositor rather than the main thread.
  */
-export function createNativeTransition(options: Partial<NativeTransitionOptions> = {}): NativeTransition {
-  const platform = !options.platform || options.platform === 'auto' ? detectPlatform() : options.platform;
-  const o: NativeTransitionOptions & { platform: Platform } = { ...nativeTransitionPreset(platform), ...options, platform };
+export function createNativeTransition(
+  options: Partial<NativeTransitionOptions> = {},
+): NativeTransition {
+  const platform =
+    !options.platform || options.platform === 'auto' ? detectPlatform() : options.platform;
+  const o: NativeTransitionOptions & { platform: Platform } = {
+    ...nativeTransitionPreset(platform),
+    ...options,
+    platform,
+  };
 
   let root: Element | null = null;
   let r: NativeTransitionOptions & { platform: Platform } = { ...o };
@@ -158,7 +192,8 @@ export function createNativeTransition(options: Partial<NativeTransitionOptions>
   /** Four decimals is well past a subpixel, and keeps the style strings short. */
   const round = (n: number): number => Math.round(n * 1e4) / 1e4 || 0;
   /** A share of the page's own width, signed by the stylesheet's reading direction. */
-  const shift = (fraction: number): string => `translate3d(calc(${round(fraction * 100)}% * var(--sn-dir,1)),0,0)`;
+  const shift = (fraction: number): string =>
+    `translate3d(calc(${round(fraction * 100)}% * var(--sn-dir,1)),0,0)`;
 
   return {
     options: o,
@@ -177,7 +212,10 @@ export function createNativeTransition(options: Partial<NativeTransitionOptions>
     settle({ remainingPx, velocity }: SettleInput) {
       if (prefersReducedMotion()) return { duration: 0, ease: r.settleEase };
       const raw = (remainingPx / Math.max(Math.abs(velocity), r.settleVelocityFloor)) * 1000;
-      return { duration: Math.min(r.settleMax, Math.max(r.settleMin, raw)) * r.timeScale, ease: r.settleEase };
+      return {
+        duration: Math.min(r.settleMax, Math.max(r.settleMin, raw)) * r.timeScale,
+        ease: r.settleEase,
+      };
     },
 
     begin(lower, upper) {

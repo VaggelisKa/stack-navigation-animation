@@ -14,7 +14,10 @@ const demo = await build({
   target: 'es2020',
 });
 
-const css = [await readFile(require.resolve('@stacknav/core/stacknav.css'), 'utf8'), await readFile('src/demo.css', 'utf8')].join('\n');
+const css = [
+  await readFile(require.resolve('@stacknav/core/stacknav.css'), 'utf8'),
+  await readFile('src/demo.css', 'utf8'),
+].join('\n');
 const html = `<!doctype html>
 <html lang="en">
 <head>

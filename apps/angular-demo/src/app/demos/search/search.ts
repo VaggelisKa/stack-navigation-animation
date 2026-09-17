@@ -1,9 +1,25 @@
-import { Component, DestroyRef, ElementRef, afterNextRender, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  afterNextRender,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { FakeApi, type SearchResult } from '../fake-api';
 import { BackButton, DEMO_UI } from '../shared';
 
-const ICONS: Record<SearchResult['kind'], string> = { person: '◉', product: '◱', post: '◌', photo: '▣' };
+const ICONS: Record<SearchResult['kind'], string> = {
+  person: '◉',
+  product: '◱',
+  post: '◌',
+  photo: '▣',
+};
 
 /**
  * Type-ahead search: every keystroke waits 300 ms, then queries the backend and
@@ -104,7 +120,11 @@ export class SearchHome {
   }
 
   async run(t: string): Promise<void> {
-    void this.router.navigate([], { queryParams: { q: t.trim() || null }, replaceUrl: true, queryParamsHandling: 'merge' });
+    void this.router.navigate([], {
+      queryParams: { q: t.trim() || null },
+      replaceUrl: true,
+      queryParamsHandling: 'merge',
+    });
     if (!t.trim()) {
       this.results.set([]);
       this.searched.set('');

@@ -45,7 +45,8 @@ export function moveFocus(container: HTMLElement, page: StackEntry | null, resto
   // toolbar, another stack -- is not ours to take back. An element that has
   // left the document is not somewhere else: it is the page that just popped,
   // and the browser has already dropped focus to the body.
-  if (active && active !== doc.body && active.isConnected !== false && !within(container, active)) return;
+  if (active && active !== doc.body && active.isConnected !== false && !within(container, active))
+    return;
   const previous = restore ? remembered.get(page.el) : undefined;
   if (previous && previous.isConnected !== false && within(page.el, previous)) {
     (previous as HTMLElement).focus?.({ preventScroll: true });
@@ -73,5 +74,6 @@ function focusable(el: HTMLElement): HTMLElement {
  * saying the app owns it now, so the borrowing is simply forgotten.
  */
 export function releaseFocus(el: HTMLElement): void {
-  if (borrowed.delete(el) && el.getAttribute?.('tabindex') === '-1') el.removeAttribute?.('tabindex');
+  if (borrowed.delete(el) && el.getAttribute?.('tabindex') === '-1')
+    el.removeAttribute?.('tabindex');
 }

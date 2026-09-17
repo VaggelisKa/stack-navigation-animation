@@ -19,12 +19,27 @@ import { build, type Plugin } from 'esbuild';
 const SRC = fileURLToPath(new URL('../src/', import.meta.url));
 
 /** Every module of the package, by file name without the extension. */
-const ALL = ['animate', 'css-vars', 'direction', 'focus', 'history-adapter', 'index', 'native-transition', 'navigation-stack', 'platform', 'styles', 'swipe-back'];
+const ALL = [
+  'animate',
+  'css-vars',
+  'direction',
+  'focus',
+  'history-adapter',
+  'index',
+  'native-transition',
+  'navigation-stack',
+  'platform',
+  'styles',
+  'swipe-back',
+];
 
 const everythingHasSideEffects: Plugin = {
   name: 'every-module-has-side-effects',
   setup(b) {
-    b.onResolve({ filter: /^\.\.?\// }, (args) => ({ path: resolve(args.resolveDir, args.path), sideEffects: true }));
+    b.onResolve({ filter: /^\.\.?\// }, (args) => ({
+      path: resolve(args.resolveDir, args.path),
+      sideEffects: true,
+    }));
   },
 };
 
@@ -53,7 +68,9 @@ test('importing everything keeps every module (so the list above is complete)', 
 });
 
 test('a direction strategy alone brings in nothing else', async () => {
-  assert.deepEqual(await survivors(`export { segmentsOf, byRouteTree } from './index.ts';`), ['direction']);
+  assert.deepEqual(await survivors(`export { segmentsOf, byRouteTree } from './index.ts';`), [
+    'direction',
+  ]);
 });
 
 test('injectStyles alone is the stylesheet and nothing else', async () => {
@@ -61,13 +78,29 @@ test('injectStyles alone is the stylesheet and nothing else', async () => {
 });
 
 test('the history adapter alone brings in only the platform check', async () => {
-  assert.deepEqual(await survivors(`export { attachBrowserHistory } from './index.ts';`), ['history-adapter', 'platform']);
+  assert.deepEqual(await survivors(`export { attachBrowserHistory } from './index.ts';`), [
+    'history-adapter',
+    'platform',
+  ]);
 });
 
 test('NavigationStack with a custom transition leaves out the iOS look and the parsers', async () => {
-  assert.deepEqual(await survivors(`export { NavigationStack } from './index.ts';`), ['animate', 'focus', 'navigation-stack']);
+  assert.deepEqual(await survivors(`export { NavigationStack } from './index.ts';`), [
+    'animate',
+    'focus',
+    'navigation-stack',
+  ]);
 });
 
 test('createNativeStack leaves out direction resolution, the history adapter and the stylesheet', async () => {
-  assert.deepEqual(await survivors(`export { createNativeStack } from './index.ts';`), ['animate', 'css-vars', 'focus', 'index', 'native-transition', 'navigation-stack', 'platform', 'swipe-back']);
+  assert.deepEqual(await survivors(`export { createNativeStack } from './index.ts';`), [
+    'animate',
+    'css-vars',
+    'focus',
+    'index',
+    'native-transition',
+    'navigation-stack',
+    'platform',
+    'swipe-back',
+  ]);
 });

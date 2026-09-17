@@ -50,9 +50,15 @@ test('parseEasing accepts linear() with and without positions', () => {
   assert.equal(held(0.45), 1, 'two positions hold the value between them');
   assert.equal(held(1), 0.5);
   const backwards = parseEasing('linear(0, 0.5 60%, 0.7 40%, 1)')!;
-  assert.ok(Math.abs(backwards(0.8) - 0.85) < 1e-9, 'a position never goes back: the 40% stop is pushed to 60%');
+  assert.ok(
+    Math.abs(backwards(0.8) - 0.85) < 1e-9,
+    'a position never goes back: the 40% stop is pushed to 60%',
+  );
   const android = parseEasing(easings.android.css)!;
-  assert.ok(Math.abs(android(0.2) - easings.android(0.2)) < 0.01, 'the spelling round-trips within the sampling tolerance');
+  assert.ok(
+    Math.abs(android(0.2) - easings.android(0.2)) < 0.01,
+    'the spelling round-trips within the sampling tolerance',
+  );
   assert.equal(parseEasing('linear(1)'), undefined, 'needs two stops');
   assert.equal(parseEasing('linear(0, 1 20px)'), undefined, 'positions are percentages');
 });

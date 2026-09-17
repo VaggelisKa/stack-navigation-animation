@@ -156,8 +156,14 @@ export class FeedHome {
 export class FeedPost {
   readonly id = input.required<string>();
   private readonly api = inject(FakeApi);
-  readonly post = resource({ params: () => Number(this.id()), loader: ({ params }) => this.api.post(params) });
-  readonly comments = resource({ params: () => Number(this.id()), loader: ({ params }) => this.api.comments(params) });
+  readonly post = resource({
+    params: () => Number(this.id()),
+    loader: ({ params }) => this.api.post(params),
+  });
+  readonly comments = resource({
+    params: () => Number(this.id()),
+    loader: ({ params }) => this.api.comments(params),
+  });
   readonly draft = signal('');
   readonly mine = signal<string[]>([]);
 
@@ -220,8 +226,14 @@ export class FeedPost {
 export class FeedProfile {
   readonly handle = input.required<string>();
   private readonly api = inject(FakeApi);
-  readonly author = resource({ params: () => this.handle(), loader: ({ params }) => this.api.author(params) });
-  readonly posts = resource({ params: () => this.handle(), loader: ({ params }) => this.api.authorPosts(params) });
+  readonly author = resource({
+    params: () => this.handle(),
+    loader: ({ params }) => this.api.author(params),
+  });
+  readonly posts = resource({
+    params: () => this.handle(),
+    loader: ({ params }) => this.api.authorPosts(params),
+  });
   readonly tabs = ['Posts', 'Media', 'Likes'] as const;
   readonly tab = signal<(typeof this.tabs)[number]>('Posts');
   readonly following = signal(false);

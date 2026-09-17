@@ -10,9 +10,15 @@
 const makeStyle = (vars: Record<string, string>) => {
   const priorities: Record<string, string> = {};
   const style: any = {
-    setProperty: (k: string, v: string, priority = '') => { priorities[k] = priority; (k.startsWith('--') ? vars : style)[k] = v; },
+    setProperty: (k: string, v: string, priority = '') => {
+      priorities[k] = priority;
+      (k.startsWith('--') ? vars : style)[k] = v;
+    },
     getPropertyPriority: (k: string) => priorities[k] ?? '',
-    removeProperty: (k: string) => { delete priorities[k]; delete (k.startsWith('--') ? vars : style)[k]; },
+    removeProperty: (k: string) => {
+      delete priorities[k];
+      delete (k.startsWith('--') ? vars : style)[k];
+    },
     getPropertyValue: (k: string) => (k.startsWith('--') ? vars[k] : style[k]) ?? '',
   };
   return style;
@@ -34,7 +40,14 @@ export function makeElement(tag = 'div'): any {
     classList: {
       add: (...cs) => cs.forEach((c) => classes.add(c)),
       remove: (...cs) => cs.forEach((c) => classes.delete(c)),
-      toggle: (c, force) => (force === undefined ? (classes.has(c) ? classes.delete(c) : classes.add(c)) : force ? classes.add(c) : classes.delete(c)),
+      toggle: (c, force) =>
+        force === undefined
+          ? classes.has(c)
+            ? classes.delete(c)
+            : classes.add(c)
+          : force
+            ? classes.add(c)
+            : classes.delete(c),
       contains: (c) => classes.has(c),
     },
     append(child) {
@@ -136,7 +149,12 @@ export class FakeCSSStyleSheet {
 }
 
 export function installGlobals() {
-  globalThis.document = { createElement: makeElement, body: makeElement('body'), activeElement: null, hidden: false };
+  globalThis.document = {
+    createElement: makeElement,
+    body: makeElement('body'),
+    activeElement: null,
+    hidden: false,
+  };
   globalThis.performance ||= { now: () => Date.now() };
   globalThis.matchMedia = () => ({ matches: false });
   // Custom properties inherit, so walk up until one element declares the name.
@@ -149,7 +167,8 @@ export function installGlobals() {
   // should also be checked in a real browser.
   globalThis.getComputedStyle = (el) => ({
     getPropertyValue(name) {
-      for (let e = el; e; e = e.parentElement) if (e.vars?.[name] !== undefined) return e.vars[name];
+      for (let e = el; e; e = e.parentElement)
+        if (e.vars?.[name] !== undefined) return e.vars[name];
       return '';
     },
   });

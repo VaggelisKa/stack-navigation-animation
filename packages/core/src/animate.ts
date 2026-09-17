@@ -17,8 +17,12 @@ export interface Easing {
 
 export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Easing {
   // The coefficients are constant for the lifetime of a curve.
-  const ax = 1 - 3 * x2 + 3 * x1, bx = 3 * x2 - 6 * x1, cx = 3 * x1;
-  const ay = 1 - 3 * y2 + 3 * y1, by = 3 * y2 - 6 * y1, cy = 3 * y1;
+  const ax = 1 - 3 * x2 + 3 * x1,
+    bx = 3 * x2 - 6 * x1,
+    cx = 3 * x1;
+  const ay = 1 - 3 * y2 + 3 * y1,
+    by = 3 * y2 - 6 * y1,
+    cy = 3 * y1;
   const sampleX = (t: number) => ((ax * t + bx) * t + cx) * t;
   const sampleY = (t: number) => ((ay * t + by) * t + cy) * t;
   const f = (x: number) => {
@@ -36,7 +40,8 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Eas
       if (next < 0 || next > 1) break;
       t = next;
     }
-    let lo = 0, hi = 1;
+    let lo = 0,
+      hi = 1;
     for (let i = 0; i < 30; i++) {
       t = (lo + hi) / 2;
       if (sampleX(t) < x) lo = t;
@@ -56,18 +61,30 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Eas
  * unless `css` says otherwise. A browser without `linear()` (Chrome < 113,
  * Safari < 17.2, Firefox < 112) runs its default `ease` instead.
  */
-export function linearEasing(points: ReadonlyArray<readonly [number, number]>, css?: string): Easing {
+export function linearEasing(
+  points: ReadonlyArray<readonly [number, number]>,
+  css?: string,
+): Easing {
   const f = (t: number): number => {
     if (t <= points[0][0]) return points[0][1];
     let i = 1;
     while (i < points.length - 1 && points[i][0] < t) i++;
-    const [x0, y0] = points[i - 1], [x1, y1] = points[i];
+    const [x0, y0] = points[i - 1],
+      [x1, y1] = points[i];
     return x1 > x0 ? y0 + (y1 - y0) * Math.min(1, (t - x0) / (x1 - x0)) : y1;
   };
-  return Object.assign(f, { css: css ?? `linear(${points.map(([x, y]) => `${y} ${x * 100}%`).join(', ')})` });
+  return Object.assign(f, {
+    css: css ?? `linear(${points.map(([x, y]) => `${y} ${x * 100}%`).join(', ')})`,
+  });
 }
 
-export const easings: { linear: Easing; ios: Easing; easeOut: Easing; android: Easing; androidSettle: Easing } = {
+export const easings: {
+  linear: Easing;
+  ios: Easing;
+  easeOut: Easing;
+  android: Easing;
+  androidSettle: Easing;
+} = {
   linear: /*#__PURE__*/ Object.assign((t: number) => t, { css: 'linear' }),
   ios: /*#__PURE__*/ cubicBezier(0.32, 0.72, 0, 1), // the common approximation of UIKit's navigation curve
   easeOut: /*#__PURE__*/ cubicBezier(0.2, 0.8, 0.2, 1),
@@ -76,6 +93,8 @@ export const easings: { linear: Easing; ios: Easing; easeOut: Easing; android: E
   // a path of two cubics, `M0,0 C0.05,0 0.133,0.06 0.167,0.4 C0.208,0.82 0.25,1
   // 1,1`, which one `cubic-bezier()` cannot bend into; these stops follow it
   // to within 0.006 and are what CSS gets.
+  // A table of stops tracing one curve: a stop per line would hide its shape.
+  // prettier-ignore
   android: /*#__PURE__*/ linearEasing([
     [0, 0], [0.03125, 0.008], [0.0625, 0.033], [0.09375, 0.08], [0.125, 0.162], [0.140625, 0.225], [0.15625, 0.313],
     [0.1640625, 0.375], [0.171875, 0.451], [0.1796875, 0.517], [0.1875, 0.571], [0.203125, 0.649], [0.21875, 0.702],
@@ -113,7 +132,13 @@ export type CancellableTween = Promise<void> & { cancel(): void };
  */
 // The default is spelled out rather than taken from `easings`, so a bundle that
 // only needs the tween does not carry the curves.
-export function tween({ from, to, duration, ease = (t) => t, onUpdate }: TweenOptions): CancellableTween {
+export function tween({
+  from,
+  to,
+  duration,
+  ease = (t) => t,
+  onUpdate,
+}: TweenOptions): CancellableTween {
   let raf = 0;
   let done = false;
   let finish: () => void;
@@ -199,7 +224,8 @@ export function animationsFinished(
     if (typeof el?.getAnimations !== 'function') continue;
     for (const animation of el.getAnimations()) {
       const property = (animation as { transitionProperty?: string }).transitionProperty;
-      if (property && properties.includes(property)) running.push(animation.finished.catch(() => {}));
+      if (property && properties.includes(property))
+        running.push(animation.finished.catch(() => {}));
     }
   }
   if (!running.length) return Promise.resolve();
@@ -208,7 +234,12 @@ export function animationsFinished(
   // The timer is cleared on both outcomes, so the normal path -- the animations
   // winning the race, every time -- leaves nothing pending behind it.
   let timer: ReturnType<typeof setTimeout>;
-  return Promise.race([all, new Promise<void>((resolve) => { timer = setTimeout(resolve, timeout); })]).finally(() => clearTimeout(timer));
+  return Promise.race([
+    all,
+    new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, timeout);
+    }),
+  ]).finally(() => clearTimeout(timer));
 }
 
 /** `matchMedia`, and false where there is none: a server, a test. */

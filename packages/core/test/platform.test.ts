@@ -6,7 +6,12 @@ import { easings } from '../src/animate.ts';
 
 const withNavigator = (nav: object | undefined) => {
   if (nav === undefined) delete (globalThis as { navigator?: unknown }).navigator;
-  else Object.defineProperty(globalThis, 'navigator', { value: nav, configurable: true, writable: true });
+  else
+    Object.defineProperty(globalThis, 'navigator', {
+      value: nav,
+      configurable: true,
+      writable: true,
+    });
 };
 
 afterEach(() => withNavigator(undefined));
@@ -18,30 +23,57 @@ test('without a navigator nothing is recognized and iOS is the default', () => {
 });
 
 test('an Android user agent is Android', () => {
-  withNavigator({ platform: 'Linux armv8l', userAgent: 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 Chrome/128.0 Mobile Safari/537.36' });
+  withNavigator({
+    platform: 'Linux armv8l',
+    userAgent:
+      'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 Chrome/128.0 Mobile Safari/537.36',
+  });
   assert.equal(isAndroidBrowser(), true);
   assert.equal(detectPlatform(), 'android');
 });
 
 test('client hints are trusted over the user agent string', () => {
-  withNavigator({ platform: 'Linux x86_64', userAgent: 'Mozilla/5.0 (X11; Linux x86_64) Chrome/128.0', userAgentData: { platform: 'Android' } });
+  withNavigator({
+    platform: 'Linux x86_64',
+    userAgent: 'Mozilla/5.0 (X11; Linux x86_64) Chrome/128.0',
+    userAgentData: { platform: 'Android' },
+  });
   assert.equal(detectPlatform(), 'android');
-  withNavigator({ platform: 'Linux armv8l', userAgent: 'Mozilla/5.0 (Linux; Android 15) Chrome/128.0', userAgentData: { platform: 'Windows' } });
+  withNavigator({
+    platform: 'Linux armv8l',
+    userAgent: 'Mozilla/5.0 (Linux; Android 15) Chrome/128.0',
+    userAgentData: { platform: 'Windows' },
+  });
   assert.equal(isAndroidBrowser(), false, 'a hint that names another platform wins');
 });
 
 test('iPhone, iPad and desktop browsers all resolve to iOS', () => {
-  withNavigator({ platform: 'iPhone', userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)', maxTouchPoints: 5 });
+  withNavigator({
+    platform: 'iPhone',
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)',
+    maxTouchPoints: 5,
+  });
   assert.equal(isIOSBrowser(), true);
   assert.equal(detectPlatform(), 'ios');
-  withNavigator({ platform: 'MacIntel', userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', maxTouchPoints: 5 });
+  withNavigator({
+    platform: 'MacIntel',
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+    maxTouchPoints: 5,
+  });
   assert.equal(isIOSBrowser(), true, 'iPadOS reports itself as a Mac with touch');
-  withNavigator({ platform: 'Win32', userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/128.0', maxTouchPoints: 0 });
+  withNavigator({
+    platform: 'Win32',
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/128.0',
+    maxTouchPoints: 0,
+  });
   assert.equal(detectPlatform(), 'ios', 'nothing recognized falls back to iOS');
 });
 
 test('the transition takes the detected platform and its preset', () => {
-  withNavigator({ platform: 'Linux armv8l', userAgent: 'Mozilla/5.0 (Linux; Android 15) Chrome/128.0' });
+  withNavigator({
+    platform: 'Linux armv8l',
+    userAgent: 'Mozilla/5.0 (Linux; Android 15) Chrome/128.0',
+  });
   const t = createNativeTransition();
   assert.equal(t.options.platform, 'android');
   assert.deepEqual(t.options, { ...nativeTransitionPreset('android'), platform: 'android' });
@@ -52,7 +84,10 @@ test('the transition takes the detected platform and its preset', () => {
 });
 
 test('an explicit platform overrides detection, and explicit options override the preset', () => {
-  withNavigator({ platform: 'Linux armv8l', userAgent: 'Mozilla/5.0 (Linux; Android 15) Chrome/128.0' });
+  withNavigator({
+    platform: 'Linux armv8l',
+    userAgent: 'Mozilla/5.0 (Linux; Android 15) Chrome/128.0',
+  });
   const t = createNativeTransition({ platform: 'ios', duration: 300 });
   assert.equal(t.options.platform, 'ios');
   assert.equal(t.options.travel, 1);

@@ -7,7 +7,12 @@ import { isIOSBrowser } from '../src/platform.ts';
 
 installGlobals();
 
-const instant = { duration: 0, ease: (t) => t, settle: () => ({ duration: 0, ease: (t) => t }), apply() {} };
+const instant = {
+  duration: 0,
+  ease: (t) => t,
+  settle: () => ({ duration: 0, ease: (t) => t }),
+  apply() {},
+};
 
 let stack, entries, index, popstate, calls;
 
@@ -85,7 +90,13 @@ test('browser forward with no handler bounces back', async () => {
   calls.length = 0;
   history.go(1);
   await new Promise((r) => setTimeout(r, 5));
-  assert.deepEqual(calls.map(([k, v]) => [k, v]).filter(([k]) => k === 'go'), [['go', 1], ['go', -1]]);
+  assert.deepEqual(
+    calls.map(([k, v]) => [k, v]).filter(([k]) => k === 'go'),
+    [
+      ['go', 1],
+      ['go', -1],
+    ],
+  );
   assert.equal(stack.depth, 1);
 });
 

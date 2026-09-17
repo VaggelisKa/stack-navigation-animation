@@ -1,5 +1,14 @@
 import { Location } from '@angular/common';
-import { Component, Directive, Injectable, computed, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  Directive,
+  Injectable,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { type StackNav, type SwipeBackMode } from '@stacknav/angular';
 import { useBack } from '../back';
@@ -50,7 +59,8 @@ export class DemoNav {
 export class BackButton {
   readonly fallback = input<readonly unknown[] | null, unknown>(null, {
     alias: 'snBack',
-    transform: (v: unknown) => (v === '' || v == null ? null : Array.isArray(v) ? (v as readonly unknown[]) : [v]),
+    transform: (v: unknown) =>
+      v === '' || v == null ? null : Array.isArray(v) ? (v as readonly unknown[]) : [v],
   });
   private readonly back = useBack();
   private readonly location = inject(Location);
@@ -76,10 +86,13 @@ export class BackButton {
 export class PushLink {
   readonly pushTo = input.required<readonly unknown[]>();
   private readonly router = inject(Router);
-  readonly href = computed(() => this.router.serializeUrl(this.router.createUrlTree(this.pushTo() as unknown[])));
+  readonly href = computed(() =>
+    this.router.serializeUrl(this.router.createUrlTree(this.pushTo() as unknown[])),
+  );
 
   onClick(event: MouseEvent): void {
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+      return;
     event.preventDefault();
     void this.router.navigate([...this.pushTo()], { info: { stacknav: 'push' } });
   }
@@ -115,7 +128,9 @@ export class Avatar {
 })
 export class Skeleton {
   readonly lines = input(3);
-  readonly widths = computed(() => Array.from({ length: this.lines() }, (_, i) => [92, 70, 84, 55, 78][i % 5]));
+  readonly widths = computed(() =>
+    Array.from({ length: this.lines() }, (_, i) => [92, 70, 84, 55, 78][i % 5]),
+  );
 }
 
 /** An error message with a retry button. */
@@ -131,7 +146,9 @@ export class Skeleton {
 export class ErrorBox {
   readonly error = input.required<unknown>();
   readonly retry = output();
-  readonly message = computed(() => (this.error() instanceof Error ? (this.error() as Error).message : String(this.error())));
+  readonly message = computed(() =>
+    this.error() instanceof Error ? (this.error() as Error).message : String(this.error()),
+  );
 }
 
 @Component({

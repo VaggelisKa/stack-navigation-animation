@@ -7,4 +7,6 @@ import { gzipSync } from 'node:zlib';
 const file = new URL('../dist/fesm2022/stacknav-angular.mjs', import.meta.url);
 const source = await readFile(file);
 const kb = (n) => (n / 1024).toFixed(2) + ' kB';
-console.log(`fesm2022/stacknav-angular.mjs  raw ${kb(source.length)}  gzipped ${kb(gzipSync(source).length)}`);
+console.log(
+  `fesm2022/stacknav-angular.mjs  raw ${kb(source.length)}  gzipped ${kb(gzipSync(source).length)}`,
+);

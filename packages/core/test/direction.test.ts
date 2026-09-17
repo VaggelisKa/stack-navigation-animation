@@ -1,6 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveDirection, createDirectionResolver, defaultStrategies, byHint, byBrowserHistory, byKeptStack, byRouteNumber, byRouteTree, always, segmentsOf } from '../src/direction.ts';
+import {
+  resolveDirection,
+  createDirectionResolver,
+  defaultStrategies,
+  byHint,
+  byBrowserHistory,
+  byKeptStack,
+  byRouteNumber,
+  byRouteTree,
+  always,
+  segmentsOf,
+} from '../src/direction.ts';
 
 const ref = (url, extra = {}) => ({ key: url, segments: segmentsOf(url), ...extra });
 const ctx = (from, to, extra = {}) => ({ from: from && ref(from), to: ref(to), ...extra });
@@ -14,7 +25,10 @@ test('segmentsOf ignores query, fragment and empty parts', () => {
 test('byHint honours an explicit direction and ignores auto', () => {
   assert.equal(byHint()(ctx('/a', '/b', { hint: 'pop' })), 'pop');
   assert.equal(byHint()(ctx('/a', '/b', { hint: 'auto' })), 'auto');
-  assert.equal(resolveDirection([byHint()], ctx('/a', '/b', { hint: 'auto' }), 'replace'), 'replace');
+  assert.equal(
+    resolveDirection([byHint()], ctx('/a', '/b', { hint: 'auto' }), 'replace'),
+    'replace',
+  );
 });
 
 test('byBrowserHistory: back pops, forward pushes, unknown delta gives no answer', () => {
@@ -38,7 +52,13 @@ test('byRouteNumber compares explicit numbers', () => {
   assert.equal(s({ from: ref('/a', { level: 1 }), to: ref('/b', { level: 2 }) }), 'push');
   assert.equal(s({ from: ref('/a', { level: 3 }), to: ref('/b', { level: 2 }) }), 'pop');
   assert.equal(s({ from: ref('/a', { level: 2 }), to: ref('/b', { level: 2 }) }), 'replace');
-  assert.equal(byRouteNumber({ siblings: 'push' })({ from: ref('/a', { level: 2 }), to: ref('/b', { level: 2 }) }), 'push');
+  assert.equal(
+    byRouteNumber({ siblings: 'push' })({
+      from: ref('/a', { level: 2 }),
+      to: ref('/b', { level: 2 }),
+    }),
+    'push',
+  );
   assert.equal(s({ from: ref('/a'), to: ref('/b', { level: 2 }) }), undefined, 'needs both');
   assert.equal(s({ from: null, to: ref('/b', { level: 2 }) }), undefined);
 });
@@ -70,13 +90,25 @@ test('the default strategies prefer hint, then history, then stack, then level, 
   assert.equal(resolve.strategies.length, defaultStrategies().length);
   assert.equal(resolve.fallback, 'push');
   // hint beats everything
-  assert.equal(resolve(ctx('/items', '/items/42', { hint: 'replace', trigger: 'history', historyDelta: -1 })), 'replace');
+  assert.equal(
+    resolve(ctx('/items', '/items/42', { hint: 'replace', trigger: 'history', historyDelta: -1 })),
+    'replace',
+  );
   // browser back beats the tree
-  assert.equal(resolve(ctx('/items', '/items/42', { trigger: 'history', historyDelta: -1 })), 'pop');
+  assert.equal(
+    resolve(ctx('/items', '/items/42', { trigger: 'history', historyDelta: -1 })),
+    'pop',
+  );
   // a kept page beats numbering and the tree
-  assert.equal(resolve({ from: ref('/a', { level: 1 }), to: ref('/b', { level: 5 }), stack: ['/b', '/a'] }), 'pop');
+  assert.equal(
+    resolve({ from: ref('/a', { level: 1 }), to: ref('/b', { level: 5 }), stack: ['/b', '/a'] }),
+    'pop',
+  );
   // numbering beats the tree
-  assert.equal(resolve({ from: ref('/items', { level: 5 }), to: ref('/items/42', { level: 1 }) }), 'pop');
+  assert.equal(
+    resolve({ from: ref('/items', { level: 5 }), to: ref('/items/42', { level: 1 }) }),
+    'pop',
+  );
   // the tree decides otherwise
   assert.equal(resolve(ctx('/items', '/items/42')), 'push');
   assert.equal(resolve(ctx('/items/42', '/items')), 'pop');
@@ -93,7 +125,10 @@ test('a custom rule is asked after the certainties and before the guesses', () =
   const resolve = createDirectionResolver(defaultStrategies({ direction: mine }));
 
   // it beats numbering and the tree
-  assert.equal(resolve({ from: ref('/a', { level: 1 }), to: ref('/tab', { level: 9 }) }), 'replace');
+  assert.equal(
+    resolve({ from: ref('/a', { level: 1 }), to: ref('/tab', { level: 9 }) }),
+    'replace',
+  );
   // but not an explicit hint, the browser's buttons, or a kept page
   assert.equal(resolve(ctx('/a', '/tab', { hint: 'push' })), 'push');
   assert.equal(resolve(ctx('/a', '/tab', { trigger: 'history', historyDelta: -1 })), 'pop');
@@ -107,5 +142,9 @@ test('siblings changes what a tie means for both numbering and the tree', () => 
   const resolve = createDirectionResolver(defaultStrategies({ siblings: 'push' }));
   assert.equal(resolve({ from: ref('/a', { level: 2 }), to: ref('/b', { level: 2 }) }), 'push');
   assert.equal(resolve(ctx('/items/1', '/items/2')), 'push');
-  assert.equal(createDirectionResolver(defaultStrategies())(ctx('/items/1', '/items/2')), 'replace', 'default');
+  assert.equal(
+    createDirectionResolver(defaultStrategies())(ctx('/items/1', '/items/2')),
+    'replace',
+    'default',
+  );
 });

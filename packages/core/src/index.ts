@@ -17,15 +17,35 @@ export type {
   TransitionEvent,
   ProgressEvent,
 } from './navigation-stack.ts';
-export { createNativeTransition, nativeTransitionPreset, NATIVE_TRANSITION_CSS_VARS } from './native-transition.ts';
-export type { NativeTransition, NativeTransitionOptions, NativeTransitionPreset } from './native-transition.ts';
+export {
+  createNativeTransition,
+  nativeTransitionPreset,
+  NATIVE_TRANSITION_CSS_VARS,
+} from './native-transition.ts';
+export type {
+  NativeTransition,
+  NativeTransitionOptions,
+  NativeTransitionPreset,
+} from './native-transition.ts';
 export { cssVars, parseTime, parseNumber, parseRatio, parseEasing } from './css-vars.ts';
 export type { CSSVarReader } from './css-vars.ts';
 export { attachBrowserHistory } from './history-adapter.ts';
 export type { BrowserHistoryOptions } from './history-adapter.ts';
 export { detectPlatform, isIOSBrowser, isAndroidBrowser } from './platform.ts';
 export type { Platform } from './platform.ts';
-export { cubicBezier, linearEasing, easings, cssEasing, cssDuration, tween, commitStyles, animationsFinished, prefersReducedMotion, matchesMedia, isTouchPrimary } from './animate.ts';
+export {
+  cubicBezier,
+  linearEasing,
+  easings,
+  cssEasing,
+  cssDuration,
+  tween,
+  commitStyles,
+  animationsFinished,
+  prefersReducedMotion,
+  matchesMedia,
+  isTouchPrimary,
+} from './animate.ts';
 export type { Easing, TweenOptions, CancellableTween } from './animate.ts';
 export {
   resolveDirection,
@@ -54,7 +74,11 @@ export { STACKNAV_CSS, STACKNAV_STYLE_ID, injectStyles } from './styles.ts';
 export type { StyleTarget, InjectStylesOptions } from './styles.ts';
 
 import { NavigationStack } from './navigation-stack.ts';
-import { createNativeTransition, type NativeTransition, type NativeTransitionOptions } from './native-transition.ts';
+import {
+  createNativeTransition,
+  type NativeTransition,
+  type NativeTransitionOptions,
+} from './native-transition.ts';
 
 import { suppressBrowserSwipe, type SwipeBackMode } from './swipe-back.ts';
 
@@ -84,7 +108,12 @@ export interface NativeStack extends NavigationStack {
  * as two backs at once. Apps that own the edge -- an installed PWA, a native
  * webview -- can drive `beginInteractivePop()` from their own pointer handling.
  */
-export function createNativeStack({ container, transition = {}, swipeBack = 'browser', manageFocus = false }: NativeStackOptions): NativeStack {
+export function createNativeStack({
+  container,
+  transition = {},
+  swipeBack = 'browser',
+  manageFocus = false,
+}: NativeStackOptions): NativeStack {
   const t = createNativeTransition(transition);
   const stack = new NavigationStack({ container, transition: t, manageFocus }) as NativeStack;
   let mode: SwipeBackMode | undefined;

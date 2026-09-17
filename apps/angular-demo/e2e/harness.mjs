@@ -17,12 +17,20 @@ import { fileURLToPath } from 'node:url';
 const ENGINES = { chromium, webkit };
 /** Which engine this run drives; suites guard engine-specific checks on it. */
 export const browserName = process.env.E2E_BROWSER || 'chromium';
-if (!ENGINES[browserName]) throw new Error(`E2E_BROWSER must be one of ${Object.keys(ENGINES).join(', ')}, got ${JSON.stringify(browserName)}`);
+if (!ENGINES[browserName])
+  throw new Error(
+    `E2E_BROWSER must be one of ${Object.keys(ENGINES).join(', ')}, got ${JSON.stringify(browserName)}`,
+  );
 
 const ROOT = fileURLToPath(new URL('../dist/browser/', import.meta.url));
 // One directory per engine: the two runs write the same file names.
 const SHOTS = fileURLToPath(new URL(`./shots/${browserName}/`, import.meta.url));
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.map': 'application/json' };
+const TYPES = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.map': 'application/json',
+};
 
 export async function launch({ width = 420, height = 800 } = {}) {
   const server = createServer(async (req, res) => {
@@ -37,7 +45,8 @@ export async function launch({ width = 420, height = 800 } = {}) {
 
   const executablePath =
     browserName === 'chromium'
-      ? process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined)
+      ? process.env.CHROMIUM_PATH ||
+        (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined)
       : undefined;
   const browser = await ENGINES[browserName].launch({ executablePath });
   const page = await browser.newPage({ viewport: { width, height } });
@@ -51,7 +60,8 @@ export async function launch({ width = 420, height = 800 } = {}) {
     console.log(`${cond ? 'ok  ' : 'FAIL'} ${msg}`);
     if (!cond) failures++;
   };
-  const eq = (a, b, msg) => check(a === b, `${msg} (${JSON.stringify(a)}${a === b ? '' : ' ≠ ' + JSON.stringify(b)})`);
+  const eq = (a, b, msg) =>
+    check(a === b, `${msg} (${JSON.stringify(a)}${a === b ? '' : ' ≠ ' + JSON.stringify(b)})`);
   const section = (title) => console.log(`\n# ${title}`);
   console.log(`# engine: ${browserName} ${browser.version()}`);
 
@@ -68,12 +78,15 @@ export async function launch({ width = 420, height = 800 } = {}) {
       const stack = container();
       const pages = globalThis.__snStack.entries.map((e) => e.el);
       // A page animating out has already left the entries but is still mounted, on top.
-      for (const el of stack.querySelectorAll(':scope > .sn-page')) if (!pages.includes(el)) pages.push(el);
+      for (const el of stack.querySelectorAll(':scope > .sn-page'))
+        if (!pages.includes(el)) pages.push(el);
       return {
         url: location.pathname + location.search,
         busy: stack.classList.contains('sn-busy'),
         pages: pages.map((p) => p.tagName.toLowerCase()),
-        visible: pages.filter((p) => p.classList.contains('sn-page-visible')).map((p) => p.tagName.toLowerCase()),
+        visible: pages
+          .filter((p) => p.classList.contains('sn-page-visible'))
+          .map((p) => p.tagName.toLowerCase()),
         title: pages.at(-1)?.querySelector('h1')?.textContent?.trim(),
       };
     };
@@ -90,7 +103,8 @@ export async function launch({ width = 420, height = 800 } = {}) {
       const frames = [];
       const tick = () => {
         if (globalThis.__snWatchGen !== mine) return; // a newer watch took over
-        if (frames.length < 2 && container()?.classList.contains('sn-busy')) frames.push(globalThis.__snRead());
+        if (frames.length < 2 && container()?.classList.contains('sn-busy'))
+          frames.push(globalThis.__snRead());
         requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
@@ -98,10 +112,21 @@ export async function launch({ width = 420, height = 800 } = {}) {
     };
   });
   /** The app is zoneless, so a click's view update lands on the next frame. Wait one frame before reading. */
-  const flush = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))));
+  const flush = () =>
+    page.evaluate(() => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))));
   const state = async () => (await flush(), page.evaluate(() => globalThis.__snRead()));
-  const busy = (timeout = 2000) => page.waitForFunction(() => document.querySelector('.sn-container').classList.contains('sn-busy'), null, { timeout }).catch(() => {});
-  const settled = () => page.waitForFunction(() => !document.querySelector('.sn-container').classList.contains('sn-busy'));
+  const busy = (timeout = 2000) =>
+    page
+      .waitForFunction(
+        () => document.querySelector('.sn-container').classList.contains('sn-busy'),
+        null,
+        { timeout },
+      )
+      .catch(() => {});
+  const settled = () =>
+    page.waitForFunction(
+      () => !document.querySelector('.sn-container').classList.contains('sn-busy'),
+    );
   /**
    * `page.emulateMedia`, but it returns only once the page itself reports the
    * new value. The override is set from the driver, and an engine is free to
@@ -113,9 +138,15 @@ export async function launch({ width = 420, height = 800 } = {}) {
   const media = async (options) => {
     await page.emulateMedia(options);
     const queries = [];
-    if (typeof options.reducedMotion === 'string') queries.push(['(prefers-reduced-motion: reduce)', options.reducedMotion === 'reduce']);
-    if (typeof options.colorScheme === 'string') queries.push(['(prefers-color-scheme: dark)', options.colorScheme === 'dark']);
-    if (queries.length) await page.waitForFunction((qs) => qs.every(([q, want]) => matchMedia(q).matches === want), queries);
+    if (typeof options.reducedMotion === 'string')
+      queries.push(['(prefers-reduced-motion: reduce)', options.reducedMotion === 'reduce']);
+    if (typeof options.colorScheme === 'string')
+      queries.push(['(prefers-color-scheme: dark)', options.colorScheme === 'dark']);
+    if (queries.length)
+      await page.waitForFunction(
+        (qs) => qs.every(([q, want]) => matchMedia(q).matches === want),
+        queries,
+      );
   };
   /** Runs `act`, waits for the transition to start, captures the mid-flight state, then waits for it to end. */
   const transitioned = async (act, name, { timeout = 2000 } = {}) => {
@@ -131,8 +162,13 @@ export async function launch({ width = 420, height = 800 } = {}) {
     await settled();
     return mid;
   };
-  const scrollTop = () => page.evaluate(() => document.querySelector('.sn-container > .sn-page-visible').scrollTop);
-  const setScroll = (y) => page.evaluate((y) => (document.querySelector('.sn-container > .sn-page-visible').scrollTop = y), y);
+  const scrollTop = () =>
+    page.evaluate(() => document.querySelector('.sn-container > .sn-page-visible').scrollTop);
+  const setScroll = (y) =>
+    page.evaluate(
+      (y) => (document.querySelector('.sn-container > .sn-page-visible').scrollTop = y),
+      y,
+    );
   /**
    * The library ships no gesture recognizer: in a browser tab the browser owns
    * the edge. This drives `beginInteractivePop()` the way an app that does own
@@ -170,5 +206,26 @@ export async function launch({ width = 420, height = 800 } = {}) {
     process.exit(failures ? 1 : 0);
   };
 
-  return { page, base, browser, browserName, server, errors, check, eq, section, flush, media, state, busy, settled, transitioned, scrollTop, setScroll, interactivePop, shots: SHOTS, finish };
+  return {
+    page,
+    base,
+    browser,
+    browserName,
+    server,
+    errors,
+    check,
+    eq,
+    section,
+    flush,
+    media,
+    state,
+    busy,
+    settled,
+    transitioned,
+    scrollTop,
+    setScroll,
+    interactivePop,
+    shots: SHOTS,
+    finish,
+  };
 }

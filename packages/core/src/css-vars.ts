@@ -79,13 +79,15 @@ const easingKeywordsOf = (): Record<string, Easing> =>
  * and 100%, positions never go backwards, and two positions make two stops.
  */
 function parseLinear(body: string): Easing | undefined {
-  const xs: Array<number | undefined> = [], ys: number[] = [];
+  const xs: Array<number | undefined> = [],
+    ys: number[] = [];
   for (const stop of body.split(',')) {
     const [y, ...positions] = stop.trim().split(/\s+/);
     const yn = parseNumber(y);
     if (yn === undefined || positions.length > 2) return undefined;
     for (const pos of positions.length ? positions : [undefined]) {
-      const xn = pos === undefined ? undefined : pos.endsWith('%') ? parseNumber(pos.slice(0, -1)) : NaN;
+      const xn =
+        pos === undefined ? undefined : pos.endsWith('%') ? parseNumber(pos.slice(0, -1)) : NaN;
       if (Number.isNaN(xn)) return undefined;
       xs.push(xn === undefined ? undefined : xn / 100);
       ys.push(yn);
@@ -98,7 +100,8 @@ function parseLinear(body: string): Easing | undefined {
     if (xs[i] !== undefined) continue;
     let j = i;
     while (xs[j] === undefined) j++;
-    for (let k = i; k < j; k++) xs[k] = xs[i - 1]! + ((xs[j]! - xs[i - 1]!) * (k - i + 1)) / (j - i + 1);
+    for (let k = i; k < j; k++)
+      xs[k] = xs[i - 1]! + ((xs[j]! - xs[i - 1]!) * (k - i + 1)) / (j - i + 1);
   }
   const x = xs as number[];
   for (let i = 1; i < x.length; i++) x[i] = Math.max(x[i], x[i - 1]);

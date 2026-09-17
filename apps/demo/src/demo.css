@@ -92,10 +92,10 @@ body {
 .hdr h1 { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: -0.2px; }
 .back, .back-space { width: 40px; height: 40px; flex: none; }
 .back {
-  border: 0; border-radius: 10px; background: rgba(255,255,255,0.14); color: inherit;
+  border: 0; border-radius: 10px; background: rgba(255, 255, 255, 0.14); color: inherit;
   font-size: 20px; cursor: pointer;
 }
-.back:active { background: rgba(255,255,255,0.28); }
+.back:active { background: rgba(255, 255, 255, 0.28); }
 .back:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
 
 .body { padding: 8px 16px calc(32px + env(safe-area-inset-bottom, 0px)); max-width: 62ch; }
