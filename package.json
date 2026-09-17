@@ -13,6 +13,8 @@
     "test": "pnpm --filter @stacknav/core test && pnpm --filter @stacknav/angular test",
     "typecheck": "pnpm --filter @stacknav/core typecheck && pnpm --filter @stacknav/angular typecheck",
     "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "size": "pnpm --filter @stacknav/core size && pnpm --filter @stacknav/angular size",
     "e2e": "pnpm build && pnpm --filter @stacknav/angular-demo build && pnpm --filter @stacknav/angular-demo e2e",
     "dev:demo": "pnpm --filter @stacknav/demo dev",
@@ -28,6 +30,7 @@
     "angular-eslint": "catalog:",
     "eslint": "catalog:",
     "globals": "catalog:",
+    "prettier": "catalog:",
     "typescript-eslint": "catalog:"
   }
 }

@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   check:
-    name: Test, build, typecheck, lint
+    name: Test, build, typecheck, lint, format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -30,6 +30,8 @@ jobs:
       - run: pnpm build:all
       - run: pnpm typecheck
       - run: pnpm lint
+      # Prettier owns layout; this only fails on a file nobody ran it over.
+      - run: pnpm format:check
 
   e2e:
     # One job per engine, so a failure names the browser that failed instead of

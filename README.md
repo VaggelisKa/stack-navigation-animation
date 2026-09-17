@@ -72,11 +72,7 @@ pnpm add @stacknav/core
 Create a stack, add its styles, and push page elements into it:
 
 ```ts
-import {
-  attachBrowserHistory,
-  createNativeStack,
-  injectStyles,
-} from '@stacknav/core';
+import { attachBrowserHistory, createNativeStack, injectStyles } from '@stacknav/core';
 
 injectStyles();
 
@@ -102,6 +98,7 @@ pnpm install
 pnpm test
 pnpm typecheck
 pnpm lint
+pnpm format
 pnpm build:all
 pnpm e2e
 ```
@@ -109,6 +106,16 @@ pnpm e2e
 `pnpm e2e` drives Chromium by default. Set `E2E_BROWSER=webkit` to run the same
 suites on WebKit (CI runs both, one job each); install the engine first with
 `pnpm --filter @stacknav/angular-demo exec playwright-core install webkit`.
+
+Prettier owns layout: `pnpm format` rewrites it, `pnpm format:check` is what
+CI runs. ESLint carries no stylistic rules, so the two never disagree.
+
+Two things are kept by hand rather than by Prettier. The demo stylesheets are
+written one rule to a line, which is how you read a demo's styling at a glance,
+and they are listed in `.prettierignore`. The inline Angular templates are left
+as authored, because Prettier's whitespace-safe HTML has to move the closing
+bracket rather than the whitespace; `embeddedLanguageFormatting: 'off'` covers
+those. Keep both tidy the way you found them.
 
 Run the demos locally with `pnpm dev:demo` or `pnpm dev:angular`.
 

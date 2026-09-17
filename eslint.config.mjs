@@ -5,8 +5,8 @@
 //
 // The rule set is deliberately small. It is here to catch mistakes -- an unused
 // symbol, a floating `case`, an Angular lifecycle method spelled wrong -- not to
-// impose a style: there is no formatter in this repository and nothing below
-// reformats code.
+// impose a style: layout belongs to Prettier (see `prettier.config.mjs`) and
+// nothing below reformats code, so the two never disagree.
 import js from '@eslint/js';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
@@ -14,7 +14,13 @@ import angular from 'angular-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/.angular/**', '**/out-tsc/**', 'apps/angular-demo/e2e/shots/**'],
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/.angular/**',
+      '**/out-tsc/**',
+      'apps/angular-demo/e2e/shots/**',
+    ],
   },
 
   // ---- every source file ---------------------------------------------------
@@ -28,7 +34,10 @@ export default tseslint.config(
     rules: {
       // An unused argument that documents a callback's shape (`(_event) => ...`)
       // is intentional; an unused local is not.
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' },
+      ],
       // The library reaches into DOM corners the lib.dom types do not describe
       // (vendor-prefixed viewport bits, a host's own stack object). Those casts
       // are deliberate and reviewed, so this is a nudge rather than a gate.
