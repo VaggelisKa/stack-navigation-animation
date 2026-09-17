@@ -106,10 +106,13 @@ class ShellMicrofrontend {
 })
 export class ShellDemo {
   private readonly router = inject(Router);
-  readonly detail = toSignal(this.router.events.pipe(
-    filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-    map((event) => event.urlAfterRedirects.split('?')[0] !== '/'),
-  ), { initialValue: this.router.url.split('?')[0] !== '/' });
+  readonly detail = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects.split('?')[0] !== '/'),
+    ),
+    { initialValue: this.router.url.split('?')[0] !== '/' },
+  );
   readonly expanded = signal(false);
   readonly mounted = signal(true);
 }

@@ -8,7 +8,10 @@ const { NATIVE_TRANSITION_CSS_VARS } = await import('../dist/native-transition.j
 
 const DOCS = {
   duration: ['500ms', 'push/pop length'],
-  ease: ['cubic-bezier(0.32, 0.72, 0, 1)', 'its curve: a cubic-bezier, linear(), a keyword, ios or android'],
+  ease: [
+    'cubic-bezier(0.32, 0.72, 0, 1)',
+    'its curve: a cubic-bezier, linear(), a keyword, ios or android',
+  ],
   travel: ['100%', 'how far the incoming page travels'],
   parallax: ['30%', 'how far the page beneath travels'],
   fade: ['1', 'the incoming page opacity when closed; 0 fades it in'],
@@ -25,7 +28,11 @@ const vars = Object.entries(NATIVE_TRANSITION_CSS_VARS).map(([option, name]) => 
   const [value, note] = DOCS[option];
   return `     ${`${name}: ${value};`.padEnd(45)}${note}`.trimEnd();
 });
-const header = ['/* Tune the transition by setting these on .sn-container or any ancestor (the values shown are the iOS preset):', ...vars.slice(0, -1), vars.at(-1) + ' */'].join('\n');
+const header = [
+  '/* Tune the transition by setting these on .sn-container or any ancestor (the values shown are the iOS preset):',
+  ...vars.slice(0, -1),
+  vars.at(-1) + ' */',
+].join('\n');
 
 /** Expands the minified source, including nested at-rules such as media queries. */
 const formatCSS = (css) => {
@@ -56,5 +63,8 @@ const formatCSS = (css) => {
 };
 
 await mkdir(new URL('../dist/', import.meta.url), { recursive: true });
-await writeFile(new URL('../dist/stacknav.css', import.meta.url), `${header}\n${formatCSS(STACKNAV_CSS)}\n`);
+await writeFile(
+  new URL('../dist/stacknav.css', import.meta.url),
+  `${header}\n${formatCSS(STACKNAV_CSS)}\n`,
+);
 console.log('wrote dist/stacknav.css');

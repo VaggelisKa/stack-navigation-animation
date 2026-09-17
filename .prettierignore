@@ -1,0 +1,17 @@
+# Build output and caches.
+dist/
+out-tsc/
+.angular/
+node_modules/
+apps/angular-demo/e2e/shots/
+
+# Generated: changesets writes the changelogs, pnpm writes the lockfile.
+**/CHANGELOG.md
+pnpm-lock.yaml
+
+# Hand-kept. The stylesheets are written one rule to a line on purpose: these
+# are demos, and a rule per line is how you read a demo's styling at a glance.
+# Prettier would spread the three of them over some 2,900 lines.
+apps/angular-demo/src/app/demos/demos.css
+apps/angular-demo/src/styles.css
+apps/demo/src/demo.css

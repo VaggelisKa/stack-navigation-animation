@@ -87,7 +87,20 @@ export class FormsProfile {
   readonly searchable = signal(true);
   readonly saving = signal(false);
   readonly toast = signal<string | null>(null);
-  private readonly fields = [this.name, this.handle, this.pronouns, this.bio, this.email, this.phone, this.site, this.location, this.hue, this.isPublic, this.showEmail, this.searchable] as const;
+  private readonly fields = [
+    this.name,
+    this.handle,
+    this.pronouns,
+    this.bio,
+    this.email,
+    this.phone,
+    this.site,
+    this.location,
+    this.hue,
+    this.isPublic,
+    this.showEmail,
+    this.searchable,
+  ] as const;
   private readonly snapshot = signal(this.take());
   readonly dirty = computed(() => this.take() !== this.snapshot());
 
@@ -224,7 +237,10 @@ export class FormsWizard {
     try {
       const order = await this.api.placeOrder([]);
       this.wizard.submitted.set(order.id);
-      await this.router.navigate(['/forms/wizard/done'], { replaceUrl: true, info: { stacknav: 'replace' } });
+      await this.router.navigate(['/forms/wizard/done'], {
+        replaceUrl: true,
+        info: { stacknav: 'replace' },
+      });
     } catch (e) {
       this.error.set(e);
     } finally {
@@ -293,14 +309,63 @@ export class FormsDone {
 })
 export class FormsPreferences {
   readonly groups = [
-    { title: 'Notifications', rows: [{ key: 'push', label: 'Push notifications' }, { key: 'email', label: 'Email digests' }, { key: 'sounds', label: 'Sounds' }, { key: 'badge', label: 'Badge count' }] },
-    { title: 'Appearance', rows: [{ key: 'theme', label: 'Theme', options: ['System', 'Light', 'Dark'] }, { key: 'size', label: 'Text size', options: ['Small', 'Default', 'Large'] }, { key: 'motion', label: 'Reduce motion' }, { key: 'contrast', label: 'High contrast' }] },
-    { title: 'Privacy', rows: [{ key: 'analytics', label: 'Share analytics' }, { key: 'crash', label: 'Crash reports' }, { key: 'ads', label: 'Personalised ads' }, { key: 'location', label: 'Location', options: ['Never', 'While using', 'Always'] }] },
-    { title: 'Data', rows: [{ key: 'wifi', label: 'Sync on Wi-Fi only' }, { key: 'quality', label: 'Image quality', options: ['Low', 'Medium', 'High'] }, { key: 'cache', label: 'Keep cache' }] },
+    {
+      title: 'Notifications',
+      rows: [
+        { key: 'push', label: 'Push notifications' },
+        { key: 'email', label: 'Email digests' },
+        { key: 'sounds', label: 'Sounds' },
+        { key: 'badge', label: 'Badge count' },
+      ],
+    },
+    {
+      title: 'Appearance',
+      rows: [
+        { key: 'theme', label: 'Theme', options: ['System', 'Light', 'Dark'] },
+        { key: 'size', label: 'Text size', options: ['Small', 'Default', 'Large'] },
+        { key: 'motion', label: 'Reduce motion' },
+        { key: 'contrast', label: 'High contrast' },
+      ],
+    },
+    {
+      title: 'Privacy',
+      rows: [
+        { key: 'analytics', label: 'Share analytics' },
+        { key: 'crash', label: 'Crash reports' },
+        { key: 'ads', label: 'Personalised ads' },
+        { key: 'location', label: 'Location', options: ['Never', 'While using', 'Always'] },
+      ],
+    },
+    {
+      title: 'Data',
+      rows: [
+        { key: 'wifi', label: 'Sync on Wi-Fi only' },
+        { key: 'quality', label: 'Image quality', options: ['Low', 'Medium', 'High'] },
+        { key: 'cache', label: 'Keep cache' },
+      ],
+    },
   ] as { title: string; rows: { key: string; label: string; options?: string[] }[] }[];
-  private readonly defaults: Record<string, string | boolean> = { push: true, email: false, sounds: true, badge: true, theme: 'System', size: 'Default', motion: false, contrast: false, analytics: true, crash: true, ads: false, location: 'While using', wifi: true, quality: 'Medium', cache: true };
+  private readonly defaults: Record<string, string | boolean> = {
+    push: true,
+    email: false,
+    sounds: true,
+    badge: true,
+    theme: 'System',
+    size: 'Default',
+    motion: false,
+    contrast: false,
+    analytics: true,
+    crash: true,
+    ads: false,
+    location: 'While using',
+    wifi: true,
+    quality: 'Medium',
+    cache: true,
+  };
   readonly values = signal({ ...this.defaults });
-  readonly changed = computed(() => Object.keys(this.defaults).filter((k) => this.values()[k] !== this.defaults[k]).length);
+  readonly changed = computed(
+    () => Object.keys(this.defaults).filter((k) => this.values()[k] !== this.defaults[k]).length,
+  );
   set(key: string, value: string | boolean): void {
     this.values.update((v) => ({ ...v, [key]: value }));
   }

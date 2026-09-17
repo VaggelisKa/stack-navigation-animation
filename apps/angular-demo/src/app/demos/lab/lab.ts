@@ -55,8 +55,16 @@ import { BackButton, DEMO_UI, DemoNav, DemoPrefs } from '../shared';
 })
 export class LabHome {
   readonly swipeModes = [
-    { value: 'browser', label: 'Browser', description: 'The default. Use your browser’s normal back gesture.' },
-    { value: 'disabled', label: 'Disabled', description: 'Requests browser swipe suppression where supported. Back buttons still work.' },
+    {
+      value: 'browser',
+      label: 'Browser',
+      description: 'The default. Use your browser’s normal back gesture.',
+    },
+    {
+      value: 'disabled',
+      label: 'Disabled',
+      description: 'Requests browser swipe suppression where supported. Back buttons still work.',
+    },
   ] as const;
   readonly prefs = inject(DemoPrefs);
   readonly api = inject(FakeApi);

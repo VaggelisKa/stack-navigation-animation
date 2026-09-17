@@ -48,7 +48,8 @@ export class LargeTitle {
       const large = host.querySelector('.lt-large') as HTMLElement;
       const scroller = scrollerOf(host);
       // The root scroller's scroll events are fired at the document, every other one at the element.
-      const target: EventTarget = scroller === host.ownerDocument.documentElement ? host.ownerDocument : scroller;
+      const target: EventTarget =
+        scroller === host.ownerDocument.documentElement ? host.ownerDocument : scroller;
       /** How far the page scrolls before the large title has passed under the bar. A wrapped title makes it taller. */
       let travel = Math.max(1, large.offsetHeight);
       let frame = 0;
@@ -95,7 +96,8 @@ export class LargeTitle {
  */
 function scrollerOf(el: HTMLElement): HTMLElement {
   for (let p = el.parentElement; p; p = p.parentElement) {
-    if (p.classList.contains('sn-page') || /auto|scroll/.test(getComputedStyle(p).overflowY)) return p;
+    if (p.classList.contains('sn-page') || /auto|scroll/.test(getComputedStyle(p).overflowY))
+      return p;
   }
   return el.ownerDocument.documentElement;
 }

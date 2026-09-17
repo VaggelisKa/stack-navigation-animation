@@ -2,7 +2,16 @@ import { Location } from '@angular/common';
 import { provideLocationMocks } from '@angular/common/testing';
 import { Component, inject } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { NavigationCancel, NavigationEnd, NavigationError, NavigationSkipped, Router, provideRouter, withRouterConfig, type Routes } from '@angular/router';
+import {
+  NavigationCancel,
+  NavigationEnd,
+  NavigationError,
+  NavigationSkipped,
+  Router,
+  provideRouter,
+  withRouterConfig,
+  type Routes,
+} from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { provideStackNav, type StackNavConfig } from '../lib/config';
 import { StackNavHistory, type NavigationInfo } from '../lib/history';
@@ -22,16 +31,31 @@ let seen: NavigationInfo | null = null;
 let blockB = false;
 
 const routes: Routes = [
-  { path: 'a', component: PageA, canActivate: [() => ((seen = inject(StackNavHistory).current), true)] },
-  { path: 'b', component: PageB, canActivate: [() => ((seen = inject(StackNavHistory).current), !blockB)] },
-  { path: 'c', component: PageA, canActivate: [() => ((seen = inject(StackNavHistory).current), true)] },
+  {
+    path: 'a',
+    component: PageA,
+    canActivate: [() => ((seen = inject(StackNavHistory).current), true)],
+  },
+  {
+    path: 'b',
+    component: PageB,
+    canActivate: [() => ((seen = inject(StackNavHistory).current), !blockB)],
+  },
+  {
+    path: 'c',
+    component: PageA,
+    canActivate: [() => ((seen = inject(StackNavHistory).current), true)],
+  },
   { path: 'old', redirectTo: 'c' },
 ];
 
 function setup(opts: { computed?: boolean; config?: StackNavConfig } = {}) {
   TestBed.configureTestingModule({
     providers: [
-      provideRouter(routes, withRouterConfig({ canceledNavigationResolution: opts.computed ? 'computed' : 'replace' })),
+      provideRouter(
+        routes,
+        withRouterConfig({ canceledNavigationResolution: opts.computed ? 'computed' : 'replace' }),
+      ),
       provideLocationMocks(),
       provideStackNav(opts.config),
     ],
@@ -50,7 +74,12 @@ function setup(opts: { computed?: boolean; config?: StackNavConfig } = {}) {
 function settled(router: Router): Promise<void> {
   return new Promise((resolve) => {
     const sub = router.events.subscribe((e) => {
-      if (e instanceof NavigationEnd || e instanceof NavigationCancel || e instanceof NavigationError || e instanceof NavigationSkipped) {
+      if (
+        e instanceof NavigationEnd ||
+        e instanceof NavigationCancel ||
+        e instanceof NavigationError ||
+        e instanceof NavigationSkipped
+      ) {
         sub.unsubscribe();
         // Let the router finish restoring history before the test looks.
         setTimeout(resolve, 0);
@@ -91,7 +120,15 @@ describe('StackNavHistory', () => {
     await router.navigateByUrl('/b');
     // `current` belongs to the navigation, and is cleared the moment it ends.
     expect(history.current).toBeNull();
-    expect(seen).toMatchObject({ trigger: 'imperative', historyDelta: undefined, hint: undefined, animated: undefined, replaceUrl: false, skipLocationChange: false, restoredId: null });
+    expect(seen).toMatchObject({
+      trigger: 'imperative',
+      historyDelta: undefined,
+      hint: undefined,
+      animated: undefined,
+      replaceUrl: false,
+      skipLocationChange: false,
+      restoredId: null,
+    });
   });
 
   it('overwrites the current entry for a replaceUrl navigation', async () => {
@@ -130,7 +167,9 @@ describe('StackNavHistory', () => {
     await router.navigateByUrl('/a');
     await router.navigateByUrl('/b', { info: { stacknav: 'pop' } });
     expect(seen).toMatchObject({ hint: 'pop', animated: undefined });
-    await router.navigateByUrl('/c', { info: { stacknav: { direction: 'replace', animated: false } } });
+    await router.navigateByUrl('/c', {
+      info: { stacknav: { direction: 'replace', animated: false } },
+    });
     expect(seen).toMatchObject({ hint: 'replace', animated: false });
     // Anything that is not the configured key, or not an object at all, is
     // somebody else's info and says nothing to us.

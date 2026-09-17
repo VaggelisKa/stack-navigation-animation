@@ -19,6 +19,10 @@ import { useBack } from '../back';
 export class Reviews {
   readonly id = input.required<string>();
   readonly lock = signal(false);
-  readonly reviews = ['Five stars, would push again.', 'Popped right back where I was.', 'The parallax is subtle. I like it.'];
+  readonly reviews = [
+    'Five stars, would push again.',
+    'Popped right back where I was.',
+    'The parallax is subtle. I like it.',
+  ];
   readonly back = useBack();
 }

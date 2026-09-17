@@ -21,7 +21,8 @@ const field = (parent) => {
 };
 
 let container;
-const stackWith = (manageFocus) => new NavigationStack({ container, transition: instant(), manageFocus });
+const stackWith = (manageFocus) =>
+  new NavigationStack({ container, transition: instant(), manageFocus });
 
 beforeEach(() => {
   container = makeElement('div');
@@ -31,7 +32,8 @@ beforeEach(() => {
 
 test('push moves focus into the page arriving on top', async () => {
   const stack = stackWith(true);
-  const a = page('a'), b = page('b');
+  const a = page('a'),
+    b = page('b');
   await stack.push(a);
   assert.equal(document.activeElement, a);
   assert.equal(a.getAttribute('tabindex'), '-1', 'a page with nothing focusable is made focusable');
@@ -41,7 +43,8 @@ test('push moves focus into the page arriving on top', async () => {
 
 test('pop gives focus back to the element the revealed page had it in', async () => {
   const stack = stackWith(true);
-  const a = page('a'), b = page('b');
+  const a = page('a'),
+    b = page('b');
   await stack.push(a);
   const input = field(a);
   input.focus();
@@ -53,7 +56,8 @@ test('pop gives focus back to the element the revealed page had it in', async ()
 
 test('pop falls back to the page when the remembered element is gone', async () => {
   const stack = stackWith(true);
-  const a = page('a'), b = page('b');
+  const a = page('a'),
+    b = page('b');
   await stack.push(a);
   const input = field(a);
   input.focus();
@@ -65,7 +69,8 @@ test('pop falls back to the page when the remembered element is gone', async () 
 
 test('an interactive pop restores the revealed page the same way', async () => {
   const stack = stackWith(true);
-  const a = page('a'), b = page('b');
+  const a = page('a'),
+    b = page('b');
   await stack.push(a);
   const input = field(a);
   input.focus();
@@ -78,7 +83,8 @@ test('an interactive pop restores the revealed page the same way', async () => {
 
 test('off by default: nothing is focused and no attribute is written', async () => {
   const stack = stackWith(undefined);
-  const a = page('a'), b = page('b');
+  const a = page('a'),
+    b = page('b');
   await stack.push(a);
   const input = field(a);
   input.focus();
@@ -91,7 +97,8 @@ test('off by default: nothing is focused and no attribute is written', async () 
 
 test('focus that has moved outside the container is left alone', async () => {
   const stack = stackWith(true);
-  const a = page('a'), b = page('b');
+  const a = page('a'),
+    b = page('b');
   await stack.push(a);
   field(a).focus();
   await stack.push(b);
@@ -111,21 +118,31 @@ test('a hidden document is never stolen from', async () => {
 
 test('the borrowed tabindex leaves with the page, and a page of its own is left alone', async () => {
   const stack = stackWith(true);
-  const a = page('a'), b = page('b');
+  const a = page('a'),
+    b = page('b');
   b.setAttribute('tabindex', '0');
   await stack.push(a);
   await stack.push(b);
-  assert.equal(b.getAttribute('tabindex'), '0', 'a page that says how it is focused keeps saying it');
+  assert.equal(
+    b.getAttribute('tabindex'),
+    '0',
+    'a page that says how it is focused keeps saying it',
+  );
   await stack.pop();
   assert.equal(b.getAttribute('tabindex'), '0', 'nothing was borrowed, so nothing is taken back');
-  assert.equal(a.getAttribute('tabindex'), '-1', 'the page still mounted keeps the attribute it was given');
+  assert.equal(
+    a.getAttribute('tabindex'),
+    '-1',
+    'the page still mounted keeps the attribute it was given',
+  );
   await stack.replace(page('c'));
   assert.equal(a.getAttribute('tabindex'), null, 'unmounting takes the borrowed attribute back');
 });
 
 test('a remembered element that refuses focus hands it to the page', async () => {
   const stack = stackWith(true);
-  const a = page('a'), b = page('b');
+  const a = page('a'),
+    b = page('b');
   await stack.push(a);
   const input = field(a);
   input.focus();
@@ -148,7 +165,9 @@ test('a tabindex the app changed while the page was mounted is left alone', asyn
 
 test('reset focuses the top page it leaves, restoring what that page had', async () => {
   const stack = stackWith(true);
-  const a = page('a'), b = page('b'), c = page('c');
+  const a = page('a'),
+    b = page('b'),
+    c = page('c');
   await stack.push(a);
   const input = field(a);
   input.focus();
@@ -165,7 +184,8 @@ test('reset focuses the top page it leaves, restoring what that page had', async
 
 test('replace focuses the page that takes the top', async () => {
   const stack = stackWith(true);
-  const a = page('a'), c = page('c');
+  const a = page('a'),
+    c = page('c');
   await stack.push(a);
   await stack.replace(c);
   assert.equal(document.activeElement, c);
@@ -173,7 +193,8 @@ test('replace focuses the page that takes the top', async () => {
 
 test('removing the top page reveals the one beneath and its focus', async () => {
   const stack = stackWith(true);
-  const a = page('a'), b = page('b');
+  const a = page('a'),
+    b = page('b');
   await stack.push(a);
   const input = field(a);
   input.focus();

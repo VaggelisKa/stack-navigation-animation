@@ -11,11 +11,15 @@ export const DEMO_ROUTES: Routes = [
   { path: 'gallery', loadChildren: () => import('./gallery/routes').then((m) => m.GALLERY_ROUTES) },
   { path: 'forms', loadChildren: () => import('./forms/routes').then((m) => m.FORMS_ROUTES) },
   { path: 'search', loadChildren: () => import('./search/routes').then((m) => m.SEARCH_ROUTES) },
-  { path: 'dashboard', loadChildren: () => import('./dashboard/routes').then((m) => m.DASHBOARD_ROUTES) },
+  {
+    path: 'dashboard',
+    loadChildren: () => import('./dashboard/routes').then((m) => m.DASHBOARD_ROUTES),
+  },
   { path: 'mail', loadChildren: () => import('./mail/routes').then((m) => m.MAIL_ROUTES) },
   { path: 'notes', loadChildren: () => import('./notes/routes').then((m) => m.NOTES_ROUTES) },
   { path: 'lab', loadChildren: () => import('./lab/routes').then((m) => m.LAB_ROUTES) },
 ];
 
 /** For the Lab: a resolver that deliberately takes a long time. */
-export const slowResolver: ResolveFn<{ ms: number; word: string }> = () => new Promise((resolve) => setTimeout(() => resolve({ ms: 2000, word: 'patience' }), 2000));
+export const slowResolver: ResolveFn<{ ms: number; word: string }> = () =>
+  new Promise((resolve) => setTimeout(() => resolve({ ms: 2000, word: 'patience' }), 2000));

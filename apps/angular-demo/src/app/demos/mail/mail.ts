@@ -1,11 +1,22 @@
-import { Component, type WritableSignal, computed, effect, inject, input, resource, signal, untracked } from '@angular/core';
+import {
+  Component,
+  type WritableSignal,
+  computed,
+  effect,
+  inject,
+  input,
+  resource,
+  signal,
+  untracked,
+} from '@angular/core';
 import { ActivatedRoute, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { useBack } from '../../back';
 import { FakeApi } from '../fake-api';
 import { BackButton, DEMO_UI } from '../shared';
 import { MAIL_TRANSITIONS } from './animation';
 
-const ago = (m: number) => (m < 60 ? `${m}m` : m < 60 * 24 ? `${Math.round(m / 60)}h` : `${Math.round(m / 60 / 24)}d`);
+const ago = (m: number) =>
+  m < 60 ? `${m}m` : m < 60 * 24 ? `${Math.round(m / 60)}h` : `${Math.round(m / 60 / 24)}d`;
 
 /**
  * A folder: Inbox or Sent, one component for both, told which by route data.
@@ -63,10 +74,16 @@ export class MailFolder {
   readonly folder = input<'inbox' | 'sent'>('inbox');
   private readonly api = inject(FakeApi);
   /** Reloads when the folder changes and after a send, so a kept Sent folder shows what was just filed. */
-  readonly mail = resource({ params: () => ({ folder: this.folder(), version: this.api.mailVersion() }), loader: ({ params }) => this.api.mail(params.folder) });
+  readonly mail = resource({
+    params: () => ({ folder: this.folder(), version: this.api.mailVersion() }),
+    loader: ({ params }) => this.api.mail(params.folder),
+  });
   /** The same `data.animation` the strategy reads, from the page's own `ActivatedRoute`. */
   readonly animation: string = inject(ActivatedRoute).snapshot.data['animation'];
-  readonly rules = Object.entries(MAIL_TRANSITIONS).map(([pair, direction]) => ({ pair, direction }));
+  readonly rules = Object.entries(MAIL_TRANSITIONS).map(([pair, direction]) => ({
+    pair,
+    direction,
+  }));
   readonly ago = ago;
 }
 
@@ -104,7 +121,10 @@ export class MailFolder {
 export class MailThread {
   readonly id = input.required<string>();
   private readonly api = inject(FakeApi);
-  readonly email = resource({ params: () => Number(this.id()), loader: ({ params }) => this.api.email(params) });
+  readonly email = resource({
+    params: () => Number(this.id()),
+    loader: ({ params }) => this.api.email(params),
+  });
   readonly ago = ago;
 }
 
@@ -143,7 +163,10 @@ export class MailCompose {
   private readonly router = inject(Router);
   private readonly back = useBack();
   /** The message being replied to, if any. Its arrival prefills the fields below. */
-  private readonly original = resource({ params: () => Number(this.re()) || undefined, loader: ({ params }) => this.api.email(params) });
+  private readonly original = resource({
+    params: () => Number(this.re()) || undefined,
+    loader: ({ params }) => this.api.email(params),
+  });
   readonly to = signal('');
   readonly subject = signal('');
   readonly text = signal('');
@@ -180,7 +203,15 @@ export class MailCompose {
       await this.api.sendMail({ to: this.to(), subject: this.subject(), text: this.text() });
       // A browser Back during the request already left this page. The component
       // lives on until the pop animation ends, so ask the router, not the lifecycle.
-      if (this.router.isActive('/mail/compose', { paths: 'exact', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' })) this.back(['/mail']);
+      if (
+        this.router.isActive('/mail/compose', {
+          paths: 'exact',
+          queryParams: 'ignored',
+          fragment: 'ignored',
+          matrixParams: 'ignored',
+        })
+      )
+        this.back(['/mail']);
     } catch (e) {
       this.error.set(e);
     } finally {

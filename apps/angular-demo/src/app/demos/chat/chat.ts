@@ -1,5 +1,14 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, ElementRef, afterRenderEffect, computed, inject, input, resource, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  afterRenderEffect,
+  computed,
+  inject,
+  input,
+  resource,
+  signal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AUTHORS, FakeApi, type Message } from '../fake-api';
 import { BackButton, DEMO_UI } from '../shared';
@@ -103,7 +112,10 @@ export class ChatThread {
     const n = Number(this.id());
     return Number.isInteger(n) && n >= 1 && n <= AUTHORS.length ? AUTHORS[n - 1] : null;
   });
-  readonly thread = resource({ params: () => Number(this.id()), loader: ({ params }) => this.api.thread(params) });
+  readonly thread = resource({
+    params: () => Number(this.id()),
+    loader: ({ params }) => this.api.thread(params),
+  });
   readonly sent = signal<Message[]>([]);
   /** The backend's messages plus any added since. A reload of the thread includes the latter, so they are deduplicated. */
   readonly messages = computed(() => {
@@ -135,7 +147,10 @@ export class ChatThread {
       const r = await reply;
       this.sent.update((s) => [...s, r]);
     } catch {
-      this.sent.update((s) => [...s, { id: Date.now(), mine: false, text: '⚠︎ Not delivered', at: 'now' }]);
+      this.sent.update((s) => [
+        ...s,
+        { id: Date.now(), mine: false, text: '⚠︎ Not delivered', at: 'now' },
+      ]);
     } finally {
       this.typing.set(false);
     }

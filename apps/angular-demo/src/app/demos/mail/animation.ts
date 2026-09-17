@@ -25,9 +25,13 @@ interface Rule {
   direction: Direction;
 }
 
-const reverse = (d: Direction): Direction => (d === 'push' ? 'pop' : d === 'pop' ? 'push' : 'replace');
+const reverse = (d: Direction): Direction =>
+  d === 'push' ? 'pop' : d === 'pop' ? 'push' : 'replace';
 
-export function byAnimationData(transitions: AnimationTransitions, { key = 'animation' } = {}): DirectionStrategy {
+export function byAnimationData(
+  transitions: AnimationTransitions,
+  { key = 'animation' } = {},
+): DirectionStrategy {
   const rules: Rule[] = [];
   for (const [pair, direction] of Object.entries(transitions)) {
     const both = pair.includes('<=>');
@@ -39,7 +43,8 @@ export function byAnimationData(transitions: AnimationTransitions, { key = 'anim
     const a = from?.data?.[key];
     const b = to.data?.[key];
     if (typeof a !== 'string' || typeof b !== 'string') return undefined;
-    return rules.find((r) => (r.from === '*' || r.from === a) && (r.to === '*' || r.to === b))?.direction;
+    return rules.find((r) => (r.from === '*' || r.from === a) && (r.to === '*' || r.to === b))
+      ?.direction;
   };
 }
 

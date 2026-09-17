@@ -1,6 +1,14 @@
 import { Component, afterRenderEffect, computed, inject, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationCancel, NavigationEnd, NavigationError, NavigationSkipped, NavigationStart, Router, RouterOutlet } from '@angular/router';
+import {
+  NavigationCancel,
+  NavigationEnd,
+  NavigationError,
+  NavigationSkipped,
+  NavigationStart,
+  Router,
+  RouterOutlet,
+} from '@angular/router';
 import { StackNav } from '@stacknav/angular';
 import { detectPlatform, nativeTransitionPreset } from '@stacknav/core';
 import { filter, map } from 'rxjs';
@@ -27,7 +35,16 @@ export class App {
   /** True while the router is between NavigationStart and its end, which covers resolvers and lazy chunks. */
   private readonly navigating = toSignal(
     this.router.events.pipe(
-      map((e) => (e instanceof NavigationStart ? true : e instanceof NavigationEnd || e instanceof NavigationCancel || e instanceof NavigationError || e instanceof NavigationSkipped ? false : null)),
+      map((e) =>
+        e instanceof NavigationStart
+          ? true
+          : e instanceof NavigationEnd ||
+              e instanceof NavigationCancel ||
+              e instanceof NavigationError ||
+              e instanceof NavigationSkipped
+            ? false
+            : null,
+      ),
       filter((v): v is boolean => v !== null),
     ),
     { initialValue: false },

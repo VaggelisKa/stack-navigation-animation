@@ -119,14 +119,70 @@ function rng(seed: number): () => number {
 const pick = <T>(r: () => number, xs: readonly T[]): T => xs[Math.floor(r() * xs.length)];
 
 export const AUTHORS: Author[] = [
-  { handle: 'ada', name: 'Ada Lindqvist', hue: 210, bio: 'Builds small things that move well.', followers: 12400, following: 310 },
-  { handle: 'kofi', name: 'Kofi Mensah', hue: 28, bio: 'Photos, mostly of weather.', followers: 8210, following: 190 },
-  { handle: 'mira', name: 'Mira Sato', hue: 330, bio: 'Design systems and long walks.', followers: 25100, following: 88 },
-  { handle: 'tomas', name: 'Tomás Reyes', hue: 140, bio: 'Backend by day, synths by night.', followers: 3300, following: 540 },
-  { handle: 'yuki', name: 'Yuki Hoshino', hue: 265, bio: 'Type nerd. Coffee first.', followers: 990, following: 120 },
-  { handle: 'nadia', name: 'Nadia Farouk', hue: 5, bio: 'Product. Ask me about onboarding.', followers: 15800, following: 402 },
-  { handle: 'elias', name: 'Elias Brandt', hue: 185, bio: 'Maps and the space between them.', followers: 6100, following: 233 },
-  { handle: 'pri', name: 'Priya Natarajan', hue: 50, bio: 'Accessibility, always.', followers: 19300, following: 271 },
+  {
+    handle: 'ada',
+    name: 'Ada Lindqvist',
+    hue: 210,
+    bio: 'Builds small things that move well.',
+    followers: 12400,
+    following: 310,
+  },
+  {
+    handle: 'kofi',
+    name: 'Kofi Mensah',
+    hue: 28,
+    bio: 'Photos, mostly of weather.',
+    followers: 8210,
+    following: 190,
+  },
+  {
+    handle: 'mira',
+    name: 'Mira Sato',
+    hue: 330,
+    bio: 'Design systems and long walks.',
+    followers: 25100,
+    following: 88,
+  },
+  {
+    handle: 'tomas',
+    name: 'Tomás Reyes',
+    hue: 140,
+    bio: 'Backend by day, synths by night.',
+    followers: 3300,
+    following: 540,
+  },
+  {
+    handle: 'yuki',
+    name: 'Yuki Hoshino',
+    hue: 265,
+    bio: 'Type nerd. Coffee first.',
+    followers: 990,
+    following: 120,
+  },
+  {
+    handle: 'nadia',
+    name: 'Nadia Farouk',
+    hue: 5,
+    bio: 'Product. Ask me about onboarding.',
+    followers: 15800,
+    following: 402,
+  },
+  {
+    handle: 'elias',
+    name: 'Elias Brandt',
+    hue: 185,
+    bio: 'Maps and the space between them.',
+    followers: 6100,
+    following: 233,
+  },
+  {
+    handle: 'pri',
+    name: 'Priya Natarajan',
+    hue: 50,
+    bio: 'Accessibility, always.',
+    followers: 19300,
+    following: 271,
+  },
 ];
 const SENTENCES = [
   'Shipped the thing. The transition finally feels like the finger is holding the page.',
@@ -142,18 +198,76 @@ const SENTENCES = [
   'Nested router outlets inside a kept page keep working. Tabs stay where you left them.',
   'Debounced search, cancelled in flight when you keep typing. The results list should never flicker.',
 ];
-const COMMENTS = ['Agreed, this is the way.', 'Can you share the easing curve?', 'Tried this on an old phone, still smooth.', 'The shadow on the leading edge sells it.', 'Bookmarked.', 'How does this behave with a guard that refuses?', 'Same here. Ship it.'];
+const COMMENTS = [
+  'Agreed, this is the way.',
+  'Can you share the easing curve?',
+  'Tried this on an old phone, still smooth.',
+  'The shadow on the leading edge sells it.',
+  'Bookmarked.',
+  'How does this behave with a guard that refuses?',
+  'Same here. Ship it.',
+];
 const CATEGORIES = ['Audio', 'Home', 'Outdoors', 'Desk'];
 const PRODUCT_NAMES: Record<string, string[]> = {
-  Audio: ['Loop Earbuds', 'Slab Speaker', 'Vellum Headphones', 'Pocket Amp', 'Ribbon Mic', 'Tape Deck Mini'],
-  Home: ['Ember Lamp', 'Cirrus Diffuser', 'Ledge Shelf', 'Fold Chair', 'Quiet Kettle', 'Terra Planter'],
-  Outdoors: ['Ridge Jacket', 'Trail Bottle', 'Camp Stool', 'Ember Stove', 'Cloud Hammock', 'Summit Pack'],
+  Audio: [
+    'Loop Earbuds',
+    'Slab Speaker',
+    'Vellum Headphones',
+    'Pocket Amp',
+    'Ribbon Mic',
+    'Tape Deck Mini',
+  ],
+  Home: [
+    'Ember Lamp',
+    'Cirrus Diffuser',
+    'Ledge Shelf',
+    'Fold Chair',
+    'Quiet Kettle',
+    'Terra Planter',
+  ],
+  Outdoors: [
+    'Ridge Jacket',
+    'Trail Bottle',
+    'Camp Stool',
+    'Ember Stove',
+    'Cloud Hammock',
+    'Summit Pack',
+  ],
   Desk: ['Grid Notebook', 'Brass Pen', 'Felt Mat', 'Cable Loop', 'Stand Up', 'Clip Light'],
 };
-const PLACES = ['Reykjavík', 'Kyoto', 'Valparaíso', 'Tbilisi', 'Porto', 'Hanoi', 'Cape Town', 'Oaxaca', 'Bergen', 'Ljubljana'];
+const PLACES = [
+  'Reykjavík',
+  'Kyoto',
+  'Valparaíso',
+  'Tbilisi',
+  'Porto',
+  'Hanoi',
+  'Cape Town',
+  'Oaxaca',
+  'Bergen',
+  'Ljubljana',
+];
 const ROLES = ['Engineer', 'Designer', 'Product', 'Research', 'Support', 'Ops'];
-const ACTIONS = ['deployed', 'rolled back', 'merged', 'opened', 'reviewed', 'restarted', 'scaled', 'migrated'];
-const TARGETS = ['api-gateway', 'checkout', 'search-index', 'mail-worker', 'web-frontend', 'billing', 'feed-ranker', 'image-cdn'];
+const ACTIONS = [
+  'deployed',
+  'rolled back',
+  'merged',
+  'opened',
+  'reviewed',
+  'restarted',
+  'scaled',
+  'migrated',
+];
+const TARGETS = [
+  'api-gateway',
+  'checkout',
+  'search-index',
+  'mail-worker',
+  'web-frontend',
+  'billing',
+  'feed-ranker',
+  'image-cdn',
+];
 
 function buildPosts(): Post[] {
   const r = rng(7);
@@ -179,8 +293,17 @@ function buildProducts(): Product[] {
         category,
         hue: Math.floor(r() * 360),
         rating: 3 + Math.round(r() * 20) / 10,
-        blurb: pick(r, ['Made to be carried everywhere.', 'Quietly well made.', 'One material, no seams.', 'Better on the third week than the first.']),
-        details: [pick(r, ['Recycled aluminium', 'Solid oak', 'Ripstop nylon', 'Stoneware']), pick(r, ['Two-year warranty', 'Lifetime repairs', 'Thirty-day returns']), pick(r, ['Ships in 2 days', 'Ships next week'])],
+        blurb: pick(r, [
+          'Made to be carried everywhere.',
+          'Quietly well made.',
+          'One material, no seams.',
+          'Better on the third week than the first.',
+        ]),
+        details: [
+          pick(r, ['Recycled aluminium', 'Solid oak', 'Ripstop nylon', 'Stoneware']),
+          pick(r, ['Two-year warranty', 'Lifetime repairs', 'Thirty-day returns']),
+          pick(r, ['Ships in 2 days', 'Ships next week']),
+        ],
       });
     }
   }
@@ -228,12 +351,34 @@ const PRODUCTS = buildProducts();
 const PHOTOS = buildPhotos();
 const TEAM = buildTeam();
 const ACTIVITY = buildActivity();
-const SUBJECTS = ['Easing curve for the pop', 'Friday demo', 'Parallax at 0.3?', 'Re: swipe on the gallery', 'Scroll restoration is gone', 'Tab bar during a push', 'Guard that refuses', 'Dark viewer dim', 'Notes from the review', 'Wizard step order', 'Lazy chunk timing', 'The 600-row page'];
+const SUBJECTS = [
+  'Easing curve for the pop',
+  'Friday demo',
+  'Parallax at 0.3?',
+  'Re: swipe on the gallery',
+  'Scroll restoration is gone',
+  'Tab bar during a push',
+  'Guard that refuses',
+  'Dark viewer dim',
+  'Notes from the review',
+  'Wizard step order',
+  'Lazy chunk timing',
+  'The 600-row page',
+];
 function buildMail(): Email[] {
   const r = rng(53);
   return SUBJECTS.map((subject, i) => {
     const body = [pick(r, SENTENCES), pick(r, SENTENCES), pick(r, SENTENCES)];
-    return { id: i + 1, folder: i % 3 === 2 ? 'sent' : 'inbox', from: AUTHORS[(i * 5) % AUTHORS.length], subject, preview: body[0], body, minutesAgo: 6 + i * 47, unread: i % 4 === 0 };
+    return {
+      id: i + 1,
+      folder: i % 3 === 2 ? 'sent' : 'inbox',
+      from: AUTHORS[(i * 5) % AUTHORS.length],
+      subject,
+      preview: body[0],
+      body,
+      minutesAgo: 6 + i * 47,
+      unread: i % 4 === 0,
+    };
   });
 }
 const MAIL = buildMail();
@@ -260,7 +405,10 @@ function buildNotes(): Note[] {
     id: i + 1,
     title,
     // Walked in steps of three rather than picked, so a note reads as a list of different lines.
-    body: Array.from({ length: 18 + Math.floor(r() * 8) }, (_, k) => NOTE_LINES[(i * 5 + k * 3) % NOTE_LINES.length]),
+    body: Array.from(
+      { length: 18 + Math.floor(r() * 8) },
+      (_, k) => NOTE_LINES[(i * 5 + k * 3) % NOTE_LINES.length],
+    ),
     minutesAgo: 7 + i * 917,
     pinned: i < 2,
   }));
@@ -313,7 +461,15 @@ export class FakeApi {
   comments(postId: number): Promise<Comment[]> {
     const r = rng(postId);
     const n = 2 + Math.floor(r() * 5);
-    return this.request(() => Array.from({ length: n }, (_, i) => ({ id: i + 1, author: pick(r, AUTHORS), text: pick(r, COMMENTS) })), this.latency() * 1.4);
+    return this.request(
+      () =>
+        Array.from({ length: n }, (_, i) => ({
+          id: i + 1,
+          author: pick(r, AUTHORS),
+          text: pick(r, COMMENTS),
+        })),
+      this.latency() * 1.4,
+    );
   }
   author(handle: string): Promise<Author> {
     return this.request(() => {
@@ -323,7 +479,10 @@ export class FakeApi {
     });
   }
   authorPosts(handle: string): Promise<Post[]> {
-    return this.request(() => POSTS.filter((p) => p.author.handle === handle), this.latency() * 1.6);
+    return this.request(
+      () => POSTS.filter((p) => p.author.handle === handle),
+      this.latency() * 1.6,
+    );
   }
 
   // shop
@@ -331,7 +490,9 @@ export class FakeApi {
     return CATEGORIES;
   }
   products(category: string | null): Promise<Product[]> {
-    return this.request(() => (category ? PRODUCTS.filter((p) => p.category === category) : PRODUCTS));
+    return this.request(() =>
+      category ? PRODUCTS.filter((p) => p.category === category) : PRODUCTS,
+    );
   }
   product(id: number): Promise<Product> {
     return this.request(() => {
@@ -346,9 +507,16 @@ export class FakeApi {
       return PRODUCTS.filter((x) => x.category === p?.category && x.id !== id).slice(0, 4);
     }, this.latency() * 1.5);
   }
-  placeOrder(lines: { product: Product; qty: number }[], opts: { fail?: boolean } = {}): Promise<{ id: string; total: number }> {
+  placeOrder(
+    lines: { product: Product; qty: number }[],
+    opts: { fail?: boolean } = {},
+  ): Promise<{ id: string; total: number }> {
     const total = lines.reduce((s, l) => s + l.product.price * l.qty, 0);
-    return this.request(() => ({ id: `SN-${String(2400 + (total % 500)).padStart(4, '0')}`, total }), this.latency() * 2, opts.fail || this.failing());
+    return this.request(
+      () => ({ id: `SN-${String(2400 + (total % 500)).padStart(4, '0')}`, total }),
+      this.latency() * 2,
+      opts.fail || this.failing(),
+    );
   }
 
   // messages
@@ -368,9 +536,25 @@ export class FakeApi {
   sendMail(draft: { to: string; subject: string; text: string }): Promise<void> {
     return this.request(() => {
       const handle = draft.to.split('@')[0];
-      const from = AUTHORS.find((a) => a.handle === handle) ?? { handle, name: draft.to, hue: 200, bio: '', followers: 0, following: 0 };
+      const from = AUTHORS.find((a) => a.handle === handle) ?? {
+        handle,
+        name: draft.to,
+        hue: 200,
+        bio: '',
+        followers: 0,
+        following: 0,
+      };
       const body = draft.text.split(/\n+/).filter(Boolean);
-      MAIL.unshift({ id: this.nextId++, folder: 'sent', from, subject: draft.subject, preview: body[0] ?? '', body, minutesAgo: 0, unread: false });
+      MAIL.unshift({
+        id: this.nextId++,
+        folder: 'sent',
+        from,
+        subject: draft.subject,
+        preview: body[0] ?? '',
+        body,
+        minutesAgo: 0,
+        unread: false,
+      });
       this.mailVersion.update((v) => v + 1);
     });
   }
@@ -388,11 +572,17 @@ export class FakeApi {
   }
   thread(id: number): Promise<Message[]> {
     return this.request(() => {
-      if (!Number.isInteger(id) || id < 1 || id > AUTHORS.length) throw new Error(`No conversation ${id}`);
+      if (!Number.isInteger(id) || id < 1 || id > AUTHORS.length)
+        throw new Error(`No conversation ${id}`);
       let m = this.messages.get(id);
       if (!m) {
         const r = rng(100 + id);
-        m = Array.from({ length: 8 + Math.floor(r() * 10) }, (_, i) => ({ id: i + 1, mine: r() > 0.5, text: pick(r, [...SENTENCES, ...COMMENTS]), at: `${9 + Math.floor(i / 2)}:${String((i * 7) % 60).padStart(2, '0')}` }));
+        m = Array.from({ length: 8 + Math.floor(r() * 10) }, (_, i) => ({
+          id: i + 1,
+          mine: r() > 0.5,
+          text: pick(r, [...SENTENCES, ...COMMENTS]),
+          at: `${9 + Math.floor(i / 2)}:${String((i * 7) % 60).padStart(2, '0')}`,
+        }));
         this.messages.set(id, m);
       }
       return [...m];
@@ -405,7 +595,12 @@ export class FakeApi {
     m.push(sent);
     this.messages.set(id, m);
     const reply = this.request(() => {
-      const r: Message = { id: ++this.nextId, mine: false, text: pick(rng(this.nextId), COMMENTS), at: now() };
+      const r: Message = {
+        id: ++this.nextId,
+        mine: false,
+        text: pick(rng(this.nextId), COMMENTS),
+        at: now(),
+      };
       m.push(r);
       return r;
     }, this.latency() * 2.5);
@@ -448,10 +643,42 @@ export class FakeApi {
         if (this.failing()) return reject(new Error('The network is unreachable (simulated).'));
         const hit = (s: string) => s.toLowerCase().includes(needle);
         const out: SearchResult[] = [];
-        for (const a of AUTHORS) if (hit(a.name) || hit(a.handle)) out.push({ id: out.length, kind: 'person', title: a.name, subtitle: `@${a.handle}`, link: ['/feed/user', a.handle] });
-        for (const p of PRODUCTS) if (hit(p.name) || hit(p.category)) out.push({ id: out.length, kind: 'product', title: p.name, subtitle: `${p.category} · $${p.price}`, link: ['/shop/p', p.id] });
-        for (const p of POSTS) if (hit(p.text)) out.push({ id: out.length, kind: 'post', title: p.text, subtitle: `@${p.author.handle}`, link: ['/feed/post', p.id] });
-        for (const p of PHOTOS) if (hit(p.title) || hit(p.place)) out.push({ id: out.length, kind: 'photo', title: p.title, subtitle: p.place, link: ['/gallery', p.id] });
+        for (const a of AUTHORS)
+          if (hit(a.name) || hit(a.handle))
+            out.push({
+              id: out.length,
+              kind: 'person',
+              title: a.name,
+              subtitle: `@${a.handle}`,
+              link: ['/feed/user', a.handle],
+            });
+        for (const p of PRODUCTS)
+          if (hit(p.name) || hit(p.category))
+            out.push({
+              id: out.length,
+              kind: 'product',
+              title: p.name,
+              subtitle: `${p.category} · $${p.price}`,
+              link: ['/shop/p', p.id],
+            });
+        for (const p of POSTS)
+          if (hit(p.text))
+            out.push({
+              id: out.length,
+              kind: 'post',
+              title: p.text,
+              subtitle: `@${p.author.handle}`,
+              link: ['/feed/post', p.id],
+            });
+        for (const p of PHOTOS)
+          if (hit(p.title) || hit(p.place))
+            out.push({
+              id: out.length,
+              kind: 'photo',
+              title: p.title,
+              subtitle: p.place,
+              link: ['/gallery', p.id],
+            });
         resolve(out.slice(0, 30));
       }, this.latency());
       this.inflight.update((n) => n + 1);
@@ -469,12 +696,32 @@ export class FakeApi {
     const n = range === 'day' ? 24 : range === 'week' ? 7 : 30;
     return this.request(() => ({
       tiles: [
-        { label: 'Requests', value: `${(120 + r() * 900).toFixed(1)}k`, delta: Math.round((r() - 0.4) * 30) },
-        { label: 'p95 latency', value: `${Math.floor(90 + r() * 200)} ms`, delta: Math.round((r() - 0.6) * 30) },
+        {
+          label: 'Requests',
+          value: `${(120 + r() * 900).toFixed(1)}k`,
+          delta: Math.round((r() - 0.4) * 30),
+        },
+        {
+          label: 'p95 latency',
+          value: `${Math.floor(90 + r() * 200)} ms`,
+          delta: Math.round((r() - 0.6) * 30),
+        },
         { label: 'Errors', value: `${(r() * 2).toFixed(2)}%`, delta: Math.round((r() - 0.5) * 10) },
-        { label: 'Signups', value: `${Math.floor(r() * 400)}`, delta: Math.round((r() - 0.3) * 40) },
+        {
+          label: 'Signups',
+          value: `${Math.floor(r() * 400)}`,
+          delta: Math.round((r() - 0.3) * 40),
+        },
       ],
-      bars: Array.from({ length: n }, (_, i) => ({ label: range === 'day' ? `${i}h` : range === 'week' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i] : `${i + 1}`, value: 0.2 + r() * 0.8 })),
+      bars: Array.from({ length: n }, (_, i) => ({
+        label:
+          range === 'day'
+            ? `${i}h`
+            : range === 'week'
+              ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i]
+              : `${i + 1}`,
+        value: 0.2 + r() * 0.8,
+      })),
     }));
   }
   activity(): Promise<Activity[]> {

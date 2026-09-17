@@ -3,7 +3,8 @@ import { RouterLink } from '@angular/router';
 import { FakeApi, type Photo } from '../fake-api';
 import { BackButton, DEMO_UI } from '../shared';
 
-const paint = (p: Photo) => `linear-gradient(${p.angle}deg, hsl(${p.hues[0]} 70% 55%), hsl(${p.hues[1]} 65% 35%))`;
+const paint = (p: Photo) =>
+  `linear-gradient(${p.angle}deg, hsl(${p.hues[0]} 70% 55%), hsl(${p.hues[1]} 65% 35%))`;
 
 /** A dense three-column grid of tiles on a light page. */
 @Component({
@@ -100,7 +101,10 @@ export class GalleryPhoto {
   private readonly api = inject(FakeApi);
   readonly id = computed(() => Number(this.idParam()));
   readonly count = this.api.photoCount();
-  readonly photo = resource({ params: () => this.id(), loader: ({ params }) => this.api.photo(params) });
+  readonly photo = resource({
+    params: () => this.id(),
+    loader: ({ params }) => this.api.photo(params),
+  });
   readonly liked = signal(false);
   readonly strip = computed(() => {
     const lo = Math.max(1, Math.min(this.id() - 3, this.count - 6));

@@ -10,7 +10,11 @@ const shellDemo = new URLSearchParams(location.search).has('shell');
 bootstrapApplication(shellDemo ? ShellDemo : App, {
   providers: [
     // 'computed' makes a refused back navigation leave history exactly as it was.
-    provideRouter(shellDemo ? SHELL_DEMO_ROUTES : routes, withComponentInputBinding(), withRouterConfig({ canceledNavigationResolution: 'computed' })),
+    provideRouter(
+      shellDemo ? SHELL_DEMO_ROUTES : routes,
+      withComponentInputBinding(),
+      withRouterConfig({ canceledNavigationResolution: 'computed' }),
+    ),
     provideStackNav({
       // One rule of the app's own, on top of what the library already decides:
       // routes that name themselves in `data.animation`, as the Mail demo's do,

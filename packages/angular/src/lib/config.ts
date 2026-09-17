@@ -1,4 +1,9 @@
-import { InjectionToken, type EnvironmentProviders, type Provider, makeEnvironmentProviders } from '@angular/core';
+import {
+  InjectionToken,
+  type EnvironmentProviders,
+  type Provider,
+  makeEnvironmentProviders,
+} from '@angular/core';
 import { RouteReuseStrategy, type ActivatedRouteSnapshot } from '@angular/router';
 import {
   createDirectionResolver,
@@ -156,10 +161,13 @@ export interface ResolvedStackNavConfig {
   animated: (ctx: StackNavAnimationContext) => boolean;
 }
 
-export const STACKNAV_CONFIG = /*#__PURE__*/ new InjectionToken<ResolvedStackNavConfig>('STACKNAV_CONFIG', {
-  providedIn: 'root',
-  factory: () => resolveConfig({}),
-});
+export const STACKNAV_CONFIG = /*#__PURE__*/ new InjectionToken<ResolvedStackNavConfig>(
+  'STACKNAV_CONFIG',
+  {
+    providedIn: 'root',
+    factory: () => resolveConfig({}),
+  },
+);
 
 export function defaultLevelOf(snapshot: ActivatedRouteSnapshot): number | null | undefined {
   const v = snapshot.data?.['stackLevel'];
@@ -168,9 +176,7 @@ export function defaultLevelOf(snapshot: ActivatedRouteSnapshot): number | null 
 
 /** The route's URL path from the root down to and including this route, e.g. `items/42;view=full`. */
 export function defaultKeyOf(snapshot: ActivatedRouteSnapshot): string {
-  return snapshot.pathFromRoot
-    .flatMap((s) => s.url.map((u) => u.toString()))
-    .join('/');
+  return snapshot.pathFromRoot.flatMap((s) => s.url.map((u) => u.toString())).join('/');
 }
 
 export function resolveConfig(c: StackNavConfig): ResolvedStackNavConfig {
@@ -187,7 +193,10 @@ export function resolveConfig(c: StackNavConfig): ResolvedStackNavConfig {
   return {
     resolve:
       c.resolveDirection ??
-      createDirectionResolver(defaultStrategies({ direction: c.direction, siblings: c.siblings }), c.fallbackDirection ?? 'push'),
+      createDirectionResolver(
+        defaultStrategies({ direction: c.direction, siblings: c.siblings }),
+        c.fallbackDirection ?? 'push',
+      ),
     levelOf: c.levelOf ?? defaultLevelOf,
     keyOf: c.keyOf ?? defaultKeyOf,
     infoKey: c.infoKey ?? 'stacknav',
@@ -199,7 +208,9 @@ export function resolveConfig(c: StackNavConfig): ResolvedStackNavConfig {
   };
 }
 
-function resolveAnimated(animated: StackNavConfig['animated']): (ctx: StackNavAnimationContext) => boolean {
+function resolveAnimated(
+  animated: StackNavConfig['animated'],
+): (ctx: StackNavAnimationContext) => boolean {
   // A predicate written before this option took a context is a zero-argument
   // function, which ignores the one it is now passed: both shapes call the same.
   if (typeof animated === 'function') return animated;
@@ -224,6 +235,7 @@ export function provideStackNav(config: StackNavConfig = {}): EnvironmentProvide
   // The router's own strategy destroys a page the moment its route is left,
   // and reuses the component when only params change, so nothing would ever
   // animate out. An app that provides a strategy after this one still wins.
-  if (config.routeReuse !== false) providers.push({ provide: RouteReuseStrategy, useClass: StackNavRouteReuseStrategy });
+  if (config.routeReuse !== false)
+    providers.push({ provide: RouteReuseStrategy, useClass: StackNavRouteReuseStrategy });
   return makeEnvironmentProviders(providers);
 }

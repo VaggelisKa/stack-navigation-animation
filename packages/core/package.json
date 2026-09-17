@@ -11,16 +11,33 @@
   "homepage": "https://github.com/VaggelisKa/stack-navigation-animation/tree/main/packages/core#readme",
   "bugs": "https://github.com/VaggelisKa/stack-navigation-animation/issues",
   "type": "module",
-  "keywords": ["navigation", "transition", "ios", "android", "swipe-back", "stack", "animation"],
+  "keywords": [
+    "navigation",
+    "transition",
+    "ios",
+    "android",
+    "swipe-back",
+    "stack",
+    "animation"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
     "./stacknav.css": "./dist/stacknav.css",
     "./package.json": "./package.json"
   },
-  "files": ["dist", "src", "LICENSE"],
-  "sideEffects": ["*.css"],
+  "files": [
+    "dist",
+    "src",
+    "LICENSE"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/write-css.mjs && node ../../scripts/copy-license.mjs",
     "test": "node --test \"test/**/*.test.ts\"",

@@ -10,10 +10,18 @@ export class Cart {
   readonly total = computed(() => this.lines().reduce((n, l) => n + l.qty * l.product.price, 0));
 
   add(product: Product): void {
-    this.lines.update((ls) => (ls.some((l) => l.product.id === product.id) ? ls.map((l) => (l.product.id === product.id ? { ...l, qty: l.qty + 1 } : l)) : [...ls, { product, qty: 1 }]));
+    this.lines.update((ls) =>
+      ls.some((l) => l.product.id === product.id)
+        ? ls.map((l) => (l.product.id === product.id ? { ...l, qty: l.qty + 1 } : l))
+        : [...ls, { product, qty: 1 }],
+    );
   }
   change(product: Product, by: number): void {
-    this.lines.update((ls) => ls.map((l) => (l.product.id === product.id ? { ...l, qty: l.qty + by } : l)).filter((l) => l.qty > 0));
+    this.lines.update((ls) =>
+      ls
+        .map((l) => (l.product.id === product.id ? { ...l, qty: l.qty + by } : l))
+        .filter((l) => l.qty > 0),
+    );
   }
   clear(): void {
     this.lines.set([]);
@@ -21,9 +29,11 @@ export class Cart {
 }
 
 /** The product data is resolved before the route activates, so the push waits and the page never renders empty. */
-export const resolveProduct: ResolveFn<Product> = (route) => inject(FakeApi).product(Number(route.paramMap.get('id')));
+export const resolveProduct: ResolveFn<Product> = (route) =>
+  inject(FakeApi).product(Number(route.paramMap.get('id')));
 
-const swatch = (p: Product, dir = 160) => `linear-gradient(${dir}deg, hsl(${p.hue} 65% 62%), hsl(${(p.hue + 40) % 360} 60% 38%))`;
+const swatch = (p: Product, dir = 160) =>
+  `linear-gradient(${dir}deg, hsl(${p.hue} 65% 62%), hsl(${(p.hue + 40) % 360} 60% 38%))`;
 
 /** A two-column product grid with category chips. The selected chip survives a round trip. */
 @Component({
@@ -76,7 +86,10 @@ export class ShopCatalog {
   readonly cart = inject(Cart);
   readonly categories = this.api.categories();
   readonly category = signal<string | null>(null);
-  readonly products = resource({ params: () => this.category(), loader: ({ params }) => this.api.products(params) });
+  readonly products = resource({
+    params: () => this.category(),
+    loader: ({ params }) => this.api.products(params),
+  });
   readonly swatch = swatch;
 }
 
@@ -136,7 +149,10 @@ export class ShopProduct {
   readonly product = input.required<Product>();
   private readonly api = inject(FakeApi);
   readonly cart = inject(Cart);
-  readonly related = resource({ params: () => this.product().id, loader: ({ params }) => this.api.related(params) });
+  readonly related = resource({
+    params: () => this.product().id,
+    loader: ({ params }) => this.api.related(params),
+  });
   readonly added = signal(false);
   readonly swatch = swatch;
 
@@ -249,9 +265,16 @@ export class ShopCheckout {
       const order = await this.api.placeOrder(this.cart.lines(), { fail: this.decline() });
       this.cart.clear();
       // replaceUrl as well, so the browser's history entry for the form is removed along with its page
-      await this.router.navigate(['/shop/order', order.id], { replaceUrl: true, info: { stacknav: 'replace' } });
+      await this.router.navigate(['/shop/order', order.id], {
+        replaceUrl: true,
+        info: { stacknav: 'replace' },
+      });
     } catch (err) {
-      this.error.set(err instanceof Error ? new Error(this.decline() ? 'Your card was declined (simulated).' : err.message) : err);
+      this.error.set(
+        err instanceof Error
+          ? new Error(this.decline() ? 'Your card was declined (simulated).' : err.message)
+          : err,
+      );
     } finally {
       this.busy.set(false);
     }

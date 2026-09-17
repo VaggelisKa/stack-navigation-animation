@@ -118,21 +118,21 @@ For full control, provide `resolveDirection` using the strategy helpers from
 
 `provideStackNav(config?)` configures every `stackNav` directive.
 
-| Option | Default | Purpose |
-| --- | --- | --- |
-| `direction` | none | One application rule, evaluated before route guesses. |
-| `siblings` | `'replace'` | Direction for equal route numbers or tree depth. |
-| `resolveDirection` | core resolver | Replaces direction resolution completely. |
-| `fallbackDirection` | `'push'` | Used when no strategy answers. |
-| `levelOf(snapshot)` | `data.stackLevel` | Reads a route's numeric level. |
-| `keyOf(snapshot)` | full route path | Identifies pages kept in the stack. |
-| `infoKey` | `'stacknav'` | Key used for hints in `NavigationExtras.info`. |
-| `routeReuse` | `true` | Installs `StackNavRouteReuseStrategy`. |
-| `transition` | `{}` | Default `createNativeTransition` options. |
-| `swipeBack` | `'browser'` | Browser edge-gesture policy. |
-| `injectStyles` | `true` | Injects the core stylesheet, tagged with `CSP_NONCE` when that token is provided. |
-| `manageFocus` | `false` | Moves focus into the page arriving on top, and back on a pop. |
-| `animated` | `true` | `false`, `'touch'`, or a predicate can disable animation. |
+| Option              | Default           | Purpose                                                                           |
+| ------------------- | ----------------- | --------------------------------------------------------------------------------- |
+| `direction`         | none              | One application rule, evaluated before route guesses.                             |
+| `siblings`          | `'replace'`       | Direction for equal route numbers or tree depth.                                  |
+| `resolveDirection`  | core resolver     | Replaces direction resolution completely.                                         |
+| `fallbackDirection` | `'push'`          | Used when no strategy answers.                                                    |
+| `levelOf(snapshot)` | `data.stackLevel` | Reads a route's numeric level.                                                    |
+| `keyOf(snapshot)`   | full route path   | Identifies pages kept in the stack.                                               |
+| `infoKey`           | `'stacknav'`      | Key used for hints in `NavigationExtras.info`.                                    |
+| `routeReuse`        | `true`            | Installs `StackNavRouteReuseStrategy`.                                            |
+| `transition`        | `{}`              | Default `createNativeTransition` options.                                         |
+| `swipeBack`         | `'browser'`       | Browser edge-gesture policy.                                                      |
+| `injectStyles`      | `true`            | Injects the core stylesheet, tagged with `CSP_NONCE` when that token is provided. |
+| `manageFocus`       | `false`           | Moves focus into the page arriving on top, and back on a pop.                     |
+| `animated`          | `true`            | `false`, `'touch'`, or a predicate can disable animation.                         |
 
 Set `animated: 'touch'` to animate only when the primary pointer is coarse, or
 pass a function that is evaluated before each navigation. The function is given
@@ -188,15 +188,15 @@ list. Reduced-motion preferences are always honored.
 />
 ```
 
-| API | Description |
-| --- | --- |
+| API                  | Description                                                   |
+| -------------------- | ------------------------------------------------------------- |
 | `stackNavTransition` | Per-stack transition options, read when the stack is created. |
-| `stackNavSwipeBack` | Live override of the configured swipe policy. |
-| `stackNavActivate` | Emits `{ page, direction, animated, reused }`. |
-| `stack` | The underlying core `NavigationStack`. |
-| `pages` | Kept pages from bottom to top. |
-| `canPop` | Whether the stack contains a previous page. |
-| `lastDirection` | Direction of the latest activation. |
+| `stackNavSwipeBack`  | Live override of the configured swipe policy.                 |
+| `stackNavActivate`   | Emits `{ page, direction, animated, reused }`.                |
+| `stack`              | The underlying core `NavigationStack`.                        |
+| `pages`              | Kept pages from bottom to top.                                |
+| `canPop`             | Whether the stack contains a previous page.                   |
+| `lastDirection`      | Direction of the latest activation.                           |
 
 The outlet's own `activate`, `deactivate`, `attach`, and `detach` outputs remain
 unchanged. Component inputs, named outlets, `ROUTER_OUTLET_DATA`, and route

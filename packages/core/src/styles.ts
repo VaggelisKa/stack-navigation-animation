@@ -165,7 +165,8 @@ export function injectStyles(
       sheet.replaceSync(STACKNAV_CSS);
       sheets.set(doc, sheet);
     }
-    if (!target.adoptedStyleSheets.includes(sheet)) target.adoptedStyleSheets = [...target.adoptedStyleSheets, sheet];
+    if (!target.adoptedStyleSheets.includes(sheet))
+      target.adoptedStyleSheets = [...target.adoptedStyleSheets, sheet];
     return;
   }
   const style = doc.createElement('style');

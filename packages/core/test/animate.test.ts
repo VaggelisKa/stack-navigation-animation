@@ -1,6 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { animationsFinished, commitStyles, cubicBezier, easings, isTouchPrimary, linearEasing, prefersReducedMotion, tween } from '../src/animate.ts';
+import {
+  animationsFinished,
+  commitStyles,
+  cubicBezier,
+  easings,
+  isTouchPrimary,
+  linearEasing,
+  prefersReducedMotion,
+  tween,
+} from '../src/animate.ts';
 
 test('cubicBezier is clamped and passes through the endpoints', () => {
   const f = cubicBezier(0.32, 0.72, 0, 1);
@@ -27,14 +36,22 @@ test('the iOS curve is monotonic and front-loaded', () => {
 
 /** AOSP's fast_out_extra_slow_in, solved exactly: two cubic segments, the second starting where the first ends. */
 const fastOutExtraSlowIn = (x: number): number => {
+  // A row per cubic segment, four control points each.
+  // prettier-ignore
   const segs = [
     [[0, 0], [0.05, 0], [0.133333, 0.06], [0.166666, 0.4]],
     [[0.166666, 0.4], [0.208333, 0.82], [0.25, 1], [1, 1]],
   ];
   const [p0, p1, p2, p3] = segs[x < 0.166666 ? 0 : 1];
-  const at = (t: number, k: 0 | 1) => (1 - t) ** 3 * p0[k] + 3 * (1 - t) ** 2 * t * p1[k] + 3 * (1 - t) * t * t * p2[k] + t ** 3 * p3[k];
-  let lo = 0, hi = 1;
-  for (let i = 0; i < 40; i++) at((lo + hi) / 2, 0) < x ? (lo = (lo + hi) / 2) : (hi = (lo + hi) / 2);
+  const at = (t: number, k: 0 | 1) =>
+    (1 - t) ** 3 * p0[k] +
+    3 * (1 - t) ** 2 * t * p1[k] +
+    3 * (1 - t) * t * t * p2[k] +
+    t ** 3 * p3[k];
+  let lo = 0,
+    hi = 1;
+  for (let i = 0; i < 40; i++)
+    at((lo + hi) / 2, 0) < x ? (lo = (lo + hi) / 2) : (hi = (lo + hi) / 2);
   return at((lo + hi) / 2, 1);
 };
 
@@ -44,7 +61,10 @@ test('the Android curve follows fast_out_extra_slow_in and is spelled as linear(
   assert.equal(f(1), 1);
   for (let i = 1; i < 100; i++) {
     const x = i / 100;
-    assert.ok(Math.abs(f(x) - fastOutExtraSlowIn(x)) < 0.01, `f(${x}) = ${f(x)}, the path gives ${fastOutExtraSlowIn(x)}`);
+    assert.ok(
+      Math.abs(f(x) - fastOutExtraSlowIn(x)) < 0.01,
+      `f(${x}) = ${f(x)}, the path gives ${fastOutExtraSlowIn(x)}`,
+    );
   }
   assert.ok(f(0.1) < 0.1, 'a slow start, unlike the iOS curve');
   assert.ok(f(0.25) > 0.75, 'then most of the way by a quarter of the time');
@@ -58,14 +78,28 @@ test('the Android curve follows fast_out_extra_slow_in and is spelled as linear(
 });
 
 test('linearEasing joins its points with straight lines', () => {
-  const f = linearEasing([[0, 0], [0.5, 1], [1, 0]]);
+  const f = linearEasing([
+    [0, 0],
+    [0.5, 1],
+    [1, 0],
+  ]);
   assert.equal(f(0.25), 0.5);
   assert.equal(f(0.5), 1);
   assert.equal(f(0.75), 0.5);
   assert.equal(f(-1), 0);
   assert.equal(f(2), 0);
   assert.equal(f.css, 'linear(0 0%, 1 50%, 0 100%)');
-  assert.equal(linearEasing([[0, 0], [1, 1]], 'linear').css, 'linear', 'a spelling of its own is kept');
+  assert.equal(
+    linearEasing(
+      [
+        [0, 0],
+        [1, 1],
+      ],
+      'linear',
+    ).css,
+    'linear',
+    'a spelling of its own is kept',
+  );
 });
 
 test('tween with zero duration jumps to the end synchronously', async () => {
@@ -96,11 +130,19 @@ test('tween.cancel stops further updates', async () => {
 // Generate inputs from the parametric curve itself: this checks the inverse
 // solver against known points without duplicating its numerical algorithm.
 test('Bezier sampling agrees with curves with flat slopes and overshoot', () => {
-  for (const [x1, y1, x2, y2] of [[0, 0, 0, 1], [1, 0, 0, 1], [1, 0, 1, 1], [0.3, -1, 0.7, 2]]) {
+  for (const [x1, y1, x2, y2] of [
+    [0, 0, 0, 1],
+    [1, 0, 0, 1],
+    [1, 0, 1, 1],
+    [0.3, -1, 0.7, 2],
+  ]) {
     const ease = cubicBezier(x1, y1, x2, y2);
     for (const t of [0.01, 0.1, 0.25, 0.49, 0.5, 0.51, 0.75, 0.9, 0.99]) {
       const coord = (a, b) => 3 * (1 - t) ** 2 * t * a + 3 * (1 - t) * t ** 2 * b + t ** 3;
-      assert.ok(Math.abs(ease(coord(x1, x2)) - coord(y1, y2)) < 1e-5, `curve ${[x1, y1, x2, y2]} at ${t}`);
+      assert.ok(
+        Math.abs(ease(coord(x1, x2)) - coord(y1, y2)) < 1e-5,
+        `curve ${[x1, y1, x2, y2]} at ${t}`,
+      );
     }
   }
 });
@@ -108,7 +150,10 @@ test('Bezier sampling agrees with curves with flat slopes and overshoot', () => 
 test('a cancelled tween resolves and does not schedule another frame from onUpdate', async () => {
   const frames = new Map();
   let nextId = 0;
-  globalThis.requestAnimationFrame = (fn) => { frames.set(++nextId, fn); return nextId; };
+  globalThis.requestAnimationFrame = (fn) => {
+    frames.set(++nextId, fn);
+    return nextId;
+  };
   globalThis.cancelAnimationFrame = (id) => frames.delete(id);
   const t = tween({ from: 0, to: 1, duration: 1000, onUpdate: () => t.cancel() });
   const frame = frames.get(nextId);
@@ -123,7 +168,10 @@ test('media helpers ask the right queries, and are false without matchMedia', ()
   globalThis.matchMedia = undefined;
   assert.equal(isTouchPrimary(), false, 'no matchMedia');
   assert.equal(prefersReducedMotion(), false, 'no matchMedia');
-  globalThis.matchMedia = (q) => { asked.push(q); return { matches: true }; };
+  globalThis.matchMedia = (q) => {
+    asked.push(q);
+    return { matches: true };
+  };
   assert.equal(isTouchPrimary(), true);
   assert.equal(prefersReducedMotion(), true);
   assert.deepEqual(asked, ['(pointer: coarse)', '(prefers-reduced-motion: reduce)']);
@@ -155,7 +203,11 @@ test('commitStyles resolves style without measuring the box', () => {
   } finally {
     globalThis.getComputedStyle = previous;
   }
-  assert.deepEqual(reads, ['element', 'opacity'], 'one property, on the element itself, that cannot depend on geometry');
+  assert.deepEqual(
+    reads,
+    ['element', 'opacity'],
+    'one property, on the element itself, that cannot depend on geometry',
+  );
 });
 
 // ------------------------------------------------------- animationsFinished
@@ -166,11 +218,22 @@ const animating = (finished: Promise<unknown>, property = 'transform') =>
 const pending = new Promise<never>(() => {});
 /** Resolves to 'pending' if `promise` has not settled within a couple of macrotasks. */
 const settledSoon = (promise: Promise<unknown>) =>
-  Promise.race([promise.then(() => 'settled'), new Promise((r) => setTimeout(() => r('pending'), 20))]);
+  Promise.race([
+    promise.then(() => 'settled'),
+    new Promise((r) => setTimeout(() => r('pending'), 20)),
+  ]);
 
 test('animationsFinished waits only for the named properties, and for nothing without them', async () => {
-  assert.equal(await settledSoon(animationsFinished([null, undefined, {} as HTMLElement])), 'settled', 'nothing running');
-  assert.equal(await settledSoon(animationsFinished([animating(pending, 'width')])), 'settled', 'a property nobody asked about');
+  assert.equal(
+    await settledSoon(animationsFinished([null, undefined, {} as HTMLElement])),
+    'settled',
+    'nothing running',
+  );
+  assert.equal(
+    await settledSoon(animationsFinished([animating(pending, 'width')])),
+    'settled',
+    'a property nobody asked about',
+  );
   assert.equal(await settledSoon(animationsFinished([animating(pending)])), 'pending');
 });
 
@@ -180,7 +243,11 @@ test('animationsFinished gives up after its timeout', async () => {
   const started = Date.now();
   await animationsFinished([animating(pending)], undefined, 30);
   assert.ok(Date.now() - started >= 25, `waited ${Date.now() - started}ms`);
-  assert.equal(await settledSoon(animationsFinished([animating(pending)], undefined, 0)), 'pending', 'no timeout means wait');
+  assert.equal(
+    await settledSoon(animationsFinished([animating(pending)], undefined, 0)),
+    'pending',
+    'no timeout means wait',
+  );
 });
 
 test('a finished animation wins the race and leaves no timer behind', async () => {
@@ -197,8 +264,19 @@ test('a finished animation wins the race and leaves no timer behind', async () =
   }) as typeof clearTimeout;
   try {
     // A rejected `finished` is an interrupted animation, which counts as finished.
-    await animationsFinished([animating(Promise.resolve()), animating(Promise.reject(new Error('interrupted')), 'opacity')], undefined, 60_000);
-    assert.equal(timers.size, 0, 'the watchdog timer is cleared, so it neither fires nor holds the process open');
+    await animationsFinished(
+      [
+        animating(Promise.resolve()),
+        animating(Promise.reject(new Error('interrupted')), 'opacity'),
+      ],
+      undefined,
+      60_000,
+    );
+    assert.equal(
+      timers.size,
+      0,
+      'the watchdog timer is cleared, so it neither fires nor holds the process open',
+    );
   } finally {
     globalThis.setTimeout = setT;
     globalThis.clearTimeout = clearT;

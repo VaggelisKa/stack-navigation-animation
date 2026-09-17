@@ -44,7 +44,8 @@ test('push mounts the page, marks it top and visible', async () => {
 });
 
 test('push runs the transition from 0 to 1 and hides the lower page after', async () => {
-  const a = el('a'), b = el('b');
+  const a = el('a'),
+    b = el('b');
   await stack.push(a);
   t.log.length = 0;
   await stack.push(b);
@@ -64,7 +65,8 @@ test('push accepts a factory function and carries data', async () => {
 });
 
 test('pop removes the top page and reveals the one beneath', async () => {
-  const a = el('a'), b = el('b');
+  const a = el('a'),
+    b = el('b');
   await stack.push(a);
   await stack.push(b);
   const events = [];
@@ -108,7 +110,9 @@ test('popTo below 1 or at current depth does nothing', async () => {
 });
 
 test('operations queue while a transition is busy', async () => {
-  const a = el('a'), b = el('b'), c = el('c');
+  const a = el('a'),
+    b = el('b'),
+    c = el('c');
   const order = [];
   stack.on('push', ({ entry }) => order.push(entry.el.id));
   await Promise.all([stack.push(a), stack.push(b), stack.push(c)]);
@@ -121,7 +125,8 @@ test('reset replaces the stack without animation', async () => {
   await stack.push(el('a'));
   await stack.push(el('b'));
   t.log.length = 0;
-  const x = el('x'), y = el('y');
+  const x = el('x'),
+    y = el('y');
   const removed = await stack.reset([x, y]);
   assert.equal(removed.length, 2);
   assert.equal(t.log.length, 0);
@@ -132,7 +137,8 @@ test('reset replaces the stack without animation', async () => {
 });
 
 test('interactive pop: update drives p, finish(complete) pops', async () => {
-  const a = el('a'), b = el('b');
+  const a = el('a'),
+    b = el('b');
   await stack.push(a);
   await stack.push(b);
   t.log.length = 0;
@@ -154,7 +160,8 @@ test('interactive pop: update drives p, finish(complete) pops', async () => {
 });
 
 test('interactive pop: finish(cancel) restores the upper page', async () => {
-  const a = el('a'), b = el('b');
+  const a = el('a'),
+    b = el('b');
   await stack.push(a);
   await stack.push(b);
   const handle = stack.beginInteractivePop();
@@ -168,7 +175,8 @@ test('interactive pop: finish(cancel) restores the upper page', async () => {
 });
 
 test('interactive pop passes remaining distance and velocity to settle', async () => {
-  const a = el('a'), b = el('b');
+  const a = el('a'),
+    b = el('b');
   await stack.push(a);
   await stack.push(b);
   let got;
@@ -181,7 +189,8 @@ test('interactive pop passes remaining distance and velocity to settle', async (
 });
 
 test('the pages taking part carry their role, and drop it when it is over', async () => {
-  const a = el('a'), b = el('b');
+  const a = el('a'),
+    b = el('b');
   await stack.push(a);
   const roles = [];
   stack.on('progress', () => roles.push([[...a.classes], [...b.classes]]));
@@ -200,7 +209,11 @@ const timings = () => {
   const seen = [];
   const inner = t.apply;
   t.apply = (l, u, p) => {
-    seen.push([p, container.style.getPropertyValue('--sn-t'), container.style.getPropertyValue('--sn-e')]);
+    seen.push([
+      p,
+      container.style.getPropertyValue('--sn-t'),
+      container.style.getPropertyValue('--sn-e'),
+    ]);
     inner(l, u, p);
   };
   return seen;
@@ -213,8 +226,16 @@ test('the container carries the phase timing for CSS, and 0s the rest of the tim
   const seen = timings();
   await stack.push(el('b'));
   assert.deepEqual(seen[0], [0, '0s', 'linear'], 'the near end lands instantly');
-  assert.deepEqual(seen[1], [1, '300ms', 'cubic-bezier(0.32, 0.72, 0, 1)'], 'the far end is a 300ms run on the iOS curve');
-  assert.equal(container.style.getPropertyValue('--sn-t'), '0s', 'and nothing is animating once it is over');
+  assert.deepEqual(
+    seen[1],
+    [1, '300ms', 'cubic-bezier(0.32, 0.72, 0, 1)'],
+    'the far end is a 300ms run on the iOS curve',
+  );
+  assert.equal(
+    container.style.getPropertyValue('--sn-t'),
+    '0s',
+    'and nothing is animating once it is over',
+  );
 });
 
 test('an unanimated operation never asks CSS to animate', async () => {
@@ -222,7 +243,10 @@ test('an unanimated operation never asks CSS to animate', async () => {
   await stack.push(el('a'));
   const seen = timings();
   await stack.push(el('b'), { animated: false });
-  assert.deepEqual(seen.map((s) => s[1]), ['0s', '0s']);
+  assert.deepEqual(
+    seen.map((s) => s[1]),
+    ['0s', '0s'],
+  );
 });
 
 test('the interactive drag pins --sn-t at 0s so the page tracks the finger', async () => {
@@ -235,7 +259,14 @@ test('the interactive drag pins --sn-t at 0s so the page tracks the finger', asy
   handle.update(0.6);
   handle.update(0.4);
   await handle.finish({ complete: true, velocity: 900 });
-  assert.deepEqual(seen.slice(0, 2), [[0.6, '0s', 'linear'], [0.4, '0s', 'linear']], 'every move is instant');
+  assert.deepEqual(
+    seen.slice(0, 2),
+    [
+      [0.6, '0s', 'linear'],
+      [0.4, '0s', 'linear'],
+    ],
+    'every move is instant',
+  );
   assert.deepEqual(seen[2], [0, '250ms', 'ease-out'], 'only the release is a run CSS owns');
 });
 
@@ -264,7 +295,8 @@ test('on() returns an unsubscribe function', async () => {
 });
 
 test('destroy unmounts every page', async () => {
-  const a = el('a'), b = el('b');
+  const a = el('a'),
+    b = el('b');
   await stack.push(a);
   await stack.push(b);
   stack.destroy();
@@ -281,26 +313,42 @@ test('popWith reveals a page that is already beneath the top, removing intermedi
   t.log.length = 0;
   const upper = await stack.popWith(pages[1]);
   assert.equal(upper.el.id, 'd');
-  assert.deepEqual(stack.entries.map((e) => e.el.id), ['a', 'b']);
+  assert.deepEqual(
+    stack.entries.map((e) => e.el.id),
+    ['a', 'b'],
+  );
   assert.deepEqual(t.log[0], ['begin', 'b', 'd']);
   assert.equal(pages[2].parentElement, null, 'intermediate c is gone');
 });
 
 test('popWith mounts a fresh page beneath the top and pops onto it', async () => {
-  const a = el('a'), b = el('b'), x = el('x');
+  const a = el('a'),
+    b = el('b'),
+    x = el('x');
   await stack.push(a);
   await stack.push(b);
   t.log.length = 0;
   const events = [];
   stack.on('pop', (d) => events.push(d));
   await stack.popWith(x, { key: 'x', source: 'history' });
-  assert.deepEqual(stack.entries.map((e) => e.el.id), ['a', 'x']);
+  assert.deepEqual(
+    stack.entries.map((e) => e.el.id),
+    ['a', 'x'],
+  );
   assert.deepEqual(t.log[0], ['begin', 'x', 'b'], 'b animates out over x');
-  assert.deepEqual(container.children.map((c) => c.id), ['a', 'x'], 'x was inserted beneath b in the DOM, b removed');
+  assert.deepEqual(
+    container.children.map((c) => c.id),
+    ['a', 'x'],
+    'x was inserted beneath b in the DOM, b removed',
+  );
   assert.ok(x.classList.contains('sn-page-visible'));
   assert.equal(stack.top.key, 'x');
   assert.equal(events[0].source, 'history');
-  assert.deepEqual(stack.entries.map((e) => e.index), [0, 1], 'indexes renumbered');
+  assert.deepEqual(
+    stack.entries.map((e) => e.index),
+    [0, 1],
+    'indexes renumbered',
+  );
 });
 
 test('popWith on an empty stack mounts the page', async () => {
@@ -317,7 +365,9 @@ test('popWith on the top page is a no-op', async () => {
 });
 
 test('replace swaps the top page without animation', async () => {
-  const a = el('a'), b = el('b'), c = el('c');
+  const a = el('a'),
+    b = el('b'),
+    c = el('c');
   await stack.push(a);
   await stack.push(b);
   t.log.length = 0;
@@ -326,43 +376,66 @@ test('replace swaps the top page without animation', async () => {
   const removed = await stack.replace(c, { key: 'c' });
   assert.equal(removed.el, b);
   assert.equal(b.parentElement, null);
-  assert.deepEqual(stack.entries.map((e) => e.el.id), ['a', 'c']);
+  assert.deepEqual(
+    stack.entries.map((e) => e.el.id),
+    ['a', 'c'],
+  );
   assert.equal(t.log.length, 0, 'no transition ran');
   assert.ok(c.classList.contains('sn-page-visible'));
   assert.equal(events[0].removed[0].el, b);
 });
 
 test('present dispatches on direction', async () => {
-  const a = el('a'), b = el('b'), c = el('c');
+  const a = el('a'),
+    b = el('b'),
+    c = el('c');
   await stack.present(a, 'push');
   await stack.present(b, 'push');
   await stack.present(c, 'replace');
-  assert.deepEqual(stack.entries.map((e) => e.el.id), ['a', 'c']);
+  assert.deepEqual(
+    stack.entries.map((e) => e.el.id),
+    ['a', 'c'],
+  );
   await stack.present(a, 'pop');
-  assert.deepEqual(stack.entries.map((e) => e.el.id), ['a']);
+  assert.deepEqual(
+    stack.entries.map((e) => e.el.id),
+    ['a'],
+  );
 });
 
 test('pushing an element already lower in the stack moves it to the top', async () => {
-  const a = el('a'), b = el('b');
+  const a = el('a'),
+    b = el('b');
   await stack.push(a);
   await stack.push(b);
   await stack.push(a);
-  assert.deepEqual(stack.entries.map((e) => e.el.id), ['b', 'a']);
-  assert.deepEqual(container.children.map((c) => c.id), ['b', 'a']);
+  assert.deepEqual(
+    stack.entries.map((e) => e.el.id),
+    ['b', 'a'],
+  );
+  assert.deepEqual(
+    container.children.map((c) => c.id),
+    ['b', 'a'],
+  );
 });
 
 test('remove drops a page beneath the top silently', async () => {
-  const a = el('a'), b = el('b'), c = el('c');
+  const a = el('a'),
+    b = el('b'),
+    c = el('c');
   for (const p of [a, b, c]) await stack.push(p);
   const entry = await stack.remove(b);
   assert.equal(entry.el, b);
-  assert.deepEqual(stack.entries.map((e) => e.el.id), ['a', 'c']);
+  assert.deepEqual(
+    stack.entries.map((e) => e.el.id),
+    ['a', 'c'],
+  );
   assert.equal(await stack.remove(b), null);
   assert.equal(stack.entryOf(c).index, 1);
   assert.equal(stack.entryOf('nope'), null);
 });
 
-test('the stack reads a transition\'s timing only after begin() has run', async () => {
+test("the stack reads a transition's timing only after begin() has run", async () => {
   // The iOS transition resolves its CSS variables in begin(), so a stack that
   // read duration or ease first would apply every variable one transition late.
   const { createNativeTransition } = await import('../src/native-transition.ts');
@@ -389,22 +462,34 @@ test('the stack reads a transition\'s timing only after begin() has run', async 
   await s.push(el('a'), { animated: false });
   reads.length = 0;
   await s.push(el('b'));
-  assert.deepEqual(reads.slice(0, 2), ['begin', 'duration:250'], 'the very first animated push already sees 250ms');
+  assert.deepEqual(
+    reads.slice(0, 2),
+    ['begin', 'duration:250'],
+    'the very first animated push already sees 250ms',
+  );
 
   reads.length = 0;
   const h = s.beginInteractivePop();
   h.update(0.4);
   await h.finish({ complete: true, velocity: 100 });
-  assert.deepEqual(reads.slice(0, 2), ['begin', 'settle:80'], 'and so does the settle after a swipe');
+  assert.deepEqual(
+    reads.slice(0, 2),
+    ['begin', 'settle:80'],
+    'and so does the settle after a swipe',
+  );
 });
 
-
 test('settling an interactive pop already at its target skips layout and animation', async () => {
-  const a = el('a'), b = el('b');
+  const a = el('a'),
+    b = el('b');
   await stack.push(a);
   await stack.push(b);
   t.settle = () => ({ duration: 200, ease: (x) => x });
-  Object.defineProperty(b, 'offsetWidth', { get() { throw new Error('unnecessary layout'); } });
+  Object.defineProperty(b, 'offsetWidth', {
+    get() {
+      throw new Error('unnecessary layout');
+    },
+  });
   const handle = stack.beginInteractivePop();
   handle.update(0);
   await handle.finish({ complete: true });
@@ -420,27 +505,46 @@ for (const operation of ['pop', 'popTo', 'popWith']) {
     await stack.push(upper);
     t.duration = 100;
     let finishAnimation;
-    const finished = new Promise((resolve) => { finishAnimation = resolve; });
+    const finished = new Promise((resolve) => {
+      finishAnimation = resolve;
+    });
     upper.getAnimations = () => [{ transitionProperty: 'transform', finished }];
-    const pending = operation === 'pop' ? stack.pop() : operation === 'popTo' ? stack.popTo(1) : stack.popWith(el('replacement'));
+    const pending =
+      operation === 'pop'
+        ? stack.pop()
+        : operation === 'popTo'
+          ? stack.popTo(1)
+          : stack.popWith(el('replacement'));
     assert.equal(stack.busy, true);
-    assert.equal(stack.entries.some((entry) => entry.el === upper), false);
+    assert.equal(
+      stack.entries.some((entry) => entry.el === upper),
+      false,
+    );
     stack.destroy();
-    assert.equal(upper.parentElement, null, 'outgoing page is removed without waiting for its animation');
+    assert.equal(
+      upper.parentElement,
+      null,
+      'outgoing page is removed without waiting for its animation',
+    );
     assert.equal(upper.classList.contains('sn-page-upper'), false);
     assert.equal(container.children.length, 0);
     const otherContainer = makeElement();
     otherContainer.append(upper);
     finishAnimation();
     await pending;
-    assert.equal(upper.parentElement, otherContainer, 'late completion cannot unmount a reused page');
+    assert.equal(
+      upper.parentElement,
+      otherContainer,
+      'late completion cannot unmount a reused page',
+    );
   });
 }
 
 // The forced layout this used to do was the single most expensive thing in a
 // push: it laid out the page being mounted, inside the navigation task.
 test('an animated push commits both ends of the phase without forcing layout', async () => {
-  const a = el('a'), b = el('b');
+  const a = el('a'),
+    b = el('b');
   await stack.push(a);
   t.log.length = 0;
   t.duration = 200;
@@ -465,12 +569,15 @@ test('an animated push commits both ends of the phase without forcing layout', a
 // used to strand the stack: busy forever, the click shield up, and every
 // queued operation stuck behind it.
 test('an animation that never finishes does not strand the stack', async () => {
-  const a = el('a'), b = el('b'), c = el('c');
+  const a = el('a'),
+    b = el('b'),
+    c = el('c');
   await stack.push(a);
   t.duration = 20; // plus the watchdog margin: this test waits ~180 ms, once
   // Never settles and never rejects, so only the watchdog can end the wait.
   const forever = new Promise(() => {});
-  for (const page of [a, b]) page.getAnimations = () => [{ transitionProperty: 'transform', finished: forever }];
+  for (const page of [a, b])
+    page.getAnimations = () => [{ transitionProperty: 'transform', finished: forever }];
   const pushed = stack.push(b);
   assert.equal(stack.busy, true);
   const queued = stack.push(c); // behind the stuck one, to show the queue drains too
@@ -483,12 +590,16 @@ test('an animation that never finishes does not strand the stack', async () => {
 });
 
 test('the watchdog does not cut short an animation that is still running', async () => {
-  const a = el('a'), b = el('b');
+  const a = el('a'),
+    b = el('b');
   await stack.push(a);
   t.duration = 20;
   let finish;
-  const finished = new Promise((resolve) => { finish = resolve; });
-  for (const page of [a, b]) page.getAnimations = () => [{ transitionProperty: 'transform', finished }];
+  const finished = new Promise((resolve) => {
+    finish = resolve;
+  });
+  for (const page of [a, b])
+    page.getAnimations = () => [{ transitionProperty: 'transform', finished }];
   const pushed = stack.push(b);
   await new Promise((r) => setTimeout(r, 40));
   assert.equal(stack.busy, true, 'still waiting on the animation, well before the watchdog');

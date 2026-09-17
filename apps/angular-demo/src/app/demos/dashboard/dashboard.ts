@@ -80,7 +80,10 @@ export class DashOverview {
   private readonly api = inject(FakeApi);
   readonly ranges = ['day', 'week', 'month'] as const;
   readonly range = signal<(typeof this.ranges)[number]>('week');
-  readonly stats = resource({ params: () => this.range(), loader: ({ params }) => this.api.stats(params) });
+  readonly stats = resource({
+    params: () => this.range(),
+    loader: ({ params }) => this.api.stats(params),
+  });
   readonly abs = Math.abs;
 }
 
@@ -121,7 +124,11 @@ export class DashActivity {
   private readonly api = inject(FakeApi);
   readonly rows = resource({ loader: () => this.api.activity() });
   readonly filter = signal('all');
-  readonly shown = computed(() => (this.rows.hasValue() ? this.rows.value().filter((r) => this.filter() === 'all' || r.status === this.filter()) : []));
+  readonly shown = computed(() =>
+    this.rows.hasValue()
+      ? this.rows.value().filter((r) => this.filter() === 'all' || r.status === this.filter())
+      : [],
+  );
 }
 
 @Component({
@@ -188,5 +195,8 @@ export class DashTeam {
 export class DashMember {
   readonly id = input.required<string>();
   private readonly api = inject(FakeApi);
-  readonly member = resource({ params: () => Number(this.id()), loader: ({ params }) => this.api.member(params) });
+  readonly member = resource({
+    params: () => Number(this.id()),
+    loader: ({ params }) => this.api.member(params),
+  });
 }

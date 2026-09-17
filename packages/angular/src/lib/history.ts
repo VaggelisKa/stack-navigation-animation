@@ -1,5 +1,13 @@
 import { Injectable, inject } from '@angular/core';
-import { NavigationCancel, NavigationEnd, NavigationError, NavigationSkipped, NavigationStart, ROUTER_CONFIGURATION, Router } from '@angular/router';
+import {
+  NavigationCancel,
+  NavigationEnd,
+  NavigationError,
+  NavigationSkipped,
+  NavigationStart,
+  ROUTER_CONFIGURATION,
+  Router,
+} from '@angular/router';
 import type { Direction, DirectionOpinion, NavigationTrigger } from '@stacknav/core';
 import { STACKNAV_CONFIG } from './config';
 
@@ -42,7 +50,8 @@ interface Entry {
 export class StackNavHistory {
   private readonly router = inject(Router);
   private readonly config = inject(STACKNAV_CONFIG);
-  private readonly cancelResolution = inject(ROUTER_CONFIGURATION, { optional: true })?.canceledNavigationResolution ?? 'replace';
+  private readonly cancelResolution =
+    inject(ROUTER_CONFIGURATION, { optional: true })?.canceledNavigationResolution ?? 'replace';
   private entries: Entry[] = [];
   private cursor = -1;
   private pending: NavigationInfo | null = null;
@@ -82,7 +91,8 @@ export class StackNavHistory {
     if (isHistory) {
       const idx = this.indexOf(restoredId);
       if (idx >= 0 && this.cursor >= 0) historyDelta = idx - this.cursor;
-      else if (restoredId != null && this.cursor >= 0) historyDelta = restoredId < this.entries[this.cursor].id ? -1 : 1;
+      else if (restoredId != null && this.cursor >= 0)
+        historyDelta = restoredId < this.entries[this.cursor].id ? -1 : 1;
     }
     const hint = isHistory ? undefined : readHint(nav?.extras.info, this.config.infoKey);
     this.pending = {
@@ -137,7 +147,8 @@ export class StackNavHistory {
   private onAbort(): void {
     const p = this.pending;
     this.pending = null;
-    if (!p || p.trigger !== 'history' || this.cursor < 0 || this.cancelResolution === 'computed') return;
+    if (!p || p.trigger !== 'history' || this.cursor < 0 || this.cancelResolution === 'computed')
+      return;
     const idx = this.indexOf(p.restoredId);
     if (idx < 0) return;
     this.entries[idx] = { ...this.entries[this.cursor] };
@@ -150,13 +161,21 @@ export class StackNavHistory {
     let best = -1;
     for (let i = 0; i < this.entries.length; i++) {
       if (this.entries[i].id !== id) continue;
-      if (best < 0 || best === this.cursor || (i !== this.cursor && Math.abs(i - this.cursor) < Math.abs(best - this.cursor))) best = i;
+      if (
+        best < 0 ||
+        best === this.cursor ||
+        (i !== this.cursor && Math.abs(i - this.cursor) < Math.abs(best - this.cursor))
+      )
+        best = i;
     }
     return best;
   }
 }
 
-function readHint(info: unknown, key: string): { direction?: DirectionOpinion; animated?: boolean } | undefined {
+function readHint(
+  info: unknown,
+  key: string,
+): { direction?: DirectionOpinion; animated?: boolean } | undefined {
   if (info == null || typeof info !== 'object') return undefined;
   const v = (info as Record<string, unknown>)[key] as StackNavHint | undefined;
   if (v == null) return undefined;

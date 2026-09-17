@@ -24,7 +24,9 @@ export class StackNavFillViewport {
     const win = el.ownerDocument.defaultView;
     if (!win || this.destroyRef.destroyed) return;
     const original = ['height', 'box-sizing'].map((name) => ({
-      name, value: el.style.getPropertyValue(name), priority: el.style.getPropertyPriority(name),
+      name,
+      value: el.style.getPropertyValue(name),
+      priority: el.style.getPropertyPriority(name),
     }));
     el.style.setProperty('box-sizing', 'border-box');
     let frame = 0;

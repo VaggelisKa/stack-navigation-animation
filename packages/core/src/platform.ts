@@ -7,7 +7,10 @@ export type Platform = 'ios' | 'android';
 
 export function isIOSBrowser(): boolean {
   if (typeof navigator === 'undefined') return false;
-  return /iP(hone|ad|od)/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return (
+    /iP(hone|ad|od)/.test(navigator.platform) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
 }
 
 export function isAndroidBrowser(): boolean {

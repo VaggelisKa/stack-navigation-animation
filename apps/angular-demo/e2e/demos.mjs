@@ -6,11 +6,41 @@
 import { fileURLToPath } from 'node:url';
 import { launch } from './harness.mjs';
 
-const { page, base, check, eq, section, flush, media, state, busy, settled, transitioned, scrollTop, setScroll, interactivePop, finish } = await launch();
+const {
+  page,
+  base,
+  check,
+  eq,
+  section,
+  flush,
+  media,
+  state,
+  busy,
+  settled,
+  transitioned,
+  scrollTop,
+  setScroll,
+  interactivePop,
+  finish,
+} = await launch();
 const count = async (sel) => (await flush(), page.locator(sel).count());
-const waitCount = (sel, n) => page.waitForFunction(([sel, n]) => document.querySelectorAll(sel).length >= n, [sel, n], { timeout: 8000 });
-const text = async (sel) => (await flush(), page.locator(sel).first().textContent().then((t) => t?.trim()));
-const openDemo = (name) => transitioned(() => page.click(`.sn-page-visible a.item:has-text("${name}")`), `demo-${name.toLowerCase()}`);
+const waitCount = (sel, n) =>
+  page.waitForFunction(([sel, n]) => document.querySelectorAll(sel).length >= n, [sel, n], {
+    timeout: 8000,
+  });
+const text = async (sel) => (
+  await flush(),
+  page
+    .locator(sel)
+    .first()
+    .textContent()
+    .then((t) => t?.trim())
+);
+const openDemo = (name) =>
+  transitioned(
+    () => page.click(`.sn-page-visible a.item:has-text("${name}")`),
+    `demo-${name.toLowerCase()}`,
+  );
 let s, mid;
 
 // ============================================================ feed
@@ -18,9 +48,15 @@ section('feed: skeletons, load more, cross-links that always push');
 await page.goto(base + '/');
 await page.waitForSelector('app-home');
 mid = await openDemo('Feed');
-check(mid.busy && mid.pages.join(',') === 'app-home,feed-home', 'lazy chunk loaded, then the push animated');
+check(
+  mid.busy && mid.pages.join(',') === 'app-home,feed-home',
+  'lazy chunk loaded, then the push animated',
+);
 s = await state();
-check((await count('.sn-page-visible demo-skeleton')) > 0, 'the list is still loading when the push lands (skeletons)');
+check(
+  (await count('.sn-page-visible demo-skeleton')) > 0,
+  'the list is still loading when the push lands (skeletons)',
+);
 await waitCount('feed-card', 10);
 eq(await count('.sn-page-visible demo-skeleton'), 0, 'skeletons gone once the posts arrived');
 await page.click('.sn-page-visible .feed-more button');
@@ -32,10 +68,19 @@ check(feedScroll > 0, `scrolled the feed (${feedScroll}px)`);
 // the first card whose author row is in view, so the click does not scroll the list
 const nth = await page.evaluate(() => {
   const outlet = document.querySelector('.sn-container').getBoundingClientRect();
-  return [...document.querySelectorAll('.sn-page-visible feed-card .feed-author')].findIndex((a) => a.getBoundingClientRect().top > outlet.top + 60);
+  return [...document.querySelectorAll('.sn-page-visible feed-card .feed-author')].findIndex(
+    (a) => a.getBoundingClientRect().top > outlet.top + 60,
+  );
 });
-const author = await page.locator('.sn-page-visible feed-card').nth(nth).locator('.feed-author b').textContent();
-mid = await transitioned(() => page.locator('.sn-page-visible feed-card').nth(nth).locator('.feed-author').click(), 'feed-profile');
+const author = await page
+  .locator('.sn-page-visible feed-card')
+  .nth(nth)
+  .locator('.feed-author b')
+  .textContent();
+mid = await transitioned(
+  () => page.locator('.sn-page-visible feed-card').nth(nth).locator('.feed-author').click(),
+  'feed-profile',
+);
 check(mid.busy && mid.pages.length === 3, 'profile pushed over the feed');
 s = await state();
 eq(s.pages.join(','), 'app-home,feed-home,feed-profile', 'feed kept beneath the profile');
@@ -43,9 +88,16 @@ await page.waitForSelector('.sn-page-visible .feed-profile');
 eq(await text('.sn-page-visible .feed-profile h2'), author, 'profile loaded the tapped author');
 await page.click('.sn-page-visible button[role=tab]:has-text("Media")');
 await waitCount('.sn-page-visible feed-card', 1);
-mid = await transitioned(() => page.locator('.sn-page-visible feed-card a[href^="/feed/post/"]').first().click(), 'feed-post');
+mid = await transitioned(
+  () => page.locator('.sn-page-visible feed-card a[href^="/feed/post/"]').first().click(),
+  'feed-post',
+);
 s = await state();
-eq(s.pages.join(','), 'app-home,feed-home,feed-profile,feed-post', 'post pushed over the profile although the tree calls them siblings ([pushTo])');
+eq(
+  s.pages.join(','),
+  'app-home,feed-home,feed-profile,feed-post',
+  'post pushed over the profile although the tree calls them siblings ([pushTo])',
+);
 await page.waitForSelector('.sn-page-visible .feed-comment');
 check((await count('.sn-page-visible .feed-comment')) >= 2, 'comments arrived after the post');
 await page.click('.sn-page-visible .feed-actions button');
@@ -67,7 +119,9 @@ section('shop: grid, resolver, cart, checkout, replaced success page');
 await openDemo('Shop');
 await waitCount('.shop-tile:not(.skel-tile)', 24);
 await page.click('.sn-page-visible .shop-chips button:has-text("Home")');
-await page.waitForFunction(() => document.querySelectorAll('.shop-tile:not(.skel-tile)').length === 6);
+await page.waitForFunction(
+  () => document.querySelectorAll('.shop-tile:not(.skel-tile)').length === 6,
+);
 eq(await count('.shop-tile:not(.skel-tile)'), 6, 'category chip filtered the grid');
 await page.click('.sn-page-visible .shop-tile:has-text("Ember Lamp")');
 s = await state();
@@ -86,9 +140,17 @@ await page.click('.sn-page-visible .shop-buybar button');
 eq(await text('.sn-page-visible .shop-cart-btn b'), '2', 'cart badge counts two');
 await page.waitForSelector('.sn-page-visible .shop-mini:not(.skel-tile)');
 const related = await page.locator('.sn-page-visible .shop-mini b').first().textContent();
-mid = await transitioned(() => page.locator('.sn-page-visible .shop-mini').first().click(), 'shop-related', { timeout: 3000 });
+mid = await transitioned(
+  () => page.locator('.sn-page-visible .shop-mini').first().click(),
+  'shop-related',
+  { timeout: 3000 },
+);
 s = await state();
-eq(s.pages.join(','), 'app-home,shop-catalog,shop-product,shop-product', 'related product pushed (resolver again)');
+eq(
+  s.pages.join(','),
+  'app-home,shop-catalog,shop-product,shop-product',
+  'related product pushed (resolver again)',
+);
 eq(s.title, related, 'related product page shows the tapped product');
 await transitioned(() => page.goBack(), 'shop-back');
 eq((await state()).title, 'Ember Lamp', 'back to the first product');
@@ -102,38 +164,77 @@ eq(await text('.sn-page-visible .shop-qty span'), '3', 'stepper works');
 eq(await text('.sn-page-visible .shop-summary .total b'), '$' + 3 * 249, 'total follows');
 await transitioned(() => page.click('.sn-page-visible .shop-buybar a'), 'shop-checkout');
 eq((await state()).pages.at(-1), 'shop-checkout', 'checkout pushed');
-for (const [name, value] of [['name', 'Ada'], ['email', 'ada@example.com'], ['address', '1 Main St'], ['city', 'Porto'], ['zip', '4000'], ['card', '4242424242424242']]) await page.fill(`.sn-page-visible input[name=${name}]`, value);
+for (const [name, value] of [
+  ['name', 'Ada'],
+  ['email', 'ada@example.com'],
+  ['address', '1 Main St'],
+  ['city', 'Porto'],
+  ['zip', '4000'],
+  ['card', '4242424242424242'],
+])
+  await page.fill(`.sn-page-visible input[name=${name}]`, value);
 await page.click('.sn-page-visible label:has-text("declined card")');
 await page.click('.sn-page-visible .shop-buybar button');
-await page.waitForSelector('.sn-page-visible .shop-buybar button:has-text("Placing")', { timeout: 600 });
+await page.waitForSelector('.sn-page-visible .shop-buybar button:has-text("Placing")', {
+  timeout: 600,
+});
 check(true, 'submit shows its busy state');
 await page.waitForSelector('.sn-page-visible .err');
-eq((await state()).pages.at(-1), 'shop-checkout', 'declined card: still on the checkout with an error');
+eq(
+  (await state()).pages.at(-1),
+  'shop-checkout',
+  'declined card: still on the checkout with an error',
+);
 await page.click('.sn-page-visible label:has-text("declined card")');
 const historyBefore = await page.evaluate(() => history.length);
 await page.click('.sn-page-visible .shop-buybar button');
 await page.waitForSelector('shop-order');
 await settled();
 s = await state();
-eq(s.pages.join(','), 'app-home,shop-catalog,shop-product,shop-cart,shop-order', 'success page replaced the checkout in the stack');
+eq(
+  s.pages.join(','),
+  'app-home,shop-catalog,shop-product,shop-cart,shop-order',
+  'success page replaced the checkout in the stack',
+);
 check(/^\/shop\/order\/SN-\d+$/.test(s.url), `order url (${s.url})`);
-eq(await page.evaluate(() => history.length), historyBefore, 'and replaced it in history too (replaceUrl)');
-mid = await transitioned(() => page.click('.sn-page-visible button:has-text("Continue shopping")'), 'shop-pop-to-root');
-check(mid.busy && mid.pages.join(',') === 'app-home,shop-catalog,shop-order', `popping to the catalog: intermediates dropped, one animation (${mid.pages})`);
+eq(
+  await page.evaluate(() => history.length),
+  historyBefore,
+  'and replaced it in history too (replaceUrl)',
+);
+mid = await transitioned(
+  () => page.click('.sn-page-visible button:has-text("Continue shopping")'),
+  'shop-pop-to-root',
+);
+check(
+  mid.busy && mid.pages.join(',') === 'app-home,shop-catalog,shop-order',
+  `popping to the catalog: intermediates dropped, one animation (${mid.pages})`,
+);
 s = await state();
 eq(s.pages.join(','), 'app-home,shop-catalog', 'kept catalog is back, the pages above are gone');
 
-eq(await text('.sn-page-visible .shop-chips button.on'), 'Home', 'the category chip survived the round trip');
+eq(
+  await text('.sn-page-visible .shop-chips button.on'),
+  'Home',
+  'the category chip survived the round trip',
+);
 eq(await count('.sn-page-visible .shop-cart-btn b'), 0, 'cart emptied after the order');
 await transitioned(() => page.click('.sn-page-visible .back'), 'shop-home');
 s = await state();
-eq(s.pages.join(',') + ' ' + s.url, 'app-home /', 'history was rewound with the pop: one Back from the catalog is the demos page');
+eq(
+  s.pages.join(',') + ' ' + s.url,
+  'app-home /',
+  'history was rewound with the pop: one Back from the catalog is the demos page',
+);
 
 // ============================================================ messages
 section('messages: sticky composer, scroll to bottom, replies that arrive after you left');
 await openDemo('Messages');
 await waitCount('.chat-row', 8);
-mid = await transitioned(() => page.click('.sn-page-visible .chat-row:has-text("Kofi Mensah")'), 'chat-thread');
+mid = await transitioned(
+  () => page.click('.sn-page-visible .chat-row:has-text("Kofi Mensah")'),
+  'chat-thread',
+);
 s = await state();
 eq(s.pages.join(','), 'app-home,chat-inbox,chat-thread', 'thread over the inbox');
 await page.waitForSelector('.sn-page-visible .chat-bubble');
@@ -145,15 +246,37 @@ check(atBottom < 2, `thread scrolled to its newest bubble (${atBottom}px from th
 await page.fill('.sn-page-visible .chat-composer input', 'hello there');
 await page.press('.sn-page-visible .chat-composer input', 'Enter');
 await flush();
-eq(await page.locator('.sn-page-visible .chat-bubble.mine').last().textContent().then((t) => t.replace(/\d+:\d+$/, '').trim()), 'hello there', 'sent bubble appended');
-eq(await count('.sn-page-visible .chat-typing'), 1, 'typing indicator while the reply is on its way');
+eq(
+  await page
+    .locator('.sn-page-visible .chat-bubble.mine')
+    .last()
+    .textContent()
+    .then((t) => t.replace(/\d+:\d+$/, '').trim()),
+  'hello there',
+  'sent bubble appended',
+);
+eq(
+  await count('.sn-page-visible .chat-typing'),
+  1,
+  'typing indicator while the reply is on its way',
+);
 await transitioned(() => page.goBack(), 'chat-back-early');
 eq((await state()).pages.join(','), 'app-home,chat-inbox', 'left the thread before the reply came');
 await page.waitForTimeout(2200);
-await transitioned(() => page.click('.sn-page-visible .chat-row:has-text("Kofi Mensah")'), 'chat-thread-again');
+await transitioned(
+  () => page.click('.sn-page-visible .chat-row:has-text("Kofi Mensah")'),
+  'chat-thread-again',
+);
 await page.waitForSelector('.sn-page-visible .chat-bubble');
-eq(await count('.sn-page-visible .chat-bubble:has-text("hello there")'), 1, 'the sent message is in the reloaded thread, exactly once');
-check((await count('.sn-page-visible .chat-bubble')) > 2, 'and the reply that arrived while we were away');
+eq(
+  await count('.sn-page-visible .chat-bubble:has-text("hello there")'),
+  1,
+  'the sent message is in the reloaded thread, exactly once',
+);
+check(
+  (await count('.sn-page-visible .chat-bubble')) > 2,
+  'and the reply that arrived while we were away',
+);
 await transitioned(() => page.goBack(), 'chat-back');
 await transitioned(() => page.goBack(), 'chat-home');
 eq((await state()).pages.join(','), 'app-home', 'back on the demos');
@@ -168,7 +291,9 @@ await page.goto(base + '/');
 await page.waitForSelector('app-home');
 
 // ============================================================ lab + gallery
-section('gallery in slow motion: dark page, data arriving mid-transition, sibling replace, filmstrip, interactive pop');
+section(
+  'gallery in slow motion: dark page, data arriving mid-transition, sibling replace, filmstrip, interactive pop',
+);
 // A deep link renders that page alone, so come back to the demos list first.
 await page.goto(base + '/');
 await page.waitForSelector('app-home');
@@ -180,7 +305,13 @@ mid = await openDemo('Gallery');
 const elapsed = Date.now() - t0;
 check(elapsed > 1500, `slow motion reached the outlet's transition (${elapsed}ms)`);
 await waitCount('.gal-tile:not(.skel-tile)', 30);
-mid = await transitioned(() => page.click('.sn-page-visible .gal-tile[aria-label="Low tide 5"], .sn-page-visible .gal-tile >> nth=4'), 'gallery-photo-mid');
+mid = await transitioned(
+  () =>
+    page.click(
+      '.sn-page-visible .gal-tile[aria-label="Low tide 5"], .sn-page-visible .gal-tile >> nth=4',
+    ),
+  'gallery-photo-mid',
+);
 check(mid.busy && mid.visible.length === 2, 'both pages visible mid-flight');
 s = await state();
 eq(s.pages.join(','), 'app-home,gallery-grid,gallery-photo', 'photo over the grid');
@@ -202,7 +333,9 @@ await interactivePop({
   mid: async () => {
     const m = await state();
     eq(m.visible.join(','), 'gallery-photo,gallery-photo', 'both dark pages visible mid-pop');
-    await page.screenshot({ path: fileURLToPath(new URL('./shots/gallery-swipe-mid.png', import.meta.url)) });
+    await page.screenshot({
+      path: fileURLToPath(new URL('./shots/gallery-swipe-mid.png', import.meta.url)),
+    });
   },
 });
 await page.waitForFunction(() => location.pathname === '/gallery/7');
@@ -218,35 +351,65 @@ section('forms: long form with async save, numbered wizard, replaced ending, pop
 await page.goto(base + '/'); // also resets slow motion
 await page.waitForSelector('app-home');
 await openDemo('Forms');
-await transitioned(() => page.click('.sn-page-visible a.item:has-text("Edit profile")'), 'forms-profile');
+await transitioned(
+  () => page.click('.sn-page-visible a.item:has-text("Edit profile")'),
+  'forms-profile',
+);
 eq(await text('.sn-page-visible .frm-hint'), 'Everything is saved.', 'form starts clean');
 await page.fill('.sn-page-visible input[name=name]', 'Grace Hopper');
 eq(await text('.sn-page-visible .frm-hint'), 'Unsaved changes.', 'typing makes it dirty');
 await page.click('.sn-page-visible .frm-savebar button');
-await page.waitForSelector('.sn-page-visible .frm-savebar button:has-text("Saving")', { timeout: 600 });
+await page.waitForSelector('.sn-page-visible .frm-savebar button:has-text("Saving")', {
+  timeout: 600,
+});
 check(true, 'save shows its busy state');
 await page.waitForSelector('.sn-page-visible .toast');
-eq(await text('.sn-page-visible .frm-hint'), 'Everything is saved.', 'saved after the fake request');
+eq(
+  await text('.sn-page-visible .frm-hint'),
+  'Everything is saved.',
+  'saved after the fake request',
+);
 await transitioned(() => page.goBack(), 'forms-back');
-await transitioned(() => page.click('.sn-page-visible a.item:has-text("Edit profile")'), 'forms-profile-again');
-eq(await page.inputValue('.sn-page-visible input[name=name]'), 'Ada Lindqvist', 'a popped page is destroyed; reopening starts fresh');
+await transitioned(
+  () => page.click('.sn-page-visible a.item:has-text("Edit profile")'),
+  'forms-profile-again',
+);
+eq(
+  await page.inputValue('.sn-page-visible input[name=name]'),
+  'Ada Lindqvist',
+  'a popped page is destroyed; reopening starts fresh',
+);
 await transitioned(() => page.goBack(), 'forms-back-2');
-await transitioned(() => page.click('.sn-page-visible a.item:has-text("Sign-up wizard")'), 'wizard-1');
+await transitioned(
+  () => page.click('.sn-page-visible a.item:has-text("Sign-up wizard")'),
+  'wizard-1',
+);
 s = await state();
 eq(s.pages.join(','), 'app-home,forms-home,forms-wizard', 'step 1 pushed (tree)');
 await page.click('.sn-page-visible .frm-plan:has-text("Team")');
 mid = await transitioned(() => page.click('.sn-page-visible .frm-savebar a'), 'wizard-2');
-check(mid.busy && mid.pages.length === 4, 'step 2 pushed over step 1 (stackLevel 1 → 2, siblings in the tree)');
+check(
+  mid.busy && mid.pages.length === 4,
+  'step 2 pushed over step 1 (stackLevel 1 → 2, siblings in the tree)',
+);
 eq((await state()).title, 'Step 2 of 3', 'step number came in through route data binding');
 await page.fill('.sn-page-visible input[name=org]', 'Acme');
 await page.click('.sn-page-visible .frm-stepper button[aria-label=More]');
 await transitioned(() => page.click('.sn-page-visible .frm-savebar a'), 'wizard-3');
 eq((await state()).title, 'Step 3 of 3', 'step 3');
-eq(await text('.sn-page-visible .frm-review div:nth-child(2) b'), 'Acme', 'review shows the organisation');
+eq(
+  await text('.sn-page-visible .frm-review div:nth-child(2) b'),
+  'Acme',
+  'review shows the organisation',
+);
 eq(await text('.sn-page-visible .frm-review div:nth-child(3) b'), '4', 'and the seats');
 mid = await transitioned(() => page.click('.sn-page-visible .back'), 'wizard-back');
 check(mid.busy && mid.pages.length === 5, 'back pops step 3');
-eq(await page.inputValue('.sn-page-visible input[name=org]'), 'Acme', 'kept step 2 still has its input');
+eq(
+  await page.inputValue('.sn-page-visible input[name=org]'),
+  'Acme',
+  'kept step 2 still has its input',
+);
 await transitioned(() => page.click('.sn-page-visible .frm-savebar a'), 'wizard-3-again');
 await page.click('.sn-page-visible label.frm-agree');
 const histWizard = await page.evaluate(() => history.length);
@@ -254,32 +417,63 @@ await page.click('.sn-page-visible .frm-savebar button');
 await page.waitForSelector('forms-done');
 await settled();
 s = await state();
-eq(s.pages.join(','), 'app-home,forms-home,forms-wizard,forms-wizard,forms-done', 'the confirmation replaced step 3');
+eq(
+  s.pages.join(','),
+  'app-home,forms-home,forms-wizard,forms-wizard,forms-done',
+  'the confirmation replaced step 3',
+);
 eq(await page.evaluate(() => history.length), histWizard, 'and its history entry');
-check((await text('.sn-page-visible .frm-done-body p')).includes('4 seats on the team plan'), 'confirmation reads the shared wizard state');
+check(
+  (await text('.sn-page-visible .frm-done-body p')).includes('4 seats on the team plan'),
+  'confirmation reads the shared wizard state',
+);
 mid = await transitioned(() => page.click('.sn-page-visible .btn'), 'wizard-done');
-check(mid.busy && mid.pages.join(',') === 'app-home,forms-home,forms-done', `popping to the forms list animates once (${mid.pages})`);
+check(
+  mid.busy && mid.pages.join(',') === 'app-home,forms-home,forms-done',
+  `popping to the forms list animates once (${mid.pages})`,
+);
 s = await state();
 eq(s.pages.join(','), 'app-home,forms-home', 'wizard pages all gone');
 eq(s.url, '/forms', 'url after popping to the kept page');
-await transitioned(() => page.click('.sn-page-visible a.item:has-text("Preferences")'), 'preferences');
+await transitioned(
+  () => page.click('.sn-page-visible a.item:has-text("Preferences")'),
+  'preferences',
+);
 await page.click('.sn-page-visible label:has-text("Email digests")');
 await page.selectOption('.sn-page-visible select >> nth=0', 'Dark');
-eq(await text('.sn-page-visible .frm-hint'), '2 settings changed from the defaults.', 'toggles and selects update');
+eq(
+  await text('.sn-page-visible .frm-hint'),
+  '2 settings changed from the defaults.',
+  'toggles and selects update',
+);
 await transitioned(() => page.goBack(), 'preferences-back');
 await transitioned(() => page.goBack(), 'forms-home');
 
 // ============================================================ search
 section('search: debounced, cancelled, query in the url, links into other demos');
 await openDemo('Search');
-eq(await page.evaluate(() => document.activeElement?.getAttribute('type')), 'search', 'search box focused on arrival');
+eq(
+  await page.evaluate(() => document.activeElement?.getAttribute('type')),
+  'search',
+  'search box focused on arrival',
+);
 await page.type('.sn-page-visible .srch-box input', 'lamp', { delay: 60 });
 await page.waitForSelector('.sn-page-visible .srch-row');
-eq(await text('.sn-page-visible .srch-status'), '1 result for “lamp”', 'one result, for the final text only');
+eq(
+  await text('.sn-page-visible .srch-status'),
+  '1 result for “lamp”',
+  'one result, for the final text only',
+);
 check((await state()).url.includes('q=lamp'), 'query mirrored into the url');
-mid = await transitioned(() => page.click('.sn-page-visible .srch-row'), 'search-result', { timeout: 3000 });
+mid = await transitioned(() => page.click('.sn-page-visible .srch-row'), 'search-result', {
+  timeout: 3000,
+});
 s = await state();
-eq(s.pages.join(','), 'app-home,search-home,shop-product', 'result pushed a page from another demo (resolver included)');
+eq(
+  s.pages.join(','),
+  'app-home,search-home,shop-product',
+  'result pushed a page from another demo (resolver included)',
+);
 eq(s.title, 'Ember Lamp', 'it is the lamp');
 await transitioned(() => page.goBack(), 'search-back');
 eq(await page.inputValue('.sn-page-visible .srch-box input'), 'lamp', 'search text kept');
@@ -304,33 +498,67 @@ check(true, 'range switch reloaded the chart in place');
 await page.click('.sn-page-visible .dash-tabs a:has-text("Team")');
 await page.waitForSelector('dash-team');
 s = await state();
-eq(s.pages.join(','), 'app-home,dash-shell', 'tab change happened inside the nested stack, not in the outer one');
-eq(await page.evaluate(() => document.querySelectorAll('.dash-pane > .sn-page').length), 1, 'siblings: the tab replaced the previous one in the inner stack');
+eq(
+  s.pages.join(','),
+  'app-home,dash-shell',
+  'tab change happened inside the nested stack, not in the outer one',
+);
+eq(
+  await page.evaluate(() => document.querySelectorAll('.dash-pane > .sn-page').length),
+  1,
+  'siblings: the tab replaced the previous one in the inner stack',
+);
 eq(s.url, '/dashboard/team', 'url after the tab change');
 await waitCount('.dash-member', 8);
 // Mark the tab's element: a recreated component would come back without it.
 await page.evaluate(() => (document.querySelector('dash-team').dataset.mark = 'kept'));
-mid = await transitioned(() => page.click('.sn-page-visible .dash-member:has-text("Mira Sato")'), 'dash-member');
+mid = await transitioned(
+  () => page.click('.sn-page-visible .dash-member:has-text("Mira Sato")'),
+  'dash-member',
+);
 check(mid.busy && mid.pages.length === 3, 'member pushed over the dashboard');
 await page.waitForSelector('.sn-page-visible .dash-profile');
 eq((await state()).title, 'Mira Sato', 'member loaded');
-mid = await transitioned(() => page.click('.sn-page-visible .btn:has-text("Message")'), 'dash-to-chat');
+mid = await transitioned(
+  () => page.click('.sn-page-visible .btn:has-text("Message")'),
+  'dash-to-chat',
+);
 s = await state();
-eq(s.pages.join(','), 'app-home,dash-shell,dash-member,chat-thread', 'a chat thread pushed from the dashboard');
+eq(
+  s.pages.join(','),
+  'app-home,dash-shell,dash-member,chat-thread',
+  'a chat thread pushed from the dashboard',
+);
 await transitioned(() => page.goBack(), 'dash-back-1');
 await transitioned(() => page.goBack(), 'dash-back-2');
 s = await state();
 eq(s.pages.join(','), 'app-home,dash-shell', 'back on the dashboard');
 eq(s.url, '/dashboard/team', 'the shell was kept and the router re-activated the team tab in it');
-eq(await page.evaluate(() => document.querySelector('dash-team')?.dataset.mark), 'kept', 'the inner stack resumed with the very tab component it had');
+eq(
+  await page.evaluate(() => document.querySelector('dash-team')?.dataset.mark),
+  'kept',
+  'the inner stack resumed with the very tab component it had',
+);
 eq(await count('dash-team .dash-member'), 8, 'its list is still there, nothing refetched');
-eq(await page.evaluate(() => [...document.querySelectorAll('.dash-pane > .sn-page')].map((p) => p.classList.contains('sn-page-visible')).join()), 'true', 'one tab page in the inner stack, on screen');
+eq(
+  await page.evaluate(() =>
+    [...document.querySelectorAll('.dash-pane > .sn-page')]
+      .map((p) => p.classList.contains('sn-page-visible'))
+      .join(),
+  ),
+  'true',
+  'one tab page in the inner stack, on screen',
+);
 await page.click('.sn-page-visible .dash-tabs a:has-text("Activity")');
 await waitCount('.dash-table tbody tr', 40);
 await page.click('.sn-page-visible .dash-filters button:has-text("fail")');
 check((await count('.dash-table tbody tr')) < 40, 'table filter applied');
 await transitioned(() => page.click('.sn-page-visible .back'), 'dash-home');
-eq((await state()).pages.join(','), 'app-home', 'back on the demos: tab switches replaced their history entry, so one Back leaves the dashboard');
+eq(
+  (await state()).pages.join(','),
+  'app-home',
+  'back on the demos: tab switches replaced their history entry, so one Back leaves the dashboard',
+);
 
 // ============================================================ mail
 section('mail: direction from data.animation through a transition table');
@@ -338,79 +566,155 @@ await page.goto(base + '/');
 await page.waitForSelector('app-home');
 await openDemo('Mail');
 await waitCount('a.mail-row', 5);
-eq(await text('.sn-page-visible .mail-about .lede code:last-of-type'), 'Inbox', 'the page reads its own data.animation');
-await transitioned(() => page.click('.sn-page-visible .mail-folders a:has-text("Sent")'), 'mail-sent');
+eq(
+  await text('.sn-page-visible .mail-about .lede code:last-of-type'),
+  'Inbox',
+  'the page reads its own data.animation',
+);
+await transitioned(
+  () => page.click('.sn-page-visible .mail-folders a:has-text("Sent")'),
+  'mail-sent',
+);
 s = await state();
-eq(s.pages.join(','), 'app-home,mail-folder', 'Inbox => Sent replaced the folder (siblings the tree would push)');
+eq(
+  s.pages.join(','),
+  'app-home,mail-folder',
+  'Inbox => Sent replaced the folder (siblings the tree would push)',
+);
 eq(s.title, 'Sent', 'on the Sent folder');
 eq(s.url, '/mail/sent', 'url after the folder switch');
 await waitCount('a.mail-row', 3);
-await transitioned(() => page.locator('.sn-page-visible a.mail-row').first().click(), 'mail-thread');
+await transitioned(
+  () => page.locator('.sn-page-visible a.mail-row').first().click(),
+  'mail-thread',
+);
 s = await state();
 eq(s.pages.join(','), 'app-home,mail-folder,mail-thread', '* => Thread pushed over the folder');
 await page.waitForSelector('.sn-page-visible .mail-message h2');
 await transitioned(() => page.click('.sn-page-visible .mail-message .btn'), 'mail-reply');
 s = await state();
-eq(s.pages.join(','), 'app-home,mail-folder,mail-thread,mail-compose', 'Thread => Compose pushed (siblings the tree would replace)');
+eq(
+  s.pages.join(','),
+  'app-home,mail-folder,mail-thread,mail-compose',
+  'Thread => Compose pushed (siblings the tree would replace)',
+);
 eq(s.title, 'Reply', 'the composer knows it is a reply from the query param');
 await page.fill('.sn-page-visible input[name=to]', 'someone@example.com'); // typed before the original arrives
 await page.fill('.sn-page-visible input[name=to]', ''); // and cleared again: still the user's choice
-await page.waitForFunction(() => document.querySelector('.sn-page-visible input[name=subject]')?.value.startsWith('Re: '));
+await page.waitForFunction(() =>
+  document.querySelector('.sn-page-visible input[name=subject]')?.value.startsWith('Re: '),
+);
 check(true, 'subject prefilled from the message');
-eq(await page.inputValue('.sn-page-visible input[name=to]'), '', 'a field edited while loading is left alone, even when cleared');
+eq(
+  await page.inputValue('.sn-page-visible input[name=to]'),
+  '',
+  'a field edited while loading is left alone, even when cleared',
+);
 await page.fill('.sn-page-visible input[name=to]', 'mira@example.com');
 await page.fill('.sn-page-visible textarea', 'Sounds good.');
-await transitioned(() => page.click('.sn-page-visible .mail-action:has-text("Send")'), 'mail-sent-back', { timeout: 4000 });
+await transitioned(
+  () => page.click('.sn-page-visible .mail-action:has-text("Send")'),
+  'mail-sent-back',
+  { timeout: 4000 },
+);
 s = await state();
-eq(s.pages.join(','), 'app-home,mail-folder,mail-thread', 'Send popped the composer back onto the thread');
+eq(
+  s.pages.join(','),
+  'app-home,mail-folder,mail-thread',
+  'Send popped the composer back onto the thread',
+);
 await transitioned(() => page.click('.sn-page-visible .back'), 'mail-thread-back');
 s = await state();
 eq(s.pages.join(','), 'app-home,mail-folder', 'Thread => * popped back to the folder');
-await page.waitForFunction(() => document.querySelector('.sn-page-visible a.mail-row strong')?.textContent.startsWith('Re: '));
+await page.waitForFunction(() =>
+  document.querySelector('.sn-page-visible a.mail-row strong')?.textContent.startsWith('Re: '),
+);
 check(true, 'the kept Sent folder reloaded: the reply is filed at the top');
-await transitioned(() => page.click('.sn-page-visible .mail-action[aria-label=Compose]'), 'mail-compose');
-eq((await state()).pages.join(','), 'app-home,mail-folder,mail-compose', 'Sent => Compose pushed the composer over a folder too');
+await transitioned(
+  () => page.click('.sn-page-visible .mail-action[aria-label=Compose]'),
+  'mail-compose',
+);
+eq(
+  (await state()).pages.join(','),
+  'app-home,mail-folder,mail-compose',
+  'Sent => Compose pushed the composer over a folder too',
+);
 await transitioned(() => page.click('.sn-page-visible .back:has-text("Cancel")'), 'mail-cancel');
 eq((await state()).pages.join(','), 'app-home,mail-folder', 'Cancel popped it');
-await transitioned(() => page.click('.sn-page-visible .mail-action[aria-label=Compose]'), 'mail-compose-2');
+await transitioned(
+  () => page.click('.sn-page-visible .mail-action[aria-label=Compose]'),
+  'mail-compose-2',
+);
 await page.fill('.sn-page-visible input[name=to]', 'ada@example.com');
 await page.fill('.sn-page-visible input[name=subject]', 'Left early');
 await page.click('.sn-page-visible .mail-action:has-text("Send")');
 await flush();
-check(await page.locator('.sn-page-visible .back:has-text("Cancel")').isDisabled(), 'Cancel is disabled while sending');
-check(await page.locator('.sn-page-visible input[name=subject]').isDisabled(), 'and so is the draft');
+check(
+  await page.locator('.sn-page-visible .back:has-text("Cancel")').isDisabled(),
+  'Cancel is disabled while sending',
+);
+check(
+  await page.locator('.sn-page-visible input[name=subject]').isDisabled(),
+  'and so is the draft',
+);
 await transitioned(() => page.goBack(), 'mail-send-then-back');
 await page.waitForTimeout(1500);
-eq((await state()).pages.join(','), 'app-home,mail-folder', 'a send that completes after a browser Back does not pop a second page');
+eq(
+  (await state()).pages.join(','),
+  'app-home,mail-folder',
+  'a send that completes after a browser Back does not pop a second page',
+);
 await transitioned(() => page.goBack(), 'mail-out');
-eq((await state()).pages.join(','), 'app-home', 'one browser back leaves the demo: the folder switch had replaced its history entry');
+eq(
+  (await state()).pages.join(','),
+  'app-home',
+  'one browser back leaves the demo: the folder switch had replaced its history entry',
+);
 // Slow motion makes the pop animation outlast the request, so the send completes while the composer is still animating out.
 await openDemo('Lab');
 await page.click('.sn-page-visible label:has-text("Slow motion")');
 await transitioned(() => page.goBack(), 'mail-lab-slow');
 await openDemo('Mail');
-await transitioned(() => page.click('.sn-page-visible .mail-action[aria-label=Compose]'), 'mail-compose-slow');
+await transitioned(
+  () => page.click('.sn-page-visible .mail-action[aria-label=Compose]'),
+  'mail-compose-slow',
+);
 await page.fill('.sn-page-visible input[name=to]', 'ada@example.com');
 await page.fill('.sn-page-visible input[name=subject]', 'Left during the animation');
 await page.click('.sn-page-visible .mail-action:has-text("Send")');
 await page.goBack();
 await page.waitForTimeout(2500);
 await settled();
-eq((await state()).pages.join(','), 'app-home,mail-folder', 'a send that completes while the composer is still animating out does not pop a second page');
+eq(
+  (await state()).pages.join(','),
+  'app-home,mail-folder',
+  'a send that completes while the composer is still animating out does not pop a second page',
+);
 await transitioned(() => page.goBack(), 'mail-out-slow');
 await openDemo('Lab');
 await page.click('.sn-page-visible label:has-text("Slow motion")');
 await page.click('.sn-page-visible label:has-text("Every request fails")');
 await transitioned(() => page.goBack(), 'mail-lab-back');
 await openDemo('Mail');
-await transitioned(() => page.click('.sn-page-visible .mail-action[aria-label=Compose]'), 'mail-compose-failing');
+await transitioned(
+  () => page.click('.sn-page-visible .mail-action[aria-label=Compose]'),
+  'mail-compose-failing',
+);
 await page.fill('.sn-page-visible input[name=to]', 'pri@example.com');
 await page.fill('.sn-page-visible input[name=subject]', 'Will not go');
 await page.click('.sn-page-visible .mail-action:has-text("Send")');
 await page.waitForSelector('.sn-page-visible mail-compose .err, .sn-page-visible .err');
 s = await state();
-eq(s.pages.join(','), 'app-home,mail-folder,mail-compose', 'a failed send stays on the composer with an error');
-eq(await page.inputValue('.sn-page-visible input[name=subject]'), 'Will not go', 'the draft is kept');
+eq(
+  s.pages.join(','),
+  'app-home,mail-folder,mail-compose',
+  'a failed send stays on the composer with an error',
+);
+eq(
+  await page.inputValue('.sn-page-visible input[name=subject]'),
+  'Will not go',
+  'the draft is kept',
+);
 await transitioned(() => page.goBack(), 'mail-failed-back');
 await transitioned(() => page.goBack(), 'mail-out-2');
 await openDemo('Lab');
@@ -430,7 +734,8 @@ await page.waitForSelector('.sn-page-visible .notes-row b');
 const header = () =>
   page.evaluate(() => {
     const p = document.querySelector('.sn-container > .sn-page-visible');
-    const num = (el, prop) => Math.round(Number(getComputedStyle(el).getPropertyValue(prop)) * 100) / 100;
+    const num = (el, prop) =>
+      Math.round(Number(getComputedStyle(el).getPropertyValue(prop)) * 100) / 100;
     const large = p.querySelector('.lt-large');
     return {
       bar: Math.round(p.querySelector('.lt-bar').getBoundingClientRect().height),
@@ -444,24 +749,54 @@ const header = () =>
 /** The header repaints on the frame after the scroll, so wait for the value rather than for a fixed number of frames. */
 const inBar = (want, msg) =>
   page
-    .waitForFunction((want) => Math.round(Number(getComputedStyle(document.querySelector('.sn-container > .sn-page-visible .lt-compact')).opacity)) === want, want, { timeout: 2000 })
-    .then(() => check(true, msg), () => check(false, msg));
+    .waitForFunction(
+      (want) =>
+        Math.round(
+          Number(
+            getComputedStyle(document.querySelector('.sn-container > .sn-page-visible .lt-compact'))
+              .opacity,
+          ),
+        ) === want,
+      want,
+      { timeout: 2000 },
+    )
+    .then(
+      () => check(true, msg),
+      () => check(false, msg),
+    );
 let h = await header();
 const tall = h.bar + h.large;
-check(h.inBar === 0 && h.title === 1, `at the top the title is large and the bar carries none of it (header ${tall}px)`);
-check(h.large > 40 && h.largeTop === h.bar, 'the large title sits below a bar that is not covering it');
+check(
+  h.inBar === 0 && h.title === 1,
+  `at the top the title is large and the bar carries none of it (header ${tall}px)`,
+);
+check(
+  h.large > 40 && h.largeTop === h.bar,
+  'the large title sits below a bar that is not covering it',
+);
 await setScroll(200);
 await inBar(1, 'scrolled past it, the title has crossed into the bar');
 h = await header();
-check(h.title === 0 && h.largeTop < 0, `the large title has left, so the header is ${h.bar}px rather than ${tall}px`);
+check(
+  h.title === 0 && h.largeTop < 0,
+  `the large title has left, so the header is ${h.bar}px rather than ${tall}px`,
+);
 const notesScroll = await scrollTop();
 // A row that is on screen, so opening it does not move the list first.
 const row = await page.evaluate(() => {
   const top = document.querySelector('.sn-container').getBoundingClientRect().top;
-  return [...document.querySelectorAll('.sn-page-visible .notes-row')].findIndex((r) => r.getBoundingClientRect().top > top + 120);
+  return [...document.querySelectorAll('.sn-page-visible .notes-row')].findIndex(
+    (r) => r.getBoundingClientRect().top > top + 120,
+  );
 });
-mid = await transitioned(() => page.locator('.sn-page-visible .notes-row').nth(row).click(), 'notes-push');
-check(mid.busy && mid.pages.join(',') === 'app-home,notes-list,notes-note', 'the note pushed over the list');
+mid = await transitioned(
+  () => page.locator('.sn-page-visible .notes-row').nth(row).click(),
+  'notes-push',
+);
+check(
+  mid.busy && mid.pages.join(',') === 'app-home,notes-list,notes-note',
+  'the note pushed over the list',
+);
 await page.waitForSelector('.sn-page-visible .notes-body p');
 await flush();
 h = await header();
@@ -472,15 +807,24 @@ await transitioned(() => page.goBack(), 'notes-pop');
 await flush();
 eq(await scrollTop(), notesScroll, 'the list came back at the offset it was left at');
 h = await header();
-check(h.inBar === 1 && h.title === 0, 'and therefore still collapsed: there is no header state to restore');
+check(
+  h.inBar === 1 && h.title === 0,
+  'and therefore still collapsed: there is no header state to restore',
+);
 await setScroll(0);
 await inBar(0, 'back at the top, the large title is back');
 const short = (await header()).large;
 // The second pinned note has a title long enough to wrap, so its header is taller than the list's.
-mid = await transitioned(() => page.locator('.sn-page-visible .notes-row').nth(1).click(), 'notes-long-title');
+mid = await transitioned(
+  () => page.locator('.sn-page-visible .notes-row').nth(1).click(),
+  'notes-long-title',
+);
 await page.waitForSelector('.sn-page-visible .notes-body p');
 h = await header();
-check(h.large > short * 2, `a title that wraps makes a taller header (${h.large}px against ${short}px)`);
+check(
+  h.large > short * 2,
+  `a title that wraps makes a taller header (${h.large}px against ${short}px)`,
+);
 check(h.inBar === 0, 'still large at the top, whatever its height');
 await setScroll(h.large + 40);
 await inBar(1, 'and it collapses over the longer distance');
@@ -491,12 +835,26 @@ await transitioned(() => page.goBack(), 'notes-demos');
 section('lab: deep stack, slow resolver, heavy page, failing backend');
 await openDemo('Lab');
 await transitioned(() => page.click('.sn-page-visible a.item:has-text("Deep stack")'), 'deep-1');
-for (let d = 2; d <= 5; d++) await transitioned(() => page.click(`.sn-page-visible a.item:has-text("Push depth ${d}")`), `deep-${d}`);
+for (let d = 2; d <= 5; d++)
+  await transitioned(
+    () => page.click(`.sn-page-visible a.item:has-text("Push depth ${d}")`),
+    `deep-${d}`,
+  );
 s = await state();
-eq(s.pages.join(','), 'app-home,lab-home,lab-deep,lab-deep,lab-deep,lab-deep,lab-deep', 'five sibling pages pushed by hint');
+eq(
+  s.pages.join(','),
+  'app-home,lab-home,lab-deep,lab-deep,lab-deep,lab-deep,lab-deep',
+  'five sibling pages pushed by hint',
+);
 eq(s.title, 'Depth 5', 'top of the stack');
-mid = await transitioned(() => page.click('.sn-page-visible button:has-text("Pop to the lab")'), 'deep-pop');
-check(mid.busy && mid.pages.join(',') === 'app-home,lab-home,lab-deep', `one animation, intermediates dropped (${mid.pages})`);
+mid = await transitioned(
+  () => page.click('.sn-page-visible button:has-text("Pop to the lab")'),
+  'deep-pop',
+);
+check(
+  mid.busy && mid.pages.join(',') === 'app-home,lab-home,lab-deep',
+  `one animation, intermediates dropped (${mid.pages})`,
+);
 s = await state();
 eq(s.pages.join(','), 'app-home,lab-home', 'five pages dropped in one pop');
 eq(s.url, '/lab', 'url after popping to the lab');
@@ -517,10 +875,17 @@ await interactivePop();
 await page.waitForFunction(() => location.pathname === '/lab');
 eq((await state()).pages.join(','), 'app-home,lab-home', 'popped the heavy page away');
 await transitioned(() => page.click('.sn-page-visible a.item:has-text("Wide content")'), 'wide');
-await page.locator('.sn-page-visible .lab-scroller').first().evaluate((el) => (el.scrollLeft = 200));
+await page
+  .locator('.sn-page-visible .lab-scroller')
+  .first()
+  .evaluate((el) => (el.scrollLeft = 200));
 await interactivePop();
 await page.waitForFunction(() => location.pathname === '/lab');
-eq((await state()).pages.join(','), 'app-home,lab-home', 'an interactive pop still works on a page full of horizontal scrollers');
+eq(
+  (await state()).pages.join(','),
+  'app-home,lab-home',
+  'an interactive pop still works on a page full of horizontal scrollers',
+);
 await page.click('.sn-page-visible label:has-text("Every request fails")');
 await transitioned(() => page.goBack(), 'lab-home-2');
 await openDemo('Feed');
@@ -547,7 +912,11 @@ const colours = (sel) =>
     const read = (el, inkEl = el) =>
       el ? getComputedStyle(el).backgroundColor + ' / ' + getComputedStyle(inkEl).color : 'missing';
     const hdr = page_.querySelector('.hdr');
-    return { page: read(page_), hdr: read(hdr, hdr.querySelector('h1')), item: read(page_.querySelector('.item')) };
+    return {
+      page: read(page_),
+      hdr: read(hdr, hdr.querySelector('h1')),
+      item: read(page_.querySelector('.item')),
+    };
   }, sel);
 
 await page.goto(base + '/');
@@ -559,11 +928,18 @@ const labLight = await colours('.sn-page-visible .page.lab');
 await media({ colorScheme: 'dark' });
 await flush();
 const labDark = await colours('.sn-page-visible .page.lab');
-for (const part of ['page', 'hdr', 'item']) eq(labDark[part], labLight[part], `the lab's ${part} ignores the dark scheme`);
-await page.screenshot({ path: fileURLToPath(new URL('./shots/lab-dark-scheme.png', import.meta.url)) });
+for (const part of ['page', 'hdr', 'item'])
+  eq(labDark[part], labLight[part], `the lab's ${part} ignores the dark scheme`);
+await page.screenshot({
+  path: fileURLToPath(new URL('./shots/lab-dark-scheme.png', import.meta.url)),
+});
 await transitioned(() => page.goBack(), 'demos-dark-scheme');
 const homeDark = await colours('.sn-page-visible .page');
-for (const part of ['page', 'hdr', 'item']) check(homeDark[part] !== homeLight[part], `the demos list follows the dark scheme (${part}: ${homeDark[part]})`);
+for (const part of ['page', 'hdr', 'item'])
+  check(
+    homeDark[part] !== homeLight[part],
+    `the demos list follows the dark scheme (${part}: ${homeDark[part]})`,
+  );
 await media({ colorScheme: 'light' });
 
 await finish();

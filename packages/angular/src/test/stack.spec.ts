@@ -91,7 +91,8 @@ class Shell extends PageBase {
 @Component({
   selector: 'test-host',
   imports: [RouterOutlet, StackNav],
-  template: '<main style="height:100px"><router-outlet stackNav (stackNavActivate)="activations.push($event)" /></main>',
+  template:
+    '<main style="height:100px"><router-outlet stackNav (stackNavActivate)="activations.push($event)" /></main>',
 })
 class Host {
   readonly stack = viewChild.required(StackNav);
@@ -141,11 +142,21 @@ function setup(config?: StackNavConfig) {
   router.setUpLocationChangeListener();
   const fixture = TestBed.createComponent(Host);
   fixture.detectChanges();
-  return { fixture, router, host: fixture.componentInstance, stack: fixture.componentInstance.stack() };
+  return {
+    fixture,
+    router,
+    host: fixture.componentInstance,
+    stack: fixture.componentInstance.stack(),
+  };
 }
 
 /** Navigates and lets every queued stack task run to the end. */
-async function go(fixture: ComponentFixture<unknown>, router: Router, url: string, extras?: Parameters<Router['navigateByUrl']>[1]): Promise<void> {
+async function go(
+  fixture: ComponentFixture<unknown>,
+  router: Router,
+  url: string,
+  extras?: Parameters<Router['navigateByUrl']>[1],
+): Promise<void> {
   await router.navigateByUrl(url, extras);
   await settle(fixture);
 }
@@ -160,7 +171,12 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 function navigationSettled(router: Router): Promise<void> {
   return new Promise((resolve) => {
     const sub = router.events.subscribe((e) => {
-      if (e instanceof NavigationEnd || e instanceof NavigationCancel || e instanceof NavigationError || e instanceof NavigationSkipped) {
+      if (
+        e instanceof NavigationEnd ||
+        e instanceof NavigationCancel ||
+        e instanceof NavigationError ||
+        e instanceof NavigationSkipped
+      ) {
         sub.unsubscribe();
         setTimeout(resolve, 0);
       }

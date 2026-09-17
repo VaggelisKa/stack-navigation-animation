@@ -24,11 +24,20 @@ test('duration honours timeScale and reduced motion', () => {
 });
 
 test('settle derives duration from distance / velocity, clamped', () => {
-  const t = createNativeTransition({ platform: 'ios', settleMin: 120, settleMax: 400, settleVelocityFloor: 900 });
+  const t = createNativeTransition({
+    platform: 'ios',
+    settleMin: 120,
+    settleMax: 400,
+    settleVelocityFloor: 900,
+  });
   assert.equal(t.settle({ remainingPx: 200, velocity: 1000 }).duration, 200);
   assert.equal(t.settle({ remainingPx: 10, velocity: 5000 }).duration, 120, 'floor');
   assert.equal(t.settle({ remainingPx: 5000, velocity: 100 }).duration, 400, 'ceiling');
-  assert.equal(t.settle({ remainingPx: 450, velocity: 0 }).duration, 500 > 400 ? 400 : 500, 'velocity floor applies when finger was slow');
+  assert.equal(
+    t.settle({ remainingPx: 450, velocity: 0 }).duration,
+    500 > 400 ? 400 : 500,
+    'velocity floor applies when finger was slow',
+  );
   assert.equal(t.settle({ remainingPx: 180, velocity: -2000 }).duration, 120, 'uses |velocity|');
 });
 
@@ -61,21 +70,37 @@ test('the Android look slides a short way and fades, without dim or shadow', () 
   const t = createNativeTransition({ platform: 'android' });
   const { lower, upper } = entries();
   t.begin(lower, upper);
-  assert.equal(upper.el.classes.has('sn-page-android-fade'), true, 'opacity has its own short, linear timing');
+  assert.equal(
+    upper.el.classes.has('sn-page-android-fade'),
+    true,
+    'opacity has its own short, linear timing',
+  );
   assert.equal(upper.el.style.boxShadow, 'var(--sn-shadow, none)');
   t.apply(lower, upper, 0);
-  assert.equal(upper.el.style.transform, shift('25'), 'a quarter of the width, not the whole of it');
+  assert.equal(
+    upper.el.style.transform,
+    shift('25'),
+    'a quarter of the width, not the whole of it',
+  );
   assert.equal(upper.el.style.opacity, '0');
   t.apply(lower, upper, 0.5);
   assert.equal(upper.el.style.transform, shift('12.5'));
   assert.equal(upper.el.style.opacity, '0.5');
-  assert.equal(lower.el.style.transform, shift('-12.5'), 'the page beneath moves the same distance');
+  assert.equal(
+    lower.el.style.transform,
+    shift('-12.5'),
+    'the page beneath moves the same distance',
+  );
   assert.equal(lower.el.children[0].style.opacity, '0');
   t.apply(lower, upper, 1);
   assert.equal(upper.el.style.opacity, '1');
   t.end(lower, upper);
   assert.equal(upper.el.style.opacity, '', 'the page gets its own opacity back');
-  assert.equal(upper.el.classes.has('sn-page-android-fade'), false, 'fade timing is removed after the transition');
+  assert.equal(
+    upper.el.classes.has('sn-page-android-fade'),
+    false,
+    'fade timing is removed after the transition',
+  );
 });
 
 test('Android fade timing is only enabled when the resolved look fades', () => {
@@ -139,10 +164,17 @@ test('the curve is handed to CSS, not evaluated for it', () => {
   const { container, lower, upper } = entries();
   t.begin(lower, upper);
   assert.equal(t.ease.css, 'cubic-bezier(0.32, 0.72, 0, 1)');
-  assert.equal(t.settle({ remainingPx: 100, velocity: 900 }).ease.css, 'cubic-bezier(0.2, 0.8, 0.2, 1)');
+  assert.equal(
+    t.settle({ remainingPx: 100, velocity: 900 }).ease.css,
+    'cubic-bezier(0.2, 0.8, 0.2, 1)',
+  );
   container.vars['--sn-easing'] = 'ease-in';
   t.refresh();
-  assert.equal(t.ease.css, 'cubic-bezier(0.42, 0, 1, 1)', 'a curve parsed from CSS can be spelled back for CSS');
+  assert.equal(
+    t.ease.css,
+    'cubic-bezier(0.42, 0, 1, 1)',
+    'a curve parsed from CSS can be spelled back for CSS',
+  );
   t.end(lower, upper);
 });
 
@@ -186,7 +218,11 @@ test('unset variables fall through to the JS options', () => {
 test('settle timing and curve come from the variables too', () => {
   const t = createNativeTransition({ platform: 'ios' });
   const { container, lower, upper } = entries();
-  Object.assign(container.vars, { '--sn-settle-min': '50ms', '--sn-settle-max': '80ms', '--sn-settle-easing': 'linear' });
+  Object.assign(container.vars, {
+    '--sn-settle-min': '50ms',
+    '--sn-settle-max': '80ms',
+    '--sn-settle-easing': 'linear',
+  });
   t.begin(lower, upper);
   assert.equal(t.settle({ remainingPx: 10, velocity: 5000 }).duration, 50);
   assert.equal(t.settle({ remainingPx: 5000, velocity: 100 }).duration, 80);
@@ -208,7 +244,12 @@ test('refresh re-reads variables changed mid-stack', () => {
 test('zero is a value, not an absence', () => {
   const t = createNativeTransition({ platform: 'ios', parallax: 0.3, dimMax: 0.1, duration: 500 });
   const { container, lower, upper } = entries();
-  Object.assign(container.vars, { '--sn-parallax': '0', '--sn-dim-max': '0', '--sn-duration': '0ms', '--sn-time-scale': '0' });
+  Object.assign(container.vars, {
+    '--sn-parallax': '0',
+    '--sn-dim-max': '0',
+    '--sn-duration': '0ms',
+    '--sn-time-scale': '0',
+  });
   t.begin(lower, upper);
   t.apply(lower, upper, 1);
   assert.equal(t.resolved.parallax, 0, 'a flat transition is a legitimate thing to ask for');

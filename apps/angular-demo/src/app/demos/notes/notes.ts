@@ -4,7 +4,14 @@ import { FakeApi, type Note } from '../fake-api';
 import { DEMO_UI } from '../shared';
 import { LargeTitle } from './large-title';
 
-const when = (m: number) => (m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : m < 2880 ? 'Yesterday' : `${Math.round(m / 1440)} days ago`);
+const when = (m: number) =>
+  m < 60
+    ? `${m} min ago`
+    : m < 1440
+      ? `${Math.round(m / 60)}h ago`
+      : m < 2880
+        ? 'Yesterday'
+        : `${Math.round(m / 1440)} days ago`;
 
 /**
  * The list, with the header iOS gives a first screen: large title at rest,
@@ -62,9 +69,19 @@ export class NotesList {
   /** Pinned first, as the real app does, then everything else in the chosen order. */
   readonly groups = computed(() => {
     const all = this.notes.value() ?? [];
-    const order = (a: Note, b: Note) => (this.sort() === 'recent' ? a.minutesAgo - b.minutesAgo : a.title.localeCompare(b.title));
+    const order = (a: Note, b: Note) =>
+      this.sort() === 'recent' ? a.minutesAgo - b.minutesAgo : a.title.localeCompare(b.title);
     const group = (name: string, notes: Note[]) => ({ name, notes: notes.sort(order) });
-    return [group('Pinned', all.filter((n) => n.pinned)), group('All notes', all.filter((n) => !n.pinned))].filter((g) => g.notes.length > 0);
+    return [
+      group(
+        'Pinned',
+        all.filter((n) => n.pinned),
+      ),
+      group(
+        'All notes',
+        all.filter((n) => !n.pinned),
+      ),
+    ].filter((g) => g.notes.length > 0);
   });
   readonly when = when;
 }
@@ -98,6 +115,9 @@ export class NotesList {
 export class NotesNote {
   readonly id = input.required<string>();
   private readonly api = inject(FakeApi);
-  readonly note = resource({ params: () => Number(this.id()), loader: ({ params }) => this.api.note(params) });
+  readonly note = resource({
+    params: () => Number(this.id()),
+    loader: ({ params }) => this.api.note(params),
+  });
   readonly when = when;
 }

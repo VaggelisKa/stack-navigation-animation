@@ -19,7 +19,11 @@ test('browser is the default; live modes only request and release suppression', 
   await stack.push(makeElement(), { animated: false });
   const pages = stack.entries.slice();
   assert.equal(stack.swipeBack, 'browser');
-  assert.equal(root.style.getPropertyValue(property), 'auto', 'browser mode leaves the document alone');
+  assert.equal(
+    root.style.getPropertyValue(property),
+    'auto',
+    'browser mode leaves the document alone',
+  );
   for (let i = 0; i < 2; i++) {
     stack.setSwipeBack('disabled');
     stack.setSwipeBack('disabled');
@@ -33,7 +37,9 @@ test('browser is the default; live modes only request and release suppression', 
 
 test('custom is no longer a mode', () => {
   const { stack } = setup();
-  assert.throws(() => (stack.setSwipeBack as (mode: string) => void)('custom'), { name: 'TypeError' });
+  assert.throws(() => (stack.setSwipeBack as (mode: string) => void)('custom'), {
+    name: 'TypeError',
+  });
   assert.equal(stack.swipeBack, 'browser', 'a refused mode leaves the policy as it was');
   stack.destroy();
 });
@@ -51,7 +57,11 @@ test('shared suppression lasts until the last stack releases it, restoring inlin
   assert.equal(root.style.getPropertyValue(property), 'none');
   assert.equal(root.style.getPropertyPriority(property), 'important');
   b.setSwipeBack('disabled');
-  assert.equal(root.style.getPropertyValue(property), 'none', 'destroyed stack cannot reacquire suppression');
+  assert.equal(
+    root.style.getPropertyValue(property),
+    'none',
+    'destroyed stack cannot reacquire suppression',
+  );
 });
 
 test('cleanup removes its own declaration but preserves newer application styles', () => {
@@ -80,7 +90,10 @@ test('destroy during an app-driven interactive pop cancels queued navigation ins
   stack.on('push', () => events.push('push'));
   stack.on('transitionend', () => events.push('transitionend'));
   const pending = Promise.allSettled([
-    stack.push(() => { factoryCalls++; return makeElement(); }),
+    stack.push(() => {
+      factoryCalls++;
+      return makeElement();
+    }),
     stack.present(makeElement(), 'replace'),
   ]);
   stack.destroy();
@@ -89,8 +102,12 @@ test('destroy during an app-driven interactive pop cancels queued navigation ins
   await handle.finish({ complete: true });
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(factoryCalls, 0, 'queued factories never execute after destruction');
-  assert.deepEqual(results.map((r) => r.status), ['rejected', 'rejected']);
-  for (const result of results) if (result.status === 'rejected') assert.equal(result.reason.name, 'AbortError');
+  assert.deepEqual(
+    results.map((r) => r.status),
+    ['rejected', 'rejected'],
+  );
+  for (const result of results)
+    if (result.status === 'rejected') assert.equal(result.reason.name, 'AbortError');
   assert.equal(stack.depth, 0);
   assert.equal(container.children.length, 0);
   assert.equal(stack.busy, false);
