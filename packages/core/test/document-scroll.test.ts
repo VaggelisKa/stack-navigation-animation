@@ -74,10 +74,11 @@ test('a push switches the document to the new page before the transition and hol
   const seen = atStart();
   await stack.push(el('b'));
   assert.equal(seen.length, 1);
-  // The destination is at the top, from the first frame; the frame keeps that
-  // offset reachable; and `a`, which was showing from 320px down, is moved up
-  // by the 320px the switch moved the container.
-  assert.deepEqual(seen[0], { scrollY: 0, height: '800px', tops: ['-320px', ''] });
+  // The destination is at the top, from the first frame; the frame keeps both
+  // offsets reachable, so it is as tall as the 320px `a` was left at plus the
+  // viewport; and `a`, which was showing from 320px down, is moved up by the
+  // 320px the switch moved the container.
+  assert.deepEqual(seen[0], { scrollY: 0, height: '1120px', tops: ['-320px', ''] });
   // At rest the frame is released and the page on top is where it belongs.
   assert.equal(container.style.height, '');
   assert.equal(a.style.top, '');
@@ -94,8 +95,9 @@ test('a pop puts the document back at the offset the page beneath was left at, b
   const seen = atStart();
   await stack.pop();
   // `b` was showing from 500px down and the document is now at 320px: the
-  // container moved down 180px, so `b` is moved up by as much.
-  assert.deepEqual(seen[0], { scrollY: 320, height: '1120px', tops: ['', '-180px'] });
+  // container moved down 180px, so `b` is moved up by as much. The frame is
+  // sized for the taller of the two offsets, 500px.
+  assert.deepEqual(seen[0], { scrollY: 320, height: '1300px', tops: ['', '-180px'] });
   assert.equal(win.scrollY, 320);
   assert.equal(container.style.height, '');
   assert.equal(b.style.top, '');
@@ -124,6 +126,30 @@ test('an interactive pop let go returns the document to the top page before the 
   await handle.finish({ complete: true });
   assert.equal(win.scrollY, 320);
   assert.equal(stack.depth, 1);
+});
+
+test('a cancelled interactive pop is back at the top page offset for the settle, not after it', async () => {
+  const a = el('a'),
+    b = el('b');
+  await stack.push(a, { animated: false });
+  scrollTo(320);
+  await stack.push(b);
+  // Once both pages are out of the flow the document is only as tall as the
+  // frame the stack opened, under the shell header: an offset the frame does
+  // not make room for is one the browser clamps away.
+  Object.defineProperty(win, 'scrollHeight', {
+    get: () => HEADER + (parseFloat(container.style.height) || Infinity),
+  });
+  scrollTo(500);
+
+  const handle = stack.beginInteractivePop()!;
+  assert.equal(container.style.height, '1300px', 'the frame holds the taller of the two offsets');
+  assert.equal(win.scrollY, 320);
+  const done = handle.finish({ complete: false });
+  assert.equal(win.scrollY, 500, 'back at the top page offset before the settle runs, not after');
+  await done;
+  assert.equal(win.scrollY, 500);
+  assert.equal(container.style.height, '');
 });
 
 test('the first page keeps the document where the app has it; a new page starts at the top', async () => {

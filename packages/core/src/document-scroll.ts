@@ -16,7 +16,8 @@ import type { StackEntry } from './navigation-stack.ts';
  * Two pages sharing one scroller cannot both be where they belong, so a
  * transition is run inside a frame. Before the pages leave the flow, the page
  * leaving is measured where it rests and its offset is recorded; the container
- * is given a height that keeps the destination offset reachable; the document
+ * is given a height that keeps both offsets reachable -- the destination's and
+ * the leaving page's, which an interactive pop let go goes back to; the document
  * is put at the destination's offset; and the leaving page is moved up or
  * down by exactly what that switch moved the container, so nothing the user
  * was looking at shifts. The switch happens before the motion, not after it:
@@ -87,9 +88,11 @@ export class DocumentScroll {
     const to = this.offsets.get(arriving.el) ?? (leaving ? 0 : from);
     this.offsets.set(arriving.el, to);
     const leavingTop = leaving ? leaving.el.getBoundingClientRect().top : 0;
-    // The frame: enough for the destination offset to exist once both pages
-    // are out of the flow, whatever is above the container.
-    this.container.style.height = `${to + win.innerHeight}px`;
+    // The frame: enough for both offsets to exist once both pages are out of
+    // the flow, whatever is above the container. The destination's is the one
+    // the document takes now; the leaving page's has to stay reachable too, or
+    // an interactive pop let go has nowhere to put the document back.
+    this.container.style.height = `${Math.max(from, to) + win.innerHeight}px`;
     this.scrollTo(win, to);
     const arrivingTop = this.container.getBoundingClientRect().top;
     // The arriving page sits at the container's top, which is its resting

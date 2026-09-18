@@ -186,17 +186,44 @@ check(l.scrollHeight > l.innerHeight, 'item 30 is long enough to scroll');
 await scrollDocument(500);
 eq((await sample()).scrollY, 500, 'scrolled the item');
 let mid = null;
-let began = await interactivePop({
-  until: 0.6,
-  mid: async () => {
-    mid = await sample();
-    await page.screenshot({ path: join(shots, 'doc-swipe-mid.png') });
-  },
-  complete: false,
+// The cancelled swipe is driven from here rather than through the harness:
+// what it is about is the settle after `finish`, which returns the document to
+// the item's offset, and the samples have to start before that settle does.
+let began = await page.evaluate(() => {
+  globalThis.__snPop = globalThis.__snStack?.beginInteractivePop();
+  return !!globalThis.__snPop;
 });
 check(began, 'the stack accepted an interactive pop');
+const drag = (p) => page.evaluate((v) => globalThis.__snPop.update(v), p);
+for (let d = 0.05; d < 0.3; d += 0.1) await drag(1 - d);
+mid = await sample();
+await page.screenshot({ path: join(shots, 'doc-swipe-mid.png') });
+for (let d = 0.3; d < 0.6; d += 0.1) await drag(1 - d);
+await drag(0.4);
 eq(mid?.scrollY, 320, "mid-drag: the document is at the list's offset");
 eq(mid?.collapsed, true, "mid-drag: the header shows the list's state");
+// Every frame of the settle, from the one `finish` returns on: the item is
+// back on top, so the document has to be at its offset throughout, which it
+// can only be if the frame is still tall enough to hold that offset.
+const settleFrames = await page.evaluate(async () => {
+  const container = document.querySelector('.sn-container');
+  const frames = [];
+  const tick = () => {
+    if (!container.classList.contains('sn-busy')) return;
+    frames.push(globalThis.__docSample());
+    requestAnimationFrame(tick);
+  };
+  const done = globalThis.__snPop.finish({ complete: false, velocity: 0 });
+  requestAnimationFrame(tick);
+  await done;
+  return frames;
+});
+await settled();
+check(
+  settleFrames.length >= 2 && settleFrames.every((f) => f.scrollY === 500),
+  `let go: the document is at the item's offset on every frame of the settle (${settleFrames.length} frames at ${[...new Set(settleFrames.map((f) => f.scrollY))].join(', ')})`,
+);
+every(settleFrames, (f) => f.collapsed, 'let go: header collapsed on every frame of the settle');
 s = await sample();
 eq(s.scrollY, 500, "let go: back at the item's offset");
 eq((await state()).pages.join(','), 'doc-home,doc-item', 'let go: the item stays');
