@@ -4,44 +4,33 @@ import type { StackEntry } from './navigation-stack.ts';
  * Layout for a stack whose pages scroll with the document instead of inside
  * themselves: `scroll: 'document'`.
  *
- * A stack of its own is a scroll container, and each page in it another one.
- * That is what lets a page beneath keep its offset for free, but it also means
- * the document never scrolls, and a shell built around `window.scrollY` -- an
+ * A stack scrolling its own pages lets each keep its offset for free, but the
+ * document never moves, and a shell built around `window.scrollY` -- an
  * iOS-style large title that collapses as the page goes up -- sees nothing.
- * In this mode the page on top sits in the normal flow at rest, so its content
- * is the document's, and the document's offset is the page's. Everything the
- * stylesheet does for that is keyed on `sn-scroll-document`; what is here is
- * the part CSS cannot do: give each page its own offset back.
+ * Here the page on top is in the normal flow at rest, so the document's offset
+ * is that page's. The stylesheet does the layout, keyed on
+ * `sn-scroll-document`; this is the part CSS cannot do: giving each page its
+ * own offset back, at the cost of two forced layouts per navigation.
  *
  * Two pages sharing one scroller cannot both be where they belong, so a
- * transition is run inside a frame. Before the pages leave the flow, the page
- * leaving is measured where it rests and its offset is recorded; the container
- * is given a height that keeps both offsets reachable -- the destination's and
- * the leaving page's, which an interactive pop let go goes back to; the document
- * is put at the destination's offset; and the leaving page is moved up or
- * down by exactly what that switch moved the container, so nothing the user
- * was looking at shifts. The switch happens before the motion, not after it:
- * a shell reading `scrollY` shows the destination's header from the first
- * frame of the slide instead of catching up once it is over, which reads as a
- * second animation. When the top page is back in the flow the frame is
- * released and the document is put at that page's offset once more, which is
- * where the browser clamps it if the page turned out shorter than it was.
+ * transition runs inside a frame: a container tall enough for both offsets,
+ * the document moved to the destination's, and the page leaving offset by
+ * exactly what that move shifted the container, so nothing the user was
+ * looking at jumps. The switch comes before the motion rather than after it,
+ * or a shell reading `scrollY` catches up once the slide is over, which reads
+ * as a second animation.
  *
- * The two measurements are forced layouts inside the navigation task, one
- * before the switch and one after, which the default mode goes to some length
- * to avoid; they are the price of asking the document where things are.
- *
- * Offsets are kept by element, so a page that comes back -- put back after a
- * refused pop, or resumed with its stack -- is shown where it was left. A page
- * never seen starts at the top, except the first page of an empty stack, which
- * keeps the document where the app already has it.
+ * Offsets are kept by element, so a page that comes back -- after a refused
+ * pop, or with its stack -- is shown where it was left. A page never seen
+ * starts at the top, except the first page of an empty stack, which keeps the
+ * document where the app already has it.
  */
 export class DocumentScroll {
   private readonly offsets = new WeakMap<HTMLElement, number>();
   private phase: {
     leaving: StackEntry | null;
     arriving: StackEntry;
-    /** Where the container sat in the viewport once the document was at the arriving page's offset. */
+    /** Where the container sat once the document was at the arriving page's offset. */
     arrivingTop: number;
   } | null = null;
 
@@ -50,11 +39,10 @@ export class DocumentScroll {
   constructor(container: HTMLElement) {
     this.container = container;
     // On a history pop the browser puts the document back where that entry
-    // left it, before the app hears of the navigation: the page still on top
-    // would jump, and the stack would then record that jump as its offset. The
-    // stack restores offsets itself, so the browser is told not to. This is
-    // what a router that owns scrolling does too, and it is not undone on
-    // destroy, since a next stack in the same document wants the same.
+    // left it before the app hears of the navigation: the page still on top
+    // would jump, and the stack would record the jump as its offset. Restoring
+    // offsets is the stack's job, so the browser is told not to -- and not
+    // told otherwise on destroy, since a next stack here wants the same.
     const history = this.window?.history;
     if (history && 'scrollRestoration' in history) history.scrollRestoration = 'manual';
   }
@@ -65,7 +53,7 @@ export class DocumentScroll {
 
   private scrollTo(win: Window, top: number): void {
     // `instant`, or a `scroll-behavior: smooth` on the root would animate the
-    // switch and the compensation would be measured against a document in motion.
+    // switch and leave the compensation measured against a moving document.
     win.scrollTo({ top, behavior: 'instant' });
   }
 
@@ -76,9 +64,8 @@ export class DocumentScroll {
   }
 
   /**
-   * Opens the frame for a transition from `leaving` to `arriving`. Called
-   * before the pages get their transition classes, while the leaving page is
-   * still in the flow and can be measured at rest.
+   * Opens the frame for a transition from `leaving` to `arriving`, which has
+   * to happen while the leaving page is still in the flow, at rest.
    */
   begin(leaving: StackEntry | null, arriving: StackEntry): void {
     const win = this.window;
@@ -88,23 +75,22 @@ export class DocumentScroll {
     const to = this.offsets.get(arriving.el) ?? (leaving ? 0 : from);
     this.offsets.set(arriving.el, to);
     const leavingTop = leaving ? leaving.el.getBoundingClientRect().top : 0;
-    // The frame: enough for both offsets to exist once both pages are out of
-    // the flow, whatever is above the container. The destination's is the one
-    // the document takes now; the leaving page's has to stay reachable too, or
-    // an interactive pop let go has nowhere to put the document back.
+    // Both offsets have to survive the pages leaving the flow: the
+    // destination's, which the document takes now, and the leaving page's,
+    // which an interactive pop let go goes back to.
     this.container.style.height = `${Math.max(from, to) + win.innerHeight}px`;
     this.scrollTo(win, to);
     const arrivingTop = this.container.getBoundingClientRect().top;
-    // The arriving page sits at the container's top, which is its resting
-    // place at this offset. The leaving page is held where it was.
+    // The arriving page is at the container's top, its resting place at this
+    // offset; the leaving page is held where the user last saw it.
     if (leaving) leaving.el.style.top = `${leavingTop - arrivingTop}px`;
     this.phase = { leaving, arriving, arrivingTop };
   }
 
   /**
-   * An interactive pop was let go short of completing: the document goes
-   * back to the leaving page's offset for the settle, and now it is the
-   * arriving page that is held where the user saw it.
+   * An interactive pop let go short of completing: the document goes back to
+   * the leaving page's offset for the settle, and it is now the arriving page
+   * that is held where the user saw it.
    */
   revert(): void {
     const { phase } = this;
@@ -116,7 +102,11 @@ export class DocumentScroll {
     phase.arriving.el.style.top = `${phase.arrivingTop - containerTop}px`;
   }
 
-  /** The stack is at rest with `top` in the flow: closes the frame and puts the document at that page's offset. */
+  /**
+   * The stack is at rest with `top` in the flow: closes the frame and puts the
+   * document at that page's offset, or where the browser clamps it if the page
+   * is shorter than it was.
+   */
   settle(top: StackEntry | null): void {
     this.release();
     const win = this.window;

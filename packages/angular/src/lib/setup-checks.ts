@@ -20,8 +20,8 @@ export function warn(code: string, message: string): void {
 
 /**
  * Called once per stack, when it is created, with the outlet element.
- * `documentScrolls` is asked when layout is in, since it reads an input that
- * is not set yet at construction. Development only.
+ * `documentScrolls` is a callback because it reads an input that is not set
+ * yet at construction. Development only.
  */
 export function checkSetup(
   outlet: HTMLElement,

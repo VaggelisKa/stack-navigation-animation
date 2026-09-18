@@ -154,18 +154,16 @@ export interface StackNavConfig {
    * `'document'` is for an app embedded in a shell whose header follows
    * `window.scrollY` -- a collapsing large title that lives outside the app.
    * The page on top then sits in the normal flow and the document scrolls it,
-   * so the outlet's parent needs no height and the shell's own scroll
-   * listeners see the page. The stack records each page's document offset
-   * and switches to the destination's *before* a transition starts, so the
-   * shell shows the destination's header state throughout the slide rather
-   * than catching up after it. Pages kept beneath the top do not add to the
-   * document's height.
+   * so the outlet's parent needs no height and the shell's scroll listeners
+   * see the page. The stack records each page's document offset and switches
+   * to the destination's *before* a transition starts, so the shell shows the
+   * destination's header state throughout the slide rather than catching up
+   * after it. Pages kept beneath add nothing to the document's height.
    *
    * It takes `history.scrollRestoration` to `manual`, as Angular's own
-   * `withInMemoryScrolling()` does, so that the browser does not move the
-   * document under a history pop before the stack can; there is no need for
-   * that router feature alongside this. One document-scrolling stack per
-   * document.
+   * `withInMemoryScrolling()` does, so the browser does not move the document
+   * under a history pop before the stack can; there is no need for that router
+   * feature alongside this. One document-scrolling stack per document.
    */
   scroll?: ScrollMode;
 }

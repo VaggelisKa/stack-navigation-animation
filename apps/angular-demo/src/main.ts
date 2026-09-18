@@ -8,8 +8,7 @@ import { DocumentShellDemo, DOCUMENT_SHELL_ROUTES } from './app/document-shell-d
 import { routes } from './app/routes';
 
 // `?shell`: a microfrontend below a shell header, sized to the viewport.
-// `?shell=document`: the same, but the document scrolls the pages and the
-// shell's header collapses on `window.scrollY`.
+// `?shell=document`: the same, with the document scrolling the pages.
 const shell = new URLSearchParams(location.search).get('shell');
 const documentShell = shell === 'document';
 const shellDemo = shell !== null && !documentShell;
@@ -29,8 +28,6 @@ bootstrapApplication(documentShell ? DocumentShellDemo : shellDemo ? ShellDemo :
       direction: byAnimationData(MAIL_TRANSITIONS),
       // No `swipeBack` here: the browser keeps the gesture, which is both the
       // library default and the only thing it offers. Lab switches to `disabled`.
-      // The document-scrolling shell is the one place the pages are not their
-      // own scroll containers.
       scroll: documentShell ? 'document' : 'page',
     }),
     // Nothing else: provideStackNav() also installs StackNavRouteReuseStrategy,

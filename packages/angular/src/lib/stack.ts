@@ -473,7 +473,6 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     return stack;
   }
 
-  /** The stack's own input first, then the app's configuration. */
   private scrollMode(): ScrollMode {
     return untracked(this.scroll) ?? this.config.scroll;
   }

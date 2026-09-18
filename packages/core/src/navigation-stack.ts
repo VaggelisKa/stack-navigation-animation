@@ -56,13 +56,7 @@ export interface Transition {
 
 export type TransitionKind = 'push' | 'pop' | 'interactive';
 
-/**
- * Who scrolls the pages. `page` (the default): each page is its own scroll
- * container inside a container of fixed height, and keeps its offset by
- * staying mounted. `document`: the page on top sits in the normal flow and the
- * document scrolls it, for a shell that reads `window.scrollY`; the stack
- * records each page's document offset and puts it back when the page returns.
- */
+/** Who scrolls the pages: each page itself (`page`, the default), or the document. */
 export type ScrollMode = 'page' | 'document';
 
 /** Where an operation came from: `api`, `gesture`, `history`, or any value a port defines. */
@@ -139,12 +133,11 @@ export interface NavigationStackOptions {
    */
   manageFocus?: boolean;
   /**
-   * `document` lets the document scroll the page on top, instead of each page
-   * scrolling itself, for a shell whose header follows `window.scrollY`. The
-   * container then needs no height of its own. The switch to the destination
-   * page's offset happens before the transition starts, so such a header shows
-   * the destination's state throughout the slide, and it costs two layouts in
-   * the navigation task that the default mode avoids. One stack per document.
+   * `document` lets the document scroll the page on top, for a shell whose
+   * header follows `window.scrollY`; the container then needs no height of its
+   * own. The document takes the destination's offset before the transition
+   * starts, so such a header shows the destination's state throughout the
+   * slide, at the cost of two layouts per navigation. One stack per document.
    * Default `page`.
    */
   scroll?: ScrollMode;
@@ -168,7 +161,7 @@ export class NavigationStack {
   busy = false;
   private _destroyed = false;
   private readonly _manageFocus: boolean;
-  /** The document-scrolling layout, in that mode only. */
+  /** Only in `scroll: 'document'`. */
   private readonly _docScroll: DocumentScroll | null;
   private _activeTransition: { lower: StackEntry | null; upper: StackEntry } | null = null;
   private _queue: Array<{ run: () => void; cancel: () => void }> = [];
@@ -392,8 +385,8 @@ export class NavigationStack {
         if (this._destroyed) return;
         const remainingPx = (complete ? p : 1 - p) * this.width();
         const { duration, ease } = this.transition.settle({ remainingPx, velocity });
-        // Going back: the document returns to the upper page's offset before
-        // the settle, not after it, for the same reason it left early.
+        // Back to the upper page's offset before the settle, not after it,
+        // for the same reason the document left early.
         if (!complete) this._docScroll?.revert();
         await this._animate(lower, upper, p, complete ? 0 : 1, duration, ease);
         if (this._destroyed) return;
@@ -655,7 +648,6 @@ export class NavigationStack {
       e.el.classList.toggle('sn-page-visible', e === top);
       e.el.style.transform = '';
     });
-    // With the top page back in the flow, the document is put where that page belongs.
     this._docScroll?.settle(top);
   }
 }

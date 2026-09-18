@@ -451,11 +451,9 @@ describe('StackNav', () => {
   });
 
   describe('document scrolling', () => {
-    // jsdom has no scrolling: `window.scrollTo` is a stub that logs "not
-    // implemented", and every offset reads as zero. What can be pinned here is
-    // that the mode reaches the core and that the document, not a page, is
-    // what the stack scrolls; where it scrolls to is the core's own test and
-    // the demo's e2e run.
+    // jsdom has no scrolling: every offset reads as zero. All that can be
+    // pinned here is that the mode reaches the core and that it is the
+    // document the stack scrolls; where to is the core test and the e2e run.
     let scrolls: Array<{ top: number; behavior?: string }>;
     beforeEach(() => {
       scrolls = [];

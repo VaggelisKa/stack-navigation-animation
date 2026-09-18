@@ -68,16 +68,14 @@
  *   mounted (scroll position, form state) but out of sight and out of the
  *   accessibility tree. The identity transform is the resting state, and the
  *   containing block the dim overlay is positioned against.
- * - `.sn-scroll-document`: a stack whose pages the document scrolls (the
- *   engine's `scroll: 'document'`). The container stops being a scroll
- *   container -- `overflow: hidden` would make it the thing a sticky header
- *   inside a page sticks to, and the thing `focus()` scrolls -- and clips with
- *   `contain: paint` instead, which also keeps the tall content of the hidden
- *   pages out of the document's scrollable overflow. Its pages do not scroll
- *   either, and the one on top at rest -- visible and in no transition -- sits
- *   in the flow, so it gives the container its height and the document scrolls
- *   it. During a transition both pages are absolute inside a frame the engine
- *   sizes and offsets, which is where the document-offset switch is paid for.
+ * - `.sn-scroll-document`: a stack the document scrolls (`scroll: 'document'`).
+ *   The container stops being a scroll container -- `overflow: hidden` would
+ *   make it what a page's sticky header sticks to, and what `focus()` scrolls
+ *   -- and clips with `contain: paint` instead, which also keeps the tall
+ *   content of the hidden pages out of the document's scrollable overflow. Its
+ *   pages do not scroll either, and the one on top at rest -- visible and in no
+ *   transition -- is the only one in the flow, so it gives the container its
+ *   height and the document scrolls it.
  * - `:where(.sn-page)>*`: the barrier. A page itself reads `--sn-t` / `--sn-e`
  *   off the container, but its children pin them, so a phase starting is a
  *   style change to a handful of elements rather than to the whole stack.

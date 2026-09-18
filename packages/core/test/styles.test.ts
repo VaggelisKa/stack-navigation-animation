@@ -56,12 +56,10 @@ test('the stylesheet disables browser-owned transitions for reduced motion', () 
   assert.match(STACKNAV_CSS, /--sn-t:0s!important/);
 });
 
-// A stack the document scrolls must not be a scroll container itself: one
-// would catch a page's sticky headers and `focus()` scrolls that belong to the
-// viewport. It still has to clip, or the tall content of the hidden pages
-// would be the document's to scroll through. The top page at rest is the one
-// element in the flow, and only outside a transition, when both pages are
-// positioned inside the frame the engine sizes.
+// A stack the document scrolls must not be a scroll container itself -- it
+// would catch a page's sticky headers and the `focus()` scrolls that belong to
+// the viewport -- but it still has to clip, or the tall content of the hidden
+// pages is the document's to scroll through.
 test('document scrolling takes the container out of scrolling and puts the resting top page in the flow', () => {
   assert.match(STACKNAV_CSS, /\.sn-scroll-document\{overflow:visible;contain:paint\}/);
   assert.match(STACKNAV_CSS, /\.sn-scroll-document>\.sn-page\{overflow:visible\}/);

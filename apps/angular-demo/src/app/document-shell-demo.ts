@@ -15,14 +15,13 @@ import { filter, map } from 'rxjs';
 import { StackNav } from '@stacknav/angular';
 
 /**
- * Open `/?shell=document` to try a stack the document scrolls, under a shell
- * header that reads `window.scrollY`: an iOS-style large title that collapses
- * into the bar as the page goes up. The header belongs to the shell and knows
- * nothing about the stack; `provideStackNav({ scroll: 'document' })` is the
- * whole integration.
+ * `/?shell=document`: a stack the document scrolls, under a shell header that
+ * reads `window.scrollY` -- an iOS-style large title collapsing into the bar
+ * as the page goes up. The header knows nothing about the stack;
+ * `provideStackNav({ scroll: 'document' })` is the whole integration.
  *
- * The header is fixed and the app root pads for it, so the stack's position
- * in the document does not depend on how far it has collapsed.
+ * The header is fixed and the app root pads for it, so the stack's position in
+ * the document does not depend on how far it has collapsed.
  */
 
 /** How far the document scrolls before the large title is gone. */
@@ -131,9 +130,9 @@ export class DocumentShellDemo {
   constructor() {
     const host = inject(ElementRef).nativeElement as HTMLElement;
     const destroyRef = inject(DestroyRef);
-    // The shell's own scroll listener, as any large-title header has one: it
-    // reads the document's offset and nothing else. Written straight to the
-    // DOM, so the header is in the right state on the frame the offset changes.
+    // The shell's own scroll listener, reading the document's offset and
+    // nothing else. Written straight to the DOM, so the header is in the right
+    // state on the frame the offset changes.
     afterNextRender(() => {
       const header = host.querySelector('.doc-header') as HTMLElement;
       const paint = () => {

@@ -6,8 +6,8 @@ import { NavigationStack } from '../src/navigation-stack.ts';
 installGlobals();
 
 // The stub has no layout, so geometry is modelled here: the container sits
-// 80px down the document, under a shell header, and a page at rest sits at the
-// container's top. Both move up as the document scrolls, as a rect does.
+// 80px down the document under a shell header, a page at rest sits at the
+// container's top, and both move up as the document scrolls.
 const HEADER = 80;
 
 const instantTransition = () => ({
@@ -24,7 +24,7 @@ const el = (id: string) => {
   return page;
 };
 const scrollTo = (top: number) => win.scrollTo({ top });
-/** What the stack had done by the time the transition began: the offset, the frame, and where the lower and upper page are held. */
+/** What the stack had done by the time the transition began. */
 const atStart = () => {
   const seen: any[] = [];
   stack.on('transitionstart', ({ lower, upper }) =>
@@ -74,10 +74,8 @@ test('a push switches the document to the new page before the transition and hol
   const seen = atStart();
   await stack.push(el('b'));
   assert.equal(seen.length, 1);
-  // The destination is at the top, from the first frame; the frame keeps both
-  // offsets reachable, so it is as tall as the 320px `a` was left at plus the
-  // viewport; and `a`, which was showing from 320px down, is moved up by the
-  // 320px the switch moved the container.
+  // The frame holds the 320px `a` was left at plus the viewport, and `a` moves
+  // up by the 320px the switch to the top moved the container.
   assert.deepEqual(seen[0], { scrollY: 0, height: '1120px', tops: ['-320px', ''] });
   // At rest the frame is released and the page on top is where it belongs.
   assert.equal(container.style.height, '');
@@ -94,9 +92,9 @@ test('a pop puts the document back at the offset the page beneath was left at, b
   scrollTo(500);
   const seen = atStart();
   await stack.pop();
-  // `b` was showing from 500px down and the document is now at 320px: the
-  // container moved down 180px, so `b` is moved up by as much. The frame is
-  // sized for the taller of the two offsets, 500px.
+  // `b` was showing from 500px down and the document is now at 320px, so the
+  // container moved down 180px and `b` moves up by as much. The frame is sized
+  // for the taller of the two offsets, 500px.
   assert.deepEqual(seen[0], { scrollY: 320, height: '1300px', tops: ['', '-180px'] });
   assert.equal(win.scrollY, 320);
   assert.equal(container.style.height, '');
@@ -135,8 +133,8 @@ test('a cancelled interactive pop is back at the top page offset for the settle,
   scrollTo(320);
   await stack.push(b);
   // Once both pages are out of the flow the document is only as tall as the
-  // frame the stack opened, under the shell header: an offset the frame does
-  // not make room for is one the browser clamps away.
+  // frame, so an offset the frame leaves no room for is one the browser clamps
+  // away -- which is what makes the frame's height worth asserting.
   Object.defineProperty(win, 'scrollHeight', {
     get: () => HEADER + (parseFloat(container.style.height) || Infinity),
   });
