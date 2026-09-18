@@ -7,6 +7,7 @@ import {
   type CancellableTween,
   type Easing,
 } from './animate.ts';
+import { DocumentScroll } from './document-scroll.ts';
 import { moveFocus, rememberFocus, releaseFocus } from './focus.ts';
 
 /**
@@ -54,6 +55,15 @@ export interface Transition {
 }
 
 export type TransitionKind = 'push' | 'pop' | 'interactive';
+
+/**
+ * Who scrolls the pages. `page` (the default): each page is its own scroll
+ * container inside a container of fixed height, and keeps its offset by
+ * staying mounted. `document`: the page on top sits in the normal flow and the
+ * document scrolls it, for a shell that reads `window.scrollY`; the stack
+ * records each page's document offset and puts it back when the page returns.
+ */
+export type ScrollMode = 'page' | 'document';
 
 /** Where an operation came from: `api`, `gesture`, `history`, or any value a port defines. */
 export type NavigationSource = 'api' | 'gesture' | 'history' | (string & {});
@@ -128,6 +138,16 @@ export interface NavigationStackOptions {
    * focus should keep doing so.
    */
   manageFocus?: boolean;
+  /**
+   * `document` lets the document scroll the page on top, instead of each page
+   * scrolling itself, for a shell whose header follows `window.scrollY`. The
+   * container then needs no height of its own. The switch to the destination
+   * page's offset happens before the transition starts, so such a header shows
+   * the destination's state throughout the slide, and it costs two layouts in
+   * the navigation task that the default mode avoids. One stack per document.
+   * Default `page`.
+   */
+  scroll?: ScrollMode;
 }
 
 type Listener<E> = (detail: E) => void;
@@ -143,10 +163,13 @@ export class NavigationStack {
   readonly container: HTMLElement;
   transition: Transition;
   readonly pageClass: string;
+  readonly scroll: ScrollMode;
   entries: StackEntry[] = [];
   busy = false;
   private _destroyed = false;
   private readonly _manageFocus: boolean;
+  /** The document-scrolling layout, in that mode only. */
+  private readonly _docScroll: DocumentScroll | null;
   private _activeTransition: { lower: StackEntry | null; upper: StackEntry } | null = null;
   private _queue: Array<{ run: () => void; cancel: () => void }> = [];
   private _listeners = new Map<string, Set<Listener<unknown>>>();
@@ -156,14 +179,20 @@ export class NavigationStack {
     transition,
     pageClass = 'sn-page',
     manageFocus = false,
+    scroll = 'page',
   }: NavigationStackOptions) {
     if (!container || !transition)
       throw new Error('NavigationStack needs { container, transition }');
     this.container = container;
     this.transition = transition;
     this.pageClass = pageClass;
+    this.scroll = scroll;
     this._manageFocus = manageFocus;
     container.classList.add('sn-container');
+    if (scroll === 'document') {
+      container.classList.add('sn-scroll-document');
+      this._docScroll = new DocumentScroll(container);
+    } else this._docScroll = null;
   }
 
   // ---------------------------------------------------------------- state
@@ -282,6 +311,7 @@ export class NavigationStack {
       const old = this.top;
       if (old && old.el === el) return null;
       this._remember();
+      this._docScroll?.save(old);
       this._forget(el);
       const removed = old ? [this._unmount(this.entries.pop()!)] : [];
       const entry = this._mount(el, this.entries.length, data, key);
@@ -314,6 +344,7 @@ export class NavigationStack {
   ): Promise<StackEntry | null> {
     return this._run(async () => {
       const revealing = this.top?.el === el;
+      this._docScroll?.save(this.top);
       const entry = this._forget(el);
       if (!entry) return null;
       this._settle();
@@ -329,6 +360,7 @@ export class NavigationStack {
     { source = 'api' }: { source?: NavigationSource } = {},
   ): Promise<StackEntry[]> {
     return this._run(async () => {
+      this._docScroll?.save(this.top);
       const removed: StackEntry[] = [];
       while (this.entries.length) removed.push(this._unmount(this.entries.pop()!));
       elements.forEach((el, i) => this.entries.push(this._mount(el, i, null, null)));
@@ -360,6 +392,9 @@ export class NavigationStack {
         if (this._destroyed) return;
         const remainingPx = (complete ? p : 1 - p) * this.width();
         const { duration, ease } = this.transition.settle({ remainingPx, velocity });
+        // Going back: the document returns to the upper page's offset before
+        // the settle, not after it, for the same reason it left early.
+        if (!complete) this._docScroll?.revert();
         await this._animate(lower, upper, p, complete ? 0 : 1, duration, ease);
         if (this._destroyed) return;
         this._end(lower, upper, 'interactive');
@@ -397,7 +432,8 @@ export class NavigationStack {
       if (!this.entries.includes(active.upper)) this._unmount(active.upper);
     }
     while (this.entries.length) this._unmount(this.entries.pop()!);
-    this.container.classList.remove('sn-container', 'sn-busy');
+    this._docScroll?.release();
+    this.container.classList.remove('sn-container', 'sn-scroll-document', 'sn-busy');
     this.container.style.removeProperty('--sn-t');
     this.container.style.removeProperty('--sn-e');
   }
@@ -502,6 +538,11 @@ export class NavigationStack {
   private _begin(lower: StackEntry | null, upper: StackEntry, kind: TransitionKind): void {
     this._activeTransition = { lower, upper };
     this._timing(0);
+    // Before the classes: the page leaving is measured where it rests.
+    if (this._docScroll) {
+      const push = kind === 'push';
+      this._docScroll.begin(push ? lower : upper, push ? upper : lower!);
+    }
     lower?.el.classList.add('sn-page-visible', 'sn-page-lower');
     upper.el.classList.add('sn-page-visible', 'sn-page-upper');
     this.transition.begin?.(lower, upper);
@@ -614,5 +655,7 @@ export class NavigationStack {
       e.el.classList.toggle('sn-page-visible', e === top);
       e.el.style.transform = '';
     });
+    // With the top page back in the flow, the document is put where that page belongs.
+    this._docScroll?.settle(top);
   }
 }

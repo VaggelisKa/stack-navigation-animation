@@ -23,6 +23,7 @@ const ALL = [
   'animate',
   'css-vars',
   'direction',
+  'document-scroll',
   'focus',
   'history-adapter',
   'index',
@@ -87,6 +88,7 @@ test('the history adapter alone brings in only the platform check', async () => 
 test('NavigationStack with a custom transition leaves out the iOS look and the parsers', async () => {
   assert.deepEqual(await survivors(`export { NavigationStack } from './index.ts';`), [
     'animate',
+    'document-scroll',
     'focus',
     'navigation-stack',
   ]);
@@ -96,6 +98,7 @@ test('createNativeStack leaves out direction resolution, the history adapter and
   assert.deepEqual(await survivors(`export { createNativeStack } from './index.ts';`), [
     'animate',
     'css-vars',
+    'document-scroll',
     'focus',
     'index',
     'native-transition',

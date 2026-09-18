@@ -16,4 +16,4 @@ export type {
 } from './lib/config';
 export { StackNavRouteReuseStrategy } from './lib/route-reuse-strategy';
 
-export type { SwipeBackMode } from '@stacknav/core';
+export type { ScrollMode, SwipeBackMode } from '@stacknav/core';

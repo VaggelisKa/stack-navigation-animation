@@ -33,6 +33,7 @@ describe('resolveConfig', () => {
     expect(c.swipeBack).toBe('browser');
     expect(c.injectStyles).toBe(true);
     expect(c.manageFocus).toBe(false);
+    expect(c.scroll).toBe('page');
     expect(c.transition).toEqual({});
     expect(c.levelOf).toBe(defaultLevelOf);
     expect(c.keyOf).toBe(defaultKeyOf);
@@ -51,6 +52,7 @@ describe('resolveConfig', () => {
       keyOf,
       resolveDirection,
       transition: { duration: 10 },
+      scroll: 'document',
     });
     expect(c.infoKey).toBe('sn');
     expect(c.swipeBack).toBe('disabled');
@@ -58,6 +60,7 @@ describe('resolveConfig', () => {
     expect(c.manageFocus).toBe(true);
     expect(c.keyOf).toBe(keyOf);
     expect(c.transition).toEqual({ duration: 10 });
+    expect(c.scroll).toBe('document');
     // `resolveDirection` replaces the mechanism outright, strategies and all.
     expect(c.resolve).toBe(resolveDirection);
   });

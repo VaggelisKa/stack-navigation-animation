@@ -133,6 +133,7 @@ For full control, provide `resolveDirection` using the strategy helpers from
 | `injectStyles`      | `true`            | Injects the core stylesheet, tagged with `CSP_NONCE` when that token is provided. |
 | `manageFocus`       | `false`           | Moves focus into the page arriving on top, and back on a pop.                     |
 | `animated`          | `true`            | `false`, `'touch'`, or a predicate can disable animation.                         |
+| `scroll`            | `'page'`          | `'document'` lets the document scroll the top page (see below).                   |
 
 Set `animated: 'touch'` to animate only when the primary pointer is coarse, or
 pass a function that is evaluated before each navigation. The function is given
@@ -192,6 +193,7 @@ list. Reduced-motion preferences are always honored.
 | -------------------- | ------------------------------------------------------------- |
 | `stackNavTransition` | Per-stack transition options, read when the stack is created. |
 | `stackNavSwipeBack`  | Live override of the configured swipe policy.                 |
+| `stackNavScroll`     | Per-stack `scroll` mode, read when the stack is created.      |
 | `stackNavActivate`   | Emits `{ page, direction, animated, reused }`.                |
 | `stack`              | The underlying core `NavigationStack`.                        |
 | `pages`              | Kept pages from bottom to top.                                |
@@ -251,6 +253,40 @@ export class App {}
 The helper fills from the wrapper's top edge to the visible viewport bottom and
 tracks viewport and shell layout changes. Prefer normal CSS sizing when the
 shell already provides a bounded content area.
+
+## Document scrolling
+
+Sizing the container solves one half of living under a shell header. The other
+half is who scrolls: by default each page is its own scroll container, so a
+shell whose header collapses on `window.scrollY` never sees the page move.
+`scroll: 'document'` hands scrolling to the document instead:
+
+```ts
+provideStackNav({ scroll: 'document' });
+```
+
+```html
+<main>
+  <router-outlet stackNav />
+</main>
+```
+
+The page on top sits in the normal flow and the document scrolls it, so the
+outlet's parent needs no height and the shell's own scroll listeners see the
+page. The stack records each page's document offset and puts it back when the
+page returns, and pages kept beneath the top add nothing to the document's
+height. The switch to the destination's offset happens before a transition
+starts, so the shell shows the destination's header state from the first frame
+of a push, a pop, a browser Back or a swipe, rather than catching up after the
+slide. A swipe that is let go puts the document back the same way.
+
+This mode sets `history.scrollRestoration` to `manual`, as
+`withInMemoryScrolling()` does, so the browser does not move the document
+under a history pop before the stack can; that router feature is not needed
+alongside it. Use one document-scrolling stack per document. The switch costs
+two forced layouts in the navigation task, which the default mode avoids.
+Every other option, and every transition preset, is the same in both modes.
+The demo's `/?shell=document` shows it under a collapsing large title.
 
 ## Swipe back
 

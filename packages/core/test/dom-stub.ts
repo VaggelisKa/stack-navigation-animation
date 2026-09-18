@@ -97,8 +97,18 @@ export function makeElement(tag = 'div'): any {
       if (event.bubbles) el.parentElement?.dispatch(type, event);
     },
     setPointerCapture() {},
+    // Geometry is whatever a test says it is: `rectTop` stands in for layout.
+    // Reading it is what forces layout in a browser, so a test can also count
+    // the reads through a getter of its own.
+    getBoundingClientRect: () => ({ top: el.rectTop ?? 0, left: 0, width: 400, height: 0 }),
   };
   Object.defineProperty(el, 'isConnected', { get: () => !!el.parentElement });
+  // The ambient document unless a test hands the element another one.
+  let owner: any;
+  Object.defineProperty(el, 'ownerDocument', {
+    get: () => owner ?? globalThis.document,
+    set: (doc) => (owner = doc),
+  });
   Object.defineProperty(el, 'className', {
     get: () => [...classes].join(' '),
     set: (v: string) => {
@@ -148,12 +158,33 @@ export class FakeCSSStyleSheet {
   }
 }
 
+// A window for the document-scrolling tests: an offset, a viewport height, an
+// instant `scrollTo` clamped to `scrollHeight`, and history's restoration flag.
+// `installGlobals` leaves the document without one, as the stack reads it off
+// `container.ownerDocument.defaultView`, so a test that wants document
+// scrolling installs it: `document.defaultView = makeWindow()`.
+export function makeWindow({ innerHeight = 800, scrollHeight = Infinity } = {}): any {
+  const win: any = {
+    scrollY: 0,
+    innerHeight,
+    scrollHeight,
+    scrolls: [] as Array<{ top: number; behavior: string }>,
+    history: { scrollRestoration: 'auto' },
+    scrollTo(options: { top: number; behavior?: string }) {
+      win.scrolls.push({ top: options.top, behavior: options.behavior ?? 'auto' });
+      win.scrollY = Math.max(0, Math.min(options.top, win.scrollHeight - win.innerHeight));
+    },
+  };
+  return win;
+}
+
 export function installGlobals() {
   globalThis.document = {
     createElement: makeElement,
     body: makeElement('body'),
     activeElement: null,
     hidden: false,
+    defaultView: null,
   };
   globalThis.performance ||= { now: () => Date.now() };
   globalThis.matchMedia = () => ({ matches: false });
