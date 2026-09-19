@@ -56,6 +56,24 @@ test('the stylesheet disables browser-owned transitions for reduced motion', () 
   assert.match(STACKNAV_CSS, /--sn-t:0s!important/);
 });
 
+// A stack the document scrolls must not be a scroll container itself -- it
+// would catch a page's sticky headers and the `focus()` scrolls that belong to
+// the viewport -- but it still has to clip, or the tall content of the hidden
+// pages is the document's to scroll through.
+test('document scrolling takes the container out of scrolling and puts the resting top page in the flow', () => {
+  assert.match(STACKNAV_CSS, /\.sn-scroll-document\{overflow:visible;contain:paint\}/);
+  assert.match(STACKNAV_CSS, /\.sn-scroll-document>\.sn-page\{overflow:visible\}/);
+  assert.match(
+    STACKNAV_CSS,
+    /\.sn-scroll-document>\.sn-page-visible:not\(\.sn-page-upper,\.sn-page-lower\)\{position:relative;inset:auto\}/,
+  );
+  // Later in the sheet than the rules they override, at higher specificity anyway.
+  assert.ok(STACKNAV_CSS.indexOf('.sn-scroll-document{') > STACKNAV_CSS.indexOf('.sn-container{'));
+  assert.ok(
+    STACKNAV_CSS.indexOf('.sn-scroll-document>.sn-page{') > STACKNAV_CSS.indexOf('.sn-page{'),
+  );
+});
+
 test('Android fades finish early while transforms retain the phase timing', () => {
   assert.match(
     STACKNAV_CSS,

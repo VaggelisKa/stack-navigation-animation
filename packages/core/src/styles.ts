@@ -68,6 +68,14 @@
  *   mounted (scroll position, form state) but out of sight and out of the
  *   accessibility tree. The identity transform is the resting state, and the
  *   containing block the dim overlay is positioned against.
+ * - `.sn-scroll-document`: a stack the document scrolls (`scroll: 'document'`).
+ *   The container stops being a scroll container -- `overflow: hidden` would
+ *   make it what a page's sticky header sticks to, and what `focus()` scrolls
+ *   -- and clips with `contain: paint` instead, which also keeps the tall
+ *   content of the hidden pages out of the document's scrollable overflow. Its
+ *   pages do not scroll either, and the one on top at rest -- visible and in no
+ *   transition -- is the only one in the flow, so it gives the container its
+ *   height and the document scrolls it.
  * - `:where(.sn-page)>*`: the barrier. A page itself reads `--sn-t` / `--sn-e`
  *   off the container, but its children pin them, so a phase starting is a
  *   style change to a handful of elements rather than to the whole stack.
@@ -112,6 +120,9 @@ export const STACKNAV_CSS =
   '.sn-container:dir(rtl){--sn-dir:-1}' +
   '@supports not selector(:dir(rtl)){[dir=rtl] .sn-container,.sn-container[dir=rtl]{--sn-dir:-1}}' +
   '.sn-page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;visibility:hidden;transform:translate3d(0,0,0)}' +
+  '.sn-scroll-document{overflow:visible;contain:paint}' +
+  '.sn-scroll-document>.sn-page{overflow:visible}' +
+  '.sn-scroll-document>.sn-page-visible:not(.sn-page-upper,.sn-page-lower){position:relative;inset:auto}' +
   ':where(.sn-page)>*{--sn-t:0s;--sn-e:linear}' +
   '.sn-page-visible{visibility:visible}' +
   '.sn-page-upper,.sn-page-lower{will-change:transform;transition-property:transform,opacity;transition-duration:var(--sn-t,0s);transition-timing-function:var(--sn-e,linear)}' +

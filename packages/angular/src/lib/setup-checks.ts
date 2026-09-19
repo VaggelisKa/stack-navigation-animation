@@ -18,10 +18,15 @@ export function warn(code: string, message: string): void {
   console.warn(`[stacknav] ${message}`);
 }
 
-/** Called once per stack, when it is created, with the outlet element. Development only. */
+/**
+ * Called once per stack, when it is created, with the outlet element.
+ * `documentScrolls` is a callback because it reads an input that is not set
+ * yet at construction. Development only.
+ */
 export function checkSetup(
   outlet: HTMLElement,
   canceledNavigationResolution: string | undefined,
+  documentScrolls: () => boolean = () => false,
 ): void {
   if (canceledNavigationResolution === undefined) {
     warn(
@@ -34,6 +39,8 @@ export function checkSetup(
   // to wait for on a server.
   if (typeof requestAnimationFrame === 'undefined') return;
   requestAnimationFrame(() => {
+    // A document-scrolling stack takes its height from the page in it.
+    if (documentScrolls()) return;
     const host = outlet.parentElement;
     if (!host || !host.isConnected || host.offsetHeight > 0 || host.offsetWidth === 0) return;
     warn(

@@ -37,6 +37,7 @@ import {
   type NativeTransitionOptions,
   type NavigationSource,
   type RouteRef,
+  type ScrollMode,
   type StackEntry,
   type SwipeBackMode,
 } from '@stacknav/core';
@@ -128,6 +129,8 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   });
   /** Live override of the configured swipe policy. */
   readonly swipeBack = input<SwipeBackMode | undefined>(undefined, { alias: 'stackNavSwipeBack' });
+  /** Who scrolls this stack's pages, over `provideStackNav({ scroll })`. Read once, when the stack is created. */
+  readonly scroll = input<ScrollMode | undefined>(undefined, { alias: 'stackNavScroll' });
   /** Every activation, with the direction that was resolved for it. */
   readonly activate = output<StackNavActivation>({ alias: 'stackNavActivate' });
 
@@ -192,6 +195,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
       checkSetup(
         this.host,
         inject(ROUTER_CONFIGURATION, { optional: true })?.canceledNavigationResolution,
+        () => this.scrollMode() === 'document',
       );
       checkStrategy(this.strategy instanceof StackNavRouteReuseStrategy);
     }
@@ -456,6 +460,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
       transition: { ...this.config.transition, ...(untracked(this.transition) || {}) },
       swipeBack: untracked(this.swipeBack) ?? this.config.swipeBack,
       manageFocus: this.config.manageFocus,
+      scroll: this.scrollMode(),
     }));
     if (this.config.injectStyles) {
       // Nothing in the document head reaches a stack inside a shadow root, so aim at the root the container is in.
@@ -466,6 +471,10 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     stack.on('replace', (e) => this.onStackRemoved(e.removed, e.source));
     stack.on('reset', (e) => this.onStackRemoved(e.removed, e.source));
     return stack;
+  }
+
+  private scrollMode(): ScrollMode {
+    return untracked(this.scroll) ?? this.config.scroll;
   }
 
   /** Teardown cancels queued navigation; report other failures through Angular. */

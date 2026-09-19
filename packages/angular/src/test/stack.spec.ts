@@ -449,4 +449,64 @@ describe('StackNav', () => {
     // destroyed here or its injector and subscriptions leak.
     expect(destroyed.sort()).toEqual(['a', 'b']);
   });
+
+  describe('document scrolling', () => {
+    // jsdom has no scrolling: every offset reads as zero. All that can be
+    // pinned here is that the mode reaches the core and that it is the
+    // document the stack scrolls; where to is the core test and the e2e run.
+    let scrolls: Array<{ top: number; behavior?: string }>;
+    beforeEach(() => {
+      scrolls = [];
+      window.scrollTo = ((options: ScrollToOptions) => {
+        scrolls.push({ top: options.top!, behavior: options.behavior });
+      }) as typeof window.scrollTo;
+    });
+
+    it('is off by default: the document is never scrolled', async () => {
+      const { fixture, router, stack } = setup();
+      await go(fixture, router, '/a');
+      await go(fixture, router, '/b');
+      expect(stack.stack.scroll).toBe('page');
+      expect(stack.stack.container.classList.contains('sn-scroll-document')).toBe(false);
+      expect(scrolls).toEqual([]);
+    });
+
+    it('scrolls the document to each page as it arrives, and takes restoration from the browser', async () => {
+      const { fixture, router, stack } = setup({ scroll: 'document' });
+      expect(stack.stack.scroll).toBe('document');
+      expect(stack.stack.container.classList.contains('sn-scroll-document')).toBe(true);
+      if ('scrollRestoration' in history) expect(history.scrollRestoration).toBe('manual');
+
+      await go(fixture, router, '/a');
+      await go(fixture, router, '/b');
+      // The push switched the document to the new page's offset, instantly.
+      expect(scrolls.length).toBeGreaterThan(0);
+      expect(scrolls.every((s) => s.behavior === 'instant')).toBe(true);
+      expect(scrolls.at(-1)).toEqual({ top: 0, behavior: 'instant' });
+      // Nothing was left behind on the pages or the container once at rest.
+      expect(stack.stack.container.style.height).toBe('');
+      expect(stack.pages.every((p) => p.el.style.top === '')).toBe(true);
+    });
+
+    it('takes the mode from the outlet input over the configuration', () => {
+      @Component({
+        selector: 'document-host',
+        imports: [RouterOutlet, StackNav],
+        template: '<main><router-outlet stackNav stackNavScroll="document" /></main>',
+      })
+      class DocumentHost {
+        readonly stack = viewChild.required(StackNav);
+      }
+      TestBed.configureTestingModule({
+        providers: [
+          provideRouter(routes, withRouterConfig({ canceledNavigationResolution: 'computed' })),
+          provideLocationMocks(),
+          provideStackNav(),
+        ],
+      });
+      const fixture = TestBed.createComponent(DocumentHost);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.stack().stack.scroll).toBe('document');
+    });
+  });
 });

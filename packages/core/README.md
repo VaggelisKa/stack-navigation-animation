@@ -53,7 +53,7 @@ supports.
 
 ## Navigation stack
 
-`createNativeStack({ container, transition?, swipeBack?, manageFocus? })`
+`createNativeStack({ container, transition?, swipeBack?, manageFocus?, scroll? })`
 returns a `NavigationStack` configured with the native transition.
 
 `manageFocus` is off by default. Turn it on and the stack moves focus the way a
@@ -103,6 +103,33 @@ In a normal browser tab, keep `swipeBack: 'browser'` so the browser owns its
 native edge gesture. `swipeBack: 'disabled'` requests document-wide suppression
 with `overscroll-behavior-x`, but browsers and operating systems may ignore it.
 You can change the policy with `stack.setSwipeBack(mode)`.
+
+### Document scrolling
+
+By default each page is a scroll container of its own, inside a container of
+fixed height, which is how a page beneath keeps its offset. A shell built around
+the document's own scrolling, such as a large title that collapses on
+`window.scrollY`, then never sees the page move. `scroll: 'document'` is for
+that shell:
+
+```ts
+const stack = createNativeStack({ container, scroll: 'document' });
+```
+
+The page on top sits in the normal flow and the document scrolls it, so the
+container needs no height. The stack records each page's document offset and
+puts it back when the page returns; pages kept beneath the top add nothing to
+the document's height. The switch to the destination's offset happens before a
+transition starts, so a header reading `scrollY` shows the destination's state
+throughout the slide rather than catching up after it, and the page leaving is
+held where it was while the document moves under it. A released interactive pop
+that does not complete puts the document back the same way.
+
+In this mode the stack sets `history.scrollRestoration` to `manual`, as a router
+that owns scrolling does, so the browser does not move the document under a
+history pop before the stack can. One document-scrolling stack per document.
+The two measurements the switch needs are forced layouts inside the navigation
+task, which the default mode avoids.
 
 ## Direction resolution
 

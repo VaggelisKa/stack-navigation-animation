@@ -15,6 +15,7 @@ import {
   type NativeTransitionOptions,
   type NavigationTrigger,
   type RouteRef,
+  type ScrollMode,
   type SwipeBackMode,
 } from '@stacknav/core';
 import { StackNavRouteReuseStrategy } from './route-reuse-strategy';
@@ -146,6 +147,25 @@ export interface StackNavConfig {
    * anything animating underneath it.
    */
   animated?: boolean | 'touch' | ((ctx: StackNavAnimationContext) => boolean);
+  /**
+   * Who scrolls the pages. Default `'page'`: each page is a scroll container
+   * of its own inside the outlet's parent, which needs a height.
+   *
+   * `'document'` is for an app embedded in a shell whose header follows
+   * `window.scrollY` -- a collapsing large title that lives outside the app.
+   * The page on top then sits in the normal flow and the document scrolls it,
+   * so the outlet's parent needs no height and the shell's scroll listeners
+   * see the page. The stack records each page's document offset and switches
+   * to the destination's *before* a transition starts, so the shell shows the
+   * destination's header state throughout the slide rather than catching up
+   * after it. Pages kept beneath add nothing to the document's height.
+   *
+   * It takes `history.scrollRestoration` to `manual`, as Angular's own
+   * `withInMemoryScrolling()` does, so the browser does not move the document
+   * under a history pop before the stack can; there is no need for that router
+   * feature alongside this. One document-scrolling stack per document.
+   */
+  scroll?: ScrollMode;
 }
 
 export interface ResolvedStackNavConfig {
@@ -159,6 +179,7 @@ export interface ResolvedStackNavConfig {
   manageFocus: boolean;
   /** Asked before every navigation, with that navigation's context. */
   animated: (ctx: StackNavAnimationContext) => boolean;
+  scroll: ScrollMode;
 }
 
 export const STACKNAV_CONFIG = /*#__PURE__*/ new InjectionToken<ResolvedStackNavConfig>(
@@ -205,6 +226,7 @@ export function resolveConfig(c: StackNavConfig): ResolvedStackNavConfig {
     injectStyles: c.injectStyles ?? true,
     manageFocus: c.manageFocus ?? false,
     animated: resolveAnimated(c.animated),
+    scroll: c.scroll ?? 'page',
   };
 }
 
