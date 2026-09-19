@@ -158,6 +158,16 @@ test('the first page keeps the document where the app has it; a new page starts 
   assert.equal(win.scrollY, 0);
 });
 
+test('the first page keeps the document where it is when it arrives as a pop', async () => {
+  // A port resolves a deep link's first page as a pop as readily as a push;
+  // an empty stack mounts it without a transition either way.
+  scrollTo(100);
+  await stack.present(el('a'), 'pop');
+  assert.equal(win.scrollY, 100);
+  await stack.pop();
+  assert.equal(win.scrollY, 100, 'nothing to pop: the document is left alone');
+});
+
 test('replace, remove and reset show the page that ends up on top at its own offset', async () => {
   const a = el('a'),
     c = el('c'),

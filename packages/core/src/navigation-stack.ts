@@ -280,6 +280,9 @@ export class NavigationStack {
       if (!this.entries.length) {
         const entry = this._mount(el, 0, data, key);
         this.entries.push(entry);
+        // The first page of a stack keeps the document where the app has it,
+        // however the direction was resolved; only `begin` would record that.
+        this._docScroll?.save(entry);
         this._settle();
         this._focus(false);
         this._emit('push', { entry, entries: this.entries.slice(), source });
