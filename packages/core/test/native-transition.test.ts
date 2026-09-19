@@ -279,3 +279,16 @@ test('an easing the engine cannot read never reaches the tween', () => {
   assert.equal(t.ease, easings.ios);
   t.end(lower, upper);
 });
+
+test('apply makes the dim overlay itself when begin never ran', () => {
+  // `begin` is optional on a Transition: a host driving the frames on its own
+  // may reach `apply` first, where the overlay used to be assumed to exist.
+  const t = createNativeTransition({ platform: 'ios', dimMax: 0.2 });
+  const { lower, upper } = entries();
+  t.apply(lower, upper, 0.5);
+  const dim = lower.el.children[0];
+  assert.equal(dim.classes.has('sn-dim'), true);
+  assert.equal(dim.style.opacity, '0.1');
+  t.end(lower, upper);
+  assert.equal(lower.el.children.length, 0, 'dim overlay removed');
+});
