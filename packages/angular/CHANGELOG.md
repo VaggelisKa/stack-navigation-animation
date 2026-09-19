@@ -1,5 +1,13 @@
 # @stacknav/angular
 
+## 1.1.1
+
+### Patch Changes
+
+- [#69](https://github.com/VaggelisKa/stack-navigation-animation/pull/69) [`170b6d1`](https://github.com/VaggelisKa/stack-navigation-animation/commit/170b6d1fec157331b35006ecbbf7a1cfe1794b0d) - The `canceledNavigationResolution` development warning now fires only when a history navigation is actually cancelled, not on every default install.
+- Updated dependencies [[`d12c52f`](https://github.com/VaggelisKa/stack-navigation-animation/commit/d12c52fdf10aa55174a8e2e4c104f4ccfe73a4a9)]:
+  - @stacknav/core@0.8.0
+
 ## 1.1.0
 
 ### Minor Changes
