@@ -473,6 +473,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
       swipeBack: untracked(this.swipeBack) ?? this.config.swipeBack,
       manageFocus: this.config.manageFocus,
       scroll: this.scrollMode(),
+      scrollRestoration: this.config.scrollRestoration,
     }));
     if (this.config.injectStyles) {
       // Nothing in the document head reaches a stack inside a shadow root, so aim at the root the container is in.

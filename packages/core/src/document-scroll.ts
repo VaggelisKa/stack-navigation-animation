@@ -1,4 +1,4 @@
-import type { StackEntry } from './navigation-stack.ts';
+import type { ScrollRestorationMode, StackEntry } from './navigation-stack.ts';
 
 /**
  * Layout for a stack whose pages scroll with the document instead of inside
@@ -36,13 +36,23 @@ export class DocumentScroll {
 
   private readonly container: HTMLElement;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, restoration: ScrollRestorationMode = 'browser') {
     this.container = container;
-    // On a history pop the browser puts the document back where that entry
-    // left it before the app hears of the navigation: the page still on top
-    // would jump, and the stack would record the jump as its offset. Restoring
-    // offsets is the stack's job, so the browser is told not to -- and not
-    // told otherwise on destroy, since a next stack here wants the same.
+    // Whoever else restores scrolling here keeps it. `history.scrollRestoration`
+    // is one switch for the whole document, and an app under a shell already
+    // has claimants for it: the browser by default, Angular's router when
+    // `withInMemoryScrolling()` is on, which takes it to `manual` itself.
+    // Taking it unasked breaks whichever of them the app meant to use.
+    //
+    // The worry was a history pop, where the browser is documented to put the
+    // document back where that entry left it: the page still on top would
+    // jump, and `begin` would read the jump as that page's offset. Measured
+    // on Chromium and WebKit, neither restores a same-document entry -- all a
+    // stack like this ever navigates -- before the app hears the pop, not even
+    // behind a route that resolves ten painted frames late. An app on an
+    // engine that does can ask with `manual`, which is never handed back on
+    // destroy, since a next stack here wants it too.
+    if (restoration !== 'manual') return;
     const history = this.window?.history;
     if (history && 'scrollRestoration' in history) history.scrollRestoration = 'manual';
   }

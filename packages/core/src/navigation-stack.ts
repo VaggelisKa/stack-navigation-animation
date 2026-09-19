@@ -59,6 +59,13 @@ export type TransitionKind = 'push' | 'pop' | 'interactive';
 /** Who scrolls the pages: each page itself (`page`, the default), or the document. */
 export type ScrollMode = 'page' | 'document';
 
+/**
+ * Who restores the document's offset across history entries in
+ * `scroll: 'document'`: whoever owns it already (`browser`, the default --
+ * the browser itself, or a router told to), or this stack (`manual`).
+ */
+export type ScrollRestorationMode = 'browser' | 'manual';
+
 /** Where an operation came from: `api`, `gesture`, `history`, or any value a port defines. */
 export type NavigationSource = 'api' | 'gesture' | 'history' | (string & {});
 
@@ -141,6 +148,19 @@ export interface NavigationStackOptions {
    * Default `page`.
    */
   scroll?: ScrollMode;
+  /**
+   * Only read in `scroll: 'document'`, where the pages share the document's
+   * scroller. The stack records each page's offset and puts it back itself,
+   * which is what a page returning from a refused pop or a released swipe
+   * needs; this says what it does about `history.scrollRestoration`, the
+   * browser's own restoring of an offset across a history entry.
+   *
+   * Default `browser`: it is left alone, for whoever the app meant to have
+   * it -- the browser, or Angular's `withInMemoryScrolling()`. `manual` takes
+   * it, for an engine that restores a same-document entry before the app
+   * hears the pop, which would jump the page still on top.
+   */
+  scrollRestoration?: ScrollRestorationMode;
 }
 
 type Listener<E> = (detail: E) => void;
@@ -173,6 +193,7 @@ export class NavigationStack {
     pageClass = 'sn-page',
     manageFocus = false,
     scroll = 'page',
+    scrollRestoration = 'browser',
   }: NavigationStackOptions) {
     if (!container || !transition)
       throw new Error('NavigationStack needs { container, transition }');
@@ -184,7 +205,7 @@ export class NavigationStack {
     container.classList.add('sn-container');
     if (scroll === 'document') {
       container.classList.add('sn-scroll-document');
-      this._docScroll = new DocumentScroll(container);
+      this._docScroll = new DocumentScroll(container, scrollRestoration);
     } else this._docScroll = null;
   }
 

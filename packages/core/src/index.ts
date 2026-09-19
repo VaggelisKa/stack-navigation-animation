@@ -5,6 +5,7 @@ export type {
   Transition,
   TransitionKind,
   ScrollMode,
+  ScrollRestorationMode,
   NavigationSource,
   MountOptions,
   NavigationStackOptions,
@@ -74,7 +75,11 @@ export type {
 export { STACKNAV_CSS, STACKNAV_STYLE_ID, injectStyles } from './styles.ts';
 export type { StyleTarget, InjectStylesOptions } from './styles.ts';
 
-import { NavigationStack, type ScrollMode } from './navigation-stack.ts';
+import {
+  NavigationStack,
+  type ScrollMode,
+  type ScrollRestorationMode,
+} from './navigation-stack.ts';
 import {
   createNativeTransition,
   type NativeTransition,
@@ -92,6 +97,8 @@ export interface NativeStackOptions {
   manageFocus?: boolean;
   /** `document` lets the document scroll the top page, for a shell that reads `window.scrollY`. Default `page`. */
   scroll?: ScrollMode;
+  /** In `scroll: 'document'`: who owns `history.scrollRestoration`. Default `browser`, which leaves it alone. */
+  scrollRestoration?: ScrollRestorationMode;
 }
 
 export interface NativeStack extends NavigationStack {
@@ -117,6 +124,7 @@ export function createNativeStack({
   swipeBack = 'browser',
   manageFocus = false,
   scroll = 'page',
+  scrollRestoration = 'browser',
 }: NativeStackOptions): NativeStack {
   const t = createNativeTransition(transition);
   const stack = new NavigationStack({
@@ -124,6 +132,7 @@ export function createNativeStack({
     transition: t,
     manageFocus,
     scroll,
+    scrollRestoration,
   }) as NativeStack;
   let mode: SwipeBackMode | undefined;
   let release: (() => void) | undefined;

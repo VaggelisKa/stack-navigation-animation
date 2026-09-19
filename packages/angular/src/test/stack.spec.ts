@@ -473,11 +473,12 @@ describe('StackNav', () => {
       expect(scrolls).toEqual([]);
     });
 
-    it('scrolls the document to each page as it arrives, and takes restoration from the browser', async () => {
+    it('scrolls the document to each page as it arrives, and leaves restoration alone', async () => {
       const { fixture, router, stack } = setup({ scroll: 'document' });
       expect(stack.stack.scroll).toBe('document');
       expect(stack.stack.container.classList.contains('sn-scroll-document')).toBe(true);
-      if ('scrollRestoration' in history) expect(history.scrollRestoration).toBe('manual');
+      // `withInMemoryScrolling()`, or the browser, keeps whatever the app gave it.
+      if ('scrollRestoration' in history) expect(history.scrollRestoration).toBe('auto');
 
       await go(fixture, router, '/a');
       await go(fixture, router, '/b');
@@ -488,6 +489,18 @@ describe('StackNav', () => {
       // Nothing was left behind on the pages or the container once at rest.
       expect(stack.stack.container.style.height).toBe('');
       expect(stack.pages.every((p) => p.el.style.top === '')).toBe(true);
+    });
+
+    it("scrollRestoration: 'manual' asks for it explicitly", () => {
+      if (!('scrollRestoration' in history)) return;
+      const previous = history.scrollRestoration;
+      try {
+        setup({ scroll: 'document', scrollRestoration: 'manual' });
+        expect(history.scrollRestoration).toBe('manual');
+      } finally {
+        // One switch for the whole document, and the specs share a document.
+        history.scrollRestoration = previous;
+      }
     });
 
     it('takes the mode from the outlet input over the configuration', () => {

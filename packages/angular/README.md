@@ -134,6 +134,7 @@ For full control, provide `resolveDirection` using the strategy helpers from
 | `manageFocus`       | `false`           | Moves focus into the page arriving on top, and back on a pop.                     |
 | `animated`          | `true`            | `false`, `'touch'`, or a predicate can disable animation.                         |
 | `scroll`            | `'page'`          | `'document'` lets the document scroll the top page (see below).                   |
+| `scrollRestoration` | `'browser'`       | In `scroll: 'document'`: `'manual'` takes `history.scrollRestoration`.            |
 
 Set `animated: 'touch'` to animate only when the primary pointer is coarse, or
 pass a function that is evaluated before each navigation. The function is given
@@ -283,11 +284,15 @@ starts, so the shell shows the destination's header state from the first frame
 of a push, a pop, a browser Back or a swipe, rather than catching up after the
 slide. A swipe that is let go puts the document back the same way.
 
-This mode sets `history.scrollRestoration` to `manual`, as
-`withInMemoryScrolling()` does, so the browser does not move the document
-under a history pop before the stack can; that router feature is not needed
-alongside it. Use one document-scrolling stack per document. The switch costs
-two forced layouts in the navigation task, which the default mode avoids.
+The stack records the offsets itself, because a page can come back with no
+history entry behind it -- from a refused pop, or a released swipe -- but it
+leaves `history.scrollRestoration` to whoever the app gave it: the browser, or
+the router under `withInMemoryScrolling()`, which takes it to `manual` itself.
+Neither Chromium nor WebKit restores a same-document entry before the app hears
+the pop; an app on an engine that does can hand the switch to the stack with
+`scrollRestoration: 'manual'`. Use one document-scrolling stack per document.
+The switch costs two forced layouts in the navigation task, which the default
+mode avoids.
 Every other option, and every transition preset, is the same in both modes.
 The demo's `/?shell=document` shows it under a collapsing large title.
 
