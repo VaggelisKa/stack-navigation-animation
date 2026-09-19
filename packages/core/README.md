@@ -81,9 +81,12 @@ Pages may be elements or factories. Navigation options can include `animated`,
 `data`, `key`, and `source`. Operations are serialized, so a call made during a
 transition waits for the current transition to finish.
 
-State is available through `depth`, `top`, `entries`, `busy`, `destroyed`,
-`canPop()`, and `entryOf()`. Events are `push`, `pop`, `replace`, `reset`,
-`transitionstart`, `progress`, and `transitionend`.
+State is available, read-only, through `depth`, `top`, `entries`, `busy`,
+`destroyed`, `canPop()`, and `entryOf()`. `entries` is the stack's own array
+handed out as a `readonly` one: reads are cheap and its identity is stable, but
+it changes as the stack navigates, so take a `slice()` for a snapshot. Events
+are `push`, `pop`, `replace`, `reset`, `transitionstart`, `progress`, and
+`transitionend`.
 
 `destroy()` is terminal. Pending and later navigation promises reject with an
 `AbortError`, and events no longer fire.
