@@ -19,6 +19,9 @@ import { moveFocus, rememberFocus, releaseFocus } from './focus.ts';
  */
 const WATCHDOG_MARGIN = 150;
 
+/** What navigation rejects with once the stack is gone, queued or in flight. */
+const destroyedError = () => new DOMException('NavigationStack has been destroyed', 'AbortError');
+
 /** One mounted page. `key` and `data` belong to the caller; the stack only carries them. */
 export interface StackEntry<T = unknown> {
   el: HTMLElement;
@@ -120,10 +123,21 @@ export interface StackEvents {
 }
 
 export interface InteractivePopHandle {
-  /** p = 1 fully open … 0 fully popped */
+  /** p = 1 fully open … 0 fully popped. Ignored once the gesture has ended. */
   update(p: number): void;
-  /** Resolves when the settle animation ends. */
+  /**
+   * Resolves when the settle animation ends. Calling it again hands back the
+   * same promise: the gesture only settles once.
+   */
   finish(input: { complete: boolean; velocity?: number }): Promise<void>;
+  /**
+   * Ends the gesture at once and without animation, leaving the upper page
+   * where it was, for a pointer sequence that is taken away rather than
+   * released -- `pointercancel`. Without it an abandoned handle leaves the
+   * stack busy for good, with every queued operation stranded behind it.
+   * A no-op after a `finish` or an earlier `cancel`.
+   */
+  cancel(): void;
 }
 
 export interface NavigationStackOptions {
@@ -231,6 +245,12 @@ export class NavigationStack {
     );
   }
 
+  /**
+   * Subscribes to an event; the returned function unsubscribes. A listener
+   * that throws does not affect the operation that notified it, nor the other
+   * listeners: the error is rethrown asynchronously, where the host's usual
+   * error reporting picks it up.
+   */
   on<K extends keyof StackEvents>(event: K, fn: Listener<StackEvents[K]>): () => void {
     if (!this._listeners.has(event)) this._listeners.set(event, new Set());
     const set = this._listeners.get(event)!;
@@ -242,7 +262,21 @@ export class NavigationStack {
   private _emit<K extends keyof StackEvents>(event: K, detail: StackEvents[K]): void {
     if (this._destroyed) return;
     const set = this._listeners.get(event);
-    if (set) set.forEach((fn) => fn(detail));
+    if (!set) return;
+    // A listener is a bystander: by the time it runs the page is mounted and
+    // the depth has already changed, so letting it throw into the operation
+    // would reject a navigation that in fact happened -- and skip whatever the
+    // operation still had to do after emitting. Each one is called on its own,
+    // and an error is rethrown asynchronously so it still surfaces.
+    for (const fn of set) {
+      try {
+        fn(detail);
+      } catch (e) {
+        queueMicrotask(() => {
+          throw e;
+        });
+      }
+    }
   }
 
   // ------------------------------------------------------------ operations
@@ -263,6 +297,10 @@ export class NavigationStack {
       const upper = this._mount(el, this.entries.length, data, key);
       this.entries.push(upper);
       await this._transition(lower, upper, 0, 1, animated, 'push');
+      // Destroyed while the transition ran: the page is already unmounted, so
+      // resolving with its entry would hand back something that is no longer
+      // in a stack. Navigation after destroy rejects, wherever it was caught.
+      if (this._destroyed) throw destroyedError();
       this._settle();
       this._focus(false);
       this._emit('push', { entry: upper, entries: this.entries.slice(), source });
@@ -398,15 +436,30 @@ export class NavigationStack {
     const upper = this.top!;
     const lower = this.entries[this.entries.length - 2];
     let p = 1;
-    this._begin(lower, upper, 'interactive');
-    return {
-      update: (v) => {
-        if (this._destroyed) return;
-        p = Math.min(1, Math.max(0, v));
-        this._apply(lower, upper, p);
-      },
-      finish: async ({ complete, velocity = 0 }) => {
-        if (this._destroyed) return;
+    // The handle is single-use. `done` goes up the moment the gesture ends, so
+    // a late `update` from a pointer event still in flight writes nothing onto
+    // a page that is on its way out; `settled` is what every later `finish`
+    // gets back, instead of settling -- and popping -- a second time.
+    let done = false;
+    let settled: Promise<void> | null = null;
+    try {
+      this._begin(lower, upper, 'interactive');
+    } catch (e) {
+      this._abortTransition(lower, upper);
+      this._setBusy(false);
+      this._drain();
+      throw e;
+    }
+    const finish = async ({
+      complete,
+      velocity = 0,
+    }: {
+      complete: boolean;
+      velocity?: number;
+    }): Promise<void> => {
+      done = true;
+      if (this._destroyed) return;
+      try {
         const remainingPx = (complete ? p : 1 - p) * this.width();
         const { duration, ease } = this.transition.settle({ remainingPx, velocity });
         // Back to the upper page's offset before the settle, not after it,
@@ -429,6 +482,32 @@ export class NavigationStack {
             entries: this.entries.slice(),
             source: 'gesture',
           });
+        this._drain();
+      } catch (e) {
+        this._abortTransition(lower, upper);
+        this._setBusy(false);
+        this._drain();
+        throw e;
+      }
+    };
+    return {
+      update: (v) => {
+        if (done || this._destroyed) return;
+        p = Math.min(1, Math.max(0, v));
+        this._apply(lower, upper, p);
+      },
+      finish: (input) => (settled ??= finish(input)),
+      cancel: () => {
+        if (done || this._destroyed) return;
+        done = true;
+        settled = Promise.resolve();
+        // The cancelled settle, with a zero duration: the upper page is put
+        // back where it started and the gesture is over on this very call.
+        this._docScroll?.revert();
+        this._apply(lower, upper, 1);
+        this._end(lower, upper, 'interactive');
+        this._settle();
+        this._setBusy(false);
         this._drain();
       },
     };
@@ -465,8 +544,7 @@ export class NavigationStack {
   /** Serializes operations: while a transition runs, later calls wait their turn. */
   private _run<R>(fn: () => Promise<R>): Promise<R> {
     return new Promise<R>((resolve, reject) => {
-      const cancel = () =>
-        reject(new DOMException('NavigationStack has been destroyed', 'AbortError'));
+      const cancel = () => reject(destroyedError());
       if (this._destroyed) return cancel();
       const task = async () => {
         this._setBusy(true);
@@ -497,7 +575,7 @@ export class NavigationStack {
     while (this.entries.length > depth) removed.push(this._unmount(this.entries.pop()!)); // intermediate pages: removed without animation
     const lower = this.top;
     await this._transition(lower, upper, 1, 0, animated, 'pop');
-    if (this._destroyed) return upper;
+    if (this._destroyed) throw destroyedError();
     removed.push(this._unmount(upper));
     this._settle();
     this._focus(true);
@@ -580,6 +658,21 @@ export class NavigationStack {
   }
 
   /**
+   * Puts the pages back at rest after a transition that threw -- a hook of the
+   * caller's, usually. It does what `_end` does except call `transition.end`:
+   * `begin` may not have finished, and a transition half-begun is not one to
+   * announce the end of. Without it the pages keep their roles, so the stack
+   * shows a page that is hidden still sliding above the next push.
+   */
+  private _abortTransition(lower: StackEntry | null, upper: StackEntry): void {
+    this._activeTransition = null;
+    this._timing(0);
+    upper.el.classList.remove('sn-page-upper');
+    lower?.el.classList.remove('sn-page-lower');
+    this._settle();
+  }
+
+  /**
    * Hands the run from `from` to `to` over to the browser: commit where the
    * pages are, say how long and on what curve, write where they are going,
    * then wait to be told they arrived. No frame of it is ours.
@@ -651,16 +744,21 @@ export class NavigationStack {
     animated: boolean,
     kind: TransitionKind,
   ): Promise<void> {
-    this._begin(lower, upper, kind);
-    this._apply(lower, upper, from);
-    await this._animate(
-      lower,
-      upper,
-      from,
-      to,
-      animated ? this.transition.duration : 0,
-      this.transition.ease,
-    );
+    try {
+      this._begin(lower, upper, kind);
+      this._apply(lower, upper, from);
+      await this._animate(
+        lower,
+        upper,
+        from,
+        to,
+        animated ? this.transition.duration : 0,
+        this.transition.ease,
+      );
+    } catch (e) {
+      this._abortTransition(lower, upper);
+      throw e;
+    }
     this._end(lower, upper, kind);
   }
 

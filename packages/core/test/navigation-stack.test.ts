@@ -531,7 +531,7 @@ for (const operation of ['pop', 'popTo', 'popWith']) {
     const otherContainer = makeElement();
     otherContainer.append(upper);
     finishAnimation();
-    await pending;
+    await assert.rejects(pending, { name: 'AbortError' }, 'the navigation it destroyed aborts');
     assert.equal(
       upper.parentElement,
       otherContainer,
@@ -606,4 +606,182 @@ test('the watchdog does not cut short an animation that is still running', async
   finish();
   await pushed;
   assert.equal(stack.busy, false);
+});
+
+// ------------------------------------------------------- misusing the handle
+
+test('finishing an interactive pop twice settles once', async () => {
+  const a = el('a'),
+    b = el('b'),
+    c = el('c');
+  for (const p of [a, b, c]) await stack.push(p);
+  const handle = stack.beginInteractivePop();
+  handle.update(0.2);
+  const first = handle.finish({ complete: true, velocity: 600 });
+  assert.equal(handle.finish({ complete: true }), first, 'the same settle, not a second one');
+  await first;
+  await handle.finish({ complete: true });
+  assert.deepEqual(
+    stack.entries.map((e) => e.el.id),
+    ['a', 'b'],
+    'the page beneath is still there',
+  );
+  assert.equal(b.parentElement, container);
+  assert.equal(stack.busy, false);
+});
+
+test('update after finish is ignored', async () => {
+  const a = el('a'),
+    b = el('b');
+  await stack.push(a);
+  await stack.push(b);
+  const handle = stack.beginInteractivePop();
+  await handle.finish({ complete: true });
+  t.log.length = 0;
+  handle.update(0.5);
+  assert.deepEqual(t.log, [], 'nothing is written onto the page that left');
+  assert.equal(b.style.transform, '');
+  assert.equal(stack.depth, 1);
+});
+
+test('cancel ends the gesture where it stands, and is idempotent', async () => {
+  const a = el('a'),
+    b = el('b');
+  await stack.push(a);
+  await stack.push(b);
+  const handle = stack.beginInteractivePop();
+  handle.update(0.4);
+  handle.cancel();
+  assert.equal(stack.depth, 2);
+  assert.equal(stack.top.el, b);
+  assert.ok(b.classList.contains('sn-page-visible'));
+  assert.ok(!b.classList.contains('sn-page-upper'));
+  assert.ok(!a.classList.contains('sn-page-lower'));
+  assert.equal(b.style.transform, '');
+  assert.equal(stack.busy, false);
+  assert.equal(container.classList.contains('sn-busy'), false);
+  t.log.length = 0;
+  handle.cancel();
+  handle.update(0.2);
+  await handle.finish({ complete: true });
+  assert.deepEqual(t.log, [], 'a spent handle does nothing at all');
+  assert.equal(stack.depth, 2);
+});
+
+test('cancel lets the operations queued behind the gesture through', async () => {
+  const a = el('a'),
+    b = el('b'),
+    c = el('c');
+  await stack.push(a);
+  await stack.push(b);
+  const handle = stack.beginInteractivePop();
+  handle.update(0.4);
+  const queued = stack.push(c);
+  handle.cancel();
+  await queued;
+  assert.equal(stack.depth, 3);
+  assert.equal(stack.top.el, c);
+  assert.equal(stack.busy, false);
+});
+
+// ----------------------------------------------------------- hooks that throw
+
+// The stack rethrows a listener's error in a microtask, which arrives at the
+// process as an uncaught exception -- and node:test would charge it to whatever
+// test is running. So the harness's handlers step aside for the length of the
+// test, and the errors are collected instead.
+const captureAsyncErrors = () => {
+  const harness = process.listeners('uncaughtException');
+  process.removeAllListeners('uncaughtException');
+  const seen = [];
+  const capture = (e) => seen.push(e);
+  process.on('uncaughtException', capture);
+  return {
+    seen,
+    async restore() {
+      await new Promise((r) => setTimeout(r, 0)); // let the rethrows land
+      process.off('uncaughtException', capture);
+      for (const fn of harness) process.on('uncaughtException', fn);
+    },
+  };
+};
+
+test('a listener that throws leaves the operation alone, and the others still hear it', async () => {
+  const errors = captureAsyncErrors();
+  const heard = [];
+  stack.on('push', () => {
+    throw new Error('listener blew up');
+  });
+  stack.on('push', ({ entry }) => heard.push(entry.el.id));
+  const a = el('a');
+  const entry = await stack.push(a);
+  assert.equal(entry.el, a, 'the push resolved with the page it mounted');
+  assert.deepEqual(heard, ['a']);
+  assert.equal(stack.busy, false);
+  await errors.restore();
+  assert.deepEqual(
+    errors.seen.map((e) => e.message),
+    ['listener blew up'],
+    'and the error still surfaced, out of band',
+  );
+});
+
+test('a pop listener that throws does not strand the gesture', async () => {
+  const a = el('a'),
+    b = el('b'),
+    c = el('c');
+  await stack.push(a);
+  await stack.push(b);
+  const errors = captureAsyncErrors();
+  stack.on('pop', () => {
+    throw new Error('pop listener blew up');
+  });
+  const handle = stack.beginInteractivePop();
+  handle.update(0.1);
+  const queued = stack.push(c);
+  await handle.finish({ complete: true });
+  await queued;
+  assert.equal(stack.top.el, c, 'what was queued behind the gesture still ran');
+  assert.equal(stack.busy, false);
+  await errors.restore();
+  assert.equal(errors.seen.length, 1);
+});
+
+test('a transition that throws in begin() leaves no half-transition behind', async () => {
+  const a = el('a'),
+    b = el('b'),
+    c = el('c');
+  await stack.push(a);
+  t.begin = () => {
+    throw new Error('begin blew up');
+  };
+  await assert.rejects(stack.push(b), /begin blew up/);
+  assert.ok(!a.classList.contains('sn-page-lower'));
+  assert.ok(!b.classList.contains('sn-page-upper'));
+  assert.equal(stack._activeTransition, null);
+  assert.equal(container.style.getPropertyValue('--sn-t'), '0s');
+  assert.equal(stack.busy, false);
+
+  t.begin = (l, u) => t.log.push(['begin', l?.el.id, u.el.id]);
+  await stack.push(c);
+  assert.ok(!b.classList.contains('sn-page-upper'), 'no page is still sliding under the next one');
+  assert.ok(!b.classList.contains('sn-page-visible'));
+  assert.ok(c.classList.contains('sn-page-visible'));
+});
+
+test('a push in flight rejects once the stack is destroyed', async () => {
+  const a = el('a'),
+    b = el('b');
+  await stack.push(a);
+  t.duration = 100;
+  let finishAnimation;
+  const finished = new Promise((resolve) => {
+    finishAnimation = resolve;
+  });
+  b.getAnimations = () => [{ transitionProperty: 'transform', finished }];
+  const pending = stack.push(b);
+  stack.destroy();
+  finishAnimation();
+  await assert.rejects(pending, { name: 'AbortError' });
+  assert.equal(b.parentElement, null);
 });
