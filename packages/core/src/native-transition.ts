@@ -237,7 +237,9 @@ export function createNativeTransition(
       if (r.fade < 1) upper.el.style.opacity = String(round(r.fade + (1 - r.fade) * p));
       if (lower) {
         lower.el.style.transform = shift(-p * r.parallax);
-        dim!.style.opacity = String(p * r.dimMax);
+        // `begin` is optional on a Transition, so a host may drive `apply`
+        // without it: the overlay is asked for here rather than assumed.
+        dimOf(lower).style.opacity = String(p * r.dimMax);
       }
     },
     end(lower, upper) {

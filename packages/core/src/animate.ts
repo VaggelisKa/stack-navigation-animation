@@ -59,12 +59,16 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): Eas
  * Straight lines through `points` (`[x, y]` pairs, x from 0 to 1 and never
  * decreasing), the curve CSS `linear()` draws. Spelled for CSS the same way
  * unless `css` says otherwise. A browser without `linear()` (Chrome < 113,
- * Safari < 17.2, Firefox < 112) runs its default `ease` instead.
+ * Safari < 17.2, Firefox < 112) runs its default `ease` instead. Two points
+ * are the fewest a curve can be drawn from; fewer throws a `TypeError`.
  */
 export function linearEasing(
   points: ReadonlyArray<readonly [number, number]>,
   css?: string,
 ): Easing {
+  // A line needs two ends, and so does CSS `linear()`. Fewer than that only
+  // failed at the first call, far from the table that was wrong.
+  if (points.length < 2) throw new TypeError('linearEasing needs at least two points');
   const f = (t: number): number => {
     if (t <= points[0][0]) return points[0][1];
     let i = 1;

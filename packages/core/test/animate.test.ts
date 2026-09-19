@@ -102,6 +102,12 @@ test('linearEasing joins its points with straight lines', () => {
   );
 });
 
+test('linearEasing refuses a table it cannot draw a line through', () => {
+  // It used to be built happily and throw at the first call instead.
+  assert.throws(() => linearEasing([]), TypeError);
+  assert.throws(() => linearEasing([[0, 0]]), TypeError);
+});
+
 test('tween with zero duration jumps to the end synchronously', async () => {
   const seen = [];
   await tween({ from: 0, to: 1, duration: 0, onUpdate: (v) => seen.push(v) });
