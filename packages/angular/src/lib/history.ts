@@ -1,4 +1,5 @@
-import { Injectable, inject } from '@angular/core';
+import { DestroyRef, Injectable, inject } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import {
   NavigationCancel,
   NavigationEnd,
@@ -32,6 +33,8 @@ export interface NavigationInfo {
   replaceUrl: boolean;
   skipLocationChange: boolean;
   restoredId: number | null;
+  /** the browser animated this navigation itself, so a transition on top would be the second one */
+  uaVisualTransition: boolean;
 }
 
 interface Entry {
@@ -55,8 +58,25 @@ export class StackNavHistory {
   private entries: Entry[] = [];
   private cursor = -1;
   private pending: NavigationInfo | null = null;
+  /**
+   * Whether the browser animated the navigation `popstate` has just announced.
+   * The router's events do not carry the event, and by the time it asks for one
+   * the answer is gone, so it is latched here as it arrives: the listener is on
+   * the window, in the capture phase, which is ahead of the one Angular's own
+   * `PlatformLocation` uses to tell the router anything happened.
+   */
+  private uaVisualTransition = false;
 
   constructor() {
+    const win = inject(DOCUMENT).defaultView;
+    if (win) {
+      const onPopState = (e: PopStateEvent) =>
+        (this.uaVisualTransition = !!e.hasUAVisualTransition);
+      win.addEventListener('popstate', onPopState, { capture: true });
+      inject(DestroyRef).onDestroy(() =>
+        win.removeEventListener('popstate', onPopState, { capture: true }),
+      );
+    }
     this.router.events.subscribe((e) => {
       if (e instanceof NavigationStart) this.onStart(e);
       else if (e instanceof NavigationEnd) this.onEnd(e);
@@ -104,7 +124,11 @@ export class StackNavHistory {
       replaceUrl: !!nav?.extras.replaceUrl,
       skipLocationChange: !!nav?.extras.skipLocationChange,
       restoredId,
+      uaVisualTransition: isHistory && this.uaVisualTransition,
     };
+    // Spent: the next navigation gets its own answer, and an imperative one
+    // that follows a `popstate` the router did nothing with gets no answer.
+    this.uaVisualTransition = false;
   }
 
   private onEnd(e: NavigationEnd): void {

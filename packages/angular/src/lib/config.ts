@@ -16,6 +16,7 @@ import {
   type NavigationTrigger,
   type RouteRef,
   type ScrollMode,
+  type ScrollRestorationMode,
   type SwipeBackMode,
 } from '@stacknav/core';
 import { StackNavRouteReuseStrategy } from './route-reuse-strategy';
@@ -147,6 +148,16 @@ export interface StackNavConfig {
    * anything animating underneath it.
    */
   animated?: boolean | 'touch' | ((ctx: StackNavAnimationContext) => boolean);
+  /*
+   * One answer this is never asked for: a navigation the browser animated
+   * itself, which it reports with `PopStateEvent.hasUAVisualTransition` -- its
+   * own back gesture slides the previous page across and fires `popstate` at
+   * the end, so a transition on top would be the second animation of one move.
+   * Such a navigation does not animate, and the predicate is not put a question
+   * that is already settled, exactly as it is not asked about the first page of
+   * a stack. A navigation that wants it anyway says so for itself, with
+   * `info: { stacknav: { animated: true } }`.
+   */
   /**
    * Who scrolls the pages. Default `'page'`: each page is a scroll container
    * of its own inside the outlet's parent, which needs a height.
@@ -160,12 +171,26 @@ export interface StackNavConfig {
    * destination's header state throughout the slide rather than catching up
    * after it. Pages kept beneath add nothing to the document's height.
    *
-   * It takes `history.scrollRestoration` to `manual`, as Angular's own
-   * `withInMemoryScrolling()` does, so the browser does not move the document
-   * under a history pop before the stack can; there is no need for that router
-   * feature alongside this. One document-scrolling stack per document.
+   * `history.scrollRestoration` is left to whoever the app gave it to: the
+   * browser, or the router under `withInMemoryScrolling()`, which takes it to
+   * `manual` itself. See `scrollRestoration`. One document-scrolling stack
+   * per document.
    */
   scroll?: ScrollMode;
+  /**
+   * Only read in `scroll: 'document'`. The stack always records each page's
+   * document offset and puts it back itself -- a page returning from a refused
+   * pop or a released swipe has no history entry to be restored from. This is
+   * about `history.scrollRestoration` alone, the one switch the whole document
+   * shares.
+   *
+   * Default `'browser'`: untouched, so `withInMemoryScrolling()` or the
+   * browser keeps doing what the app asked of it. `'manual'` takes it, for an
+   * engine that restores a same-document entry before the app hears the pop --
+   * neither Chromium nor WebKit does, measured behind a route that resolves
+   * ten painted frames late.
+   */
+  scrollRestoration?: ScrollRestorationMode;
 }
 
 export interface ResolvedStackNavConfig {
@@ -180,6 +205,7 @@ export interface ResolvedStackNavConfig {
   /** Asked before every navigation, with that navigation's context. */
   animated: (ctx: StackNavAnimationContext) => boolean;
   scroll: ScrollMode;
+  scrollRestoration: ScrollRestorationMode;
 }
 
 export const STACKNAV_CONFIG = /*#__PURE__*/ new InjectionToken<ResolvedStackNavConfig>(
@@ -227,6 +253,7 @@ export function resolveConfig(c: StackNavConfig): ResolvedStackNavConfig {
     manageFocus: c.manageFocus ?? false,
     animated: resolveAnimated(c.animated),
     scroll: c.scroll ?? 'page',
+    scrollRestoration: c.scrollRestoration ?? 'browser',
   };
 }
 

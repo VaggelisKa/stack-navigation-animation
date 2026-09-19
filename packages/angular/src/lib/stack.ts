@@ -473,6 +473,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
       swipeBack: untracked(this.swipeBack) ?? this.config.swipeBack,
       manageFocus: this.config.manageFocus,
       scroll: this.scrollMode(),
+      scrollRestoration: this.config.scrollRestoration,
     }));
     if (this.config.injectStyles) {
       // Nothing in the document head reaches a stack inside a shadow root, so aim at the root the container is in.
@@ -550,22 +551,26 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     // is gone. A pop onto anything else has nothing to pop, so just show the page.
     if (!leaving && this.stack.top && direction === 'pop' && !reused) direction = 'replace';
     // A navigation animates unless something says not to: the hint carried on
-    // the navigation, then the app's own predicate, asked last and able only to
-    // narrow. Nothing here treats the browser's back button as a special case.
-    // iOS Safari does animate a snapshot of its own during an edge swipe, and a
-    // pop on top of that plays the transition twice -- but `popstate` reports
-    // only that history moved, never what moved it. The edge swipe, the
-    // toolbar's back button and an app calling `location.back()` from a back
-    // button of its own arrive as one event with one shape, and the last of
-    // those is how most apps go back, with nothing animating underneath it.
-    // Refusing all three to spare the one leaves every back button dead, which
-    // is the worse trade by far. An app that wants the swipe case handled can
-    // say so now that the predicate is told what triggered the navigation:
-    // `animated: ({ trigger }) => !(trigger === 'history' && isIOSBrowser())`.
+    // the navigation, then the browser, then the app's own predicate, asked
+    // last and able only to narrow.
+    //
+    // The browser's answer is the one this used to have to guess at. A browser
+    // that owns the back gesture animates the previous page across during the
+    // swipe and fires `popstate` at the end of it, so the pop run on top plays
+    // the same move a second time. What `popstate` never used to say was which
+    // back it was: the edge swipe, the toolbar's button and an app calling
+    // `location.back()` arrived as one event with one shape, and refusing all
+    // three to spare the first left every back button in the app dead --
+    // the worse trade, and why the iOS guess was taken out again in #50.
+    // `hasUAVisualTransition` is that missing word, and the event now carries
+    // it: true only when the browser really did animate this navigation
+    // itself. Missing (an engine older than Baseline 2026) means no answer, and
+    // no answer is still the trade #50 settled on -- animate, and leave the
+    // guessing to an app that knows its users.
     const animated =
       !alreadyOnScreen &&
       (this.entries.length > 0 || !!leaving) &&
-      (nav?.animated ?? true) &&
+      (nav?.animated ?? !nav?.uaVisualTransition) &&
       this.config.animated({ trigger, from: from?.routeRef ?? null, to: page.routeRef });
 
     const current = this.router.getCurrentNavigation();

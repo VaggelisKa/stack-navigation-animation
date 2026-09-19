@@ -134,6 +134,7 @@ For full control, provide `resolveDirection` using the strategy helpers from
 | `manageFocus`       | `false`           | Moves focus into the page arriving on top, and back on a pop.                     |
 | `animated`          | `true`            | `false`, `'touch'`, or a predicate can disable animation.                         |
 | `scroll`            | `'page'`          | `'document'` lets the document scroll the top page (see below).                   |
+| `scrollRestoration` | `'browser'`       | In `scroll: 'document'`: `'manual'` takes `history.scrollRestoration`.            |
 
 Set `animated: 'touch'` to animate only when the primary pointer is coarse, or
 pass a function that is evaluated before each navigation. The function is given
@@ -144,24 +145,26 @@ function taking no arguments still works.
 provideStackNav({ animated: ({ trigger }) => trigger === 'imperative' });
 ```
 
-Every navigation animates by default, including one the browser's Back button
-triggered. If you want to skip the transitions the browser already draws for
-itself, the trigger is there to ask about. iOS Safari animates a snapshot of
-the previous page during its edge swipe, so a pop on top of that plays twice:
+Every navigation animates by default, with one exception the browser decides:
+a navigation it animated itself. Its back gesture slides the previous page
+across and fires `popstate` at the end, so a transition on top of that is the
+second animation of one move; the event says which it was, with
+`hasUAVisualTransition`, and such a navigation is not animated. Nothing to
+configure, and nothing guessed from the user agent: a Back button that draws
+nothing of its own animates as it always did, on the same device.
+
+The predicate is not asked about one of those, any more than it is asked about
+the first page of a stack -- the question is already settled. A navigation that
+wants a transition regardless asks for one itself:
 
 ```ts
-import { isIOSBrowser } from '@stacknav/core';
-
-provideStackNav({
-  animated: ({ trigger }) => !(trigger === 'history' && isIOSBrowser()),
-});
+router.navigate(['/items', 2], { info: { stacknav: { animated: true } } });
 ```
 
-stacknav does not do this for you, because `popstate` does not say what moved
-history. The edge swipe, the browser's own Back button and an app calling
-`location.back()` from a back button of its own all arrive as the same event,
-and only the first has anything animating beneath it. Which trade your app
-wants is yours to pick.
+`hasUAVisualTransition` is Baseline 2026 (Safari 18, Chrome 121). An engine
+older than that says nothing, and nothing is read as no UA animation: the
+transition runs, as it did before, and an app that knows better can still
+narrow it with a predicate of its own.
 
 Transition settings can also be CSS custom properties. CSS wins over the
 matching JavaScript option:
@@ -283,11 +286,15 @@ starts, so the shell shows the destination's header state from the first frame
 of a push, a pop, a browser Back or a swipe, rather than catching up after the
 slide. A swipe that is let go puts the document back the same way.
 
-This mode sets `history.scrollRestoration` to `manual`, as
-`withInMemoryScrolling()` does, so the browser does not move the document
-under a history pop before the stack can; that router feature is not needed
-alongside it. Use one document-scrolling stack per document. The switch costs
-two forced layouts in the navigation task, which the default mode avoids.
+The stack records the offsets itself, because a page can come back with no
+history entry behind it -- from a refused pop, or a released swipe -- but it
+leaves `history.scrollRestoration` to whoever the app gave it: the browser, or
+the router under `withInMemoryScrolling()`, which takes it to `manual` itself.
+Neither Chromium nor WebKit restores a same-document entry before the app hears
+the pop; an app on an engine that does can hand the switch to the stack with
+`scrollRestoration: 'manual'`. Use one document-scrolling stack per document.
+The switch costs two forced layouts in the navigation task, which the default
+mode avoids.
 Every other option, and every transition preset, is the same in both modes.
 The demo's `/?shell=document` shows it under a collapsing large title.
 

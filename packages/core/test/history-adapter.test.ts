@@ -35,10 +35,10 @@ beforeEach(async () => {
       calls.push(['replace', s]);
       entries[index] = s;
     },
-    go(n) {
+    go(n, event) {
       calls.push(['go', n]);
       index = Math.max(0, Math.min(entries.length - 1, index + n));
-      popstate?.({ state: entries[index] });
+      popstate?.({ state: entries[index], ...event });
     },
     back() {
       this.go(-1);
@@ -117,6 +117,49 @@ test('the detach function stops listening', async () => {
   calls.length = 0;
   await stack.push(makeElement('section'));
   assert.equal(calls.length, 0);
+});
+
+/** What the adapter asked of the stack for the pop a back produced. */
+const popOptions = async (attach, event) => {
+  attach();
+  await stack.push(makeElement('section'));
+  let seen;
+  const popTo = stack.popTo.bind(stack);
+  stack.popTo = (target, options) => ((seen = options), popTo(target, options));
+  history.go(-1, event);
+  await new Promise((r) => setTimeout(r, 5));
+  return seen;
+};
+
+test('a back the browser animated itself is not animated again', async () => {
+  // The edge swipe slides the previous page across and fires `popstate` at the
+  // end of it, so the pop run on top would play the same move a second time.
+  const options = await popOptions(() => attachBrowserHistory(stack), {
+    hasUAVisualTransition: true,
+  });
+  assert.equal(options.animated, false);
+  assert.equal(options.source, 'history');
+});
+
+test('a back the browser did not animate is animated by the stack', async () => {
+  const options = await popOptions(() => attachBrowserHistory(stack), {
+    hasUAVisualTransition: false,
+  });
+  assert.equal(options.animated, true);
+});
+
+test('an engine that does not report it falls back to the platform', async () => {
+  // No property at all: the stub has no navigator, so `isIOSBrowser()` is
+  // false and the pop animates, as it did before the event could be asked.
+  const options = await popOptions(() => attachBrowserHistory(stack), undefined);
+  assert.equal(options.animated, true);
+});
+
+test('animateHistoryPop given decides every pop, whatever the event says', async () => {
+  const options = await popOptions(() => attachBrowserHistory(stack, { animateHistoryPop: true }), {
+    hasUAVisualTransition: true,
+  });
+  assert.equal(options.animated, true);
 });
 
 test('isIOSBrowser is false without a navigator', () => {

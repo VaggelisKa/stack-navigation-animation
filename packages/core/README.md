@@ -125,11 +125,20 @@ throughout the slide rather than catching up after it, and the page leaving is
 held where it was while the document moves under it. A released interactive pop
 that does not complete puts the document back the same way.
 
-In this mode the stack sets `history.scrollRestoration` to `manual`, as a router
-that owns scrolling does, so the browser does not move the document under a
-history pop before the stack can. One document-scrolling stack per document.
-The two measurements the switch needs are forced layouts inside the navigation
-task, which the default mode avoids.
+The stack keeps those offsets itself -- a page can come back with no history
+entry behind it, from a refused pop or a released swipe -- and leaves
+`history.scrollRestoration` alone, for the browser or whichever router the app
+gave it to. Neither Chromium nor WebKit restores a same-document entry before
+the app hears the pop; an app on an engine that does can hand that switch to
+the stack:
+
+```ts
+createNativeStack({ container, scroll: 'document', scrollRestoration: 'manual' });
+```
+
+One document-scrolling stack per document. The two measurements the switch
+needs are forced layouts inside the navigation task, which the default mode
+avoids.
 
 ## Direction resolution
 
@@ -211,10 +220,14 @@ percentages. Invalid values fall back to the JavaScript option. Call
 ## Browser history
 
 `attachBrowserHistory(stack, options?)` mirrors the stack depth into
-`history.state` and returns a detach function. On iOS, history pops are instant
-by default because the browser already animates its own snapshot. Use
-`animateHistoryPop` to override that behavior and `onForward(targetDepth)` to
-restore a page for forward navigation.
+`history.state` and returns a detach function. A pop the browser animated
+itself -- its back gesture slides the previous page across and fires
+`popstate` at the end -- is instant, so the same move is not played twice; the
+event says so with `hasUAVisualTransition` (Baseline 2026), and on an engine
+too old to report it the platform is guessed at instead, as before: instant on
+iOS browsers, animated elsewhere. `animateHistoryPop` decides every pop
+instead, whatever the event says, and `onForward(targetDepth)` restores a page
+for forward navigation.
 
 ## Custom transitions and chrome
 

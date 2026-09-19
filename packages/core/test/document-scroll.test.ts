@@ -45,10 +45,48 @@ beforeEach(() => {
   stack = new NavigationStack({ container, transition: instantTransition(), scroll: 'document' });
 });
 
-test('document mode marks the container and takes scroll restoration from the browser', () => {
+test('document mode marks the container and leaves scroll restoration to the browser', () => {
   assert.ok(container.classList.contains('sn-scroll-document'));
   assert.equal(stack.scroll, 'document');
+  assert.equal(win.history.scrollRestoration, 'auto', 'whoever owns it keeps it');
+});
+
+test('scrollRestoration: manual takes it, and only in document mode', () => {
+  new NavigationStack({
+    container: makeElement('div'),
+    transition: instantTransition(),
+    scroll: 'document',
+    scrollRestoration: 'manual',
+  });
   assert.equal(win.history.scrollRestoration, 'manual');
+
+  win.history.scrollRestoration = 'auto';
+  new NavigationStack({
+    container: makeElement('div'),
+    transition: instantTransition(),
+    scrollRestoration: 'manual',
+  });
+  assert.equal(
+    win.history.scrollRestoration,
+    'auto',
+    'nothing to restore: the pages scroll themselves',
+  );
+});
+
+test("the offsets are the stack's own, whoever restores the document", async () => {
+  // The point of leaving `scrollRestoration` alone: a page that comes back
+  // without a history entry behind it -- here a refused pop -- is still put
+  // back where it was, because the stack never relied on the browser for it.
+  const a = el('a'),
+    b = el('b');
+  await stack.push(a, { animated: false });
+  scrollTo(320);
+  await stack.push(b);
+  scrollTo(500);
+  const handle = stack.beginInteractivePop()!;
+  await handle.finish({ complete: false });
+  assert.equal(win.scrollY, 500);
+  assert.equal(win.history.scrollRestoration, 'auto', 'and it was never taken');
 });
 
 test('the default mode leaves the document alone', async () => {

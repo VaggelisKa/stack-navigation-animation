@@ -5,7 +5,7 @@
 // and reads as a second animation. Hence the per-frame sampling from inside
 // the page.
 import { join } from 'node:path';
-import { launch } from './harness.mjs';
+import { browserName, launch } from './harness.mjs';
 
 const {
   page,
@@ -108,8 +108,8 @@ eq(l.position, 'relative', 'the top page is in the flow');
 eq(l.overflow, 'visible', 'the container is not a scroll container');
 eq(
   await page.evaluate(() => history.scrollRestoration),
-  'manual',
-  'the stack owns scroll restoration',
+  'auto',
+  'the stack left scroll restoration to the browser',
 );
 await scrollDocument(320);
 let s = await sample();
@@ -257,5 +257,40 @@ every(
 );
 frames = await watched(() => page.click('.doc-header button:has-text("Back")'));
 every(frames, (f) => f.scrollY === 200, 'narrow pop: back at 200px on every frame');
+
+// ---- 8. the browser's own restoration, which the stack leaves alone --------
+// The mode used to take `history.scrollRestoration` to `manual`, and a reload
+// then came back at the top: the stack restores offsets per page element, and
+// a reloaded document has no page it has seen before. Left to the browser, the
+// offset survives, and the stack's first page keeps whatever it finds.
+section('reload');
+await page.setViewportSize({ width: 420, height: 800 });
+await page.goto(base + '/?shell=document');
+await page.waitForSelector('.doc-stack > doc-home');
+await settled();
+eq(
+  await page.evaluate(() => history.scrollRestoration),
+  'auto',
+  'the browser still owns restoration',
+);
+await scrollDocument(500);
+await page.reload();
+await page.waitForSelector('.doc-stack > doc-home');
+await settled();
+// A reload takes the in-page probes with it, so this reads the document itself.
+const reloaded = await page.evaluate(() => ({
+  scrollY: window.scrollY,
+  collapsed: document.querySelector('.doc-header').classList.contains('collapsed'),
+  restoration: history.scrollRestoration,
+}));
+eq(reloaded.restoration, 'auto', 'and still owns it after the reload');
+if (browserName === 'chromium') {
+  eq(reloaded.scrollY, 500, 'the reload came back at the offset the browser had');
+  eq(reloaded.collapsed, true, 'and the shell header with it');
+} else {
+  console.log(
+    `skip the reload lands at 500 (this engine restores nothing here, at ${reloaded.scrollY})`,
+  );
+}
 
 await finish();
