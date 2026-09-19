@@ -8,6 +8,7 @@ import {
   inject,
   input,
   output,
+  RendererFactory2,
   untracked,
   ViewContainerRef,
   type EmbeddedViewRef,
@@ -147,6 +148,17 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
   private readonly nonce = inject(CSP_NONCE, { optional: true });
   private readonly errorHandler = inject(ErrorHandler);
   private readonly strategy = inject(RouteReuseStrategy);
+  /**
+   * Angular's renderer, for moving a page element the outlet just detached.
+   * The plain DOM renderer takes an element out at once, but the one
+   * `provideAnimations()` installs only notes the removal and lets the
+   * animation engine carry it out when change detection ends -- from wherever
+   * the element is by then, so a bare `append` would be undone on the same
+   * tick. Inserting through the renderer is how Angular itself moves a view,
+   * and it tells the engine to drop the pending removal. A renderer without a
+   * host is the same for every component and joins no animation namespace.
+   */
+  private readonly renderer = inject(RendererFactory2).createRenderer(null, null);
   /** The route of the page this outlet lives in: the root route for a top-level outlet. */
   private readonly hostRoute = inject(ActivatedRoute);
   private unregister: (() => void) | null = null;
@@ -363,11 +375,11 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     if (this.active === page) this.active = null;
     this.detaching = page;
     if (page.pendingRemoval) return;
-    // Angular took the element out of the DOM, which reset every scroll
-    // offset inside it. Put it back in the container, where the stack has it
-    // hidden, until the router wants it again.
-    const container = this.ensureStack().container;
-    if (page.el.parentElement !== container) container.append(page.el);
+    // Angular took the element out of the DOM, or is about to, which resets
+    // every scroll offset inside it. Put it back in the container, where the
+    // stack has it hidden, until the router wants it again. Always through the
+    // renderer, even when the element is still in place: see `renderer`.
+    this.renderer.appendChild(this.ensureStack().container, page.el);
     restoreScroll(page.scroll);
     // The router detaches before it activates, synchronously. If no
     // activation follows, the outlet is empty: the router left this outlet

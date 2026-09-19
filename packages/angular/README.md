@@ -227,6 +227,9 @@ element is back in the document before focus moves, so that much is reliable.
 
 Browser-owned state may reset when Angular detaches and reattaches an element:
 iframes can reload, videos can pause, and CSS keyframe animations can restart.
+Apps that still use `provideAnimations()` are supported: the directive puts the
+outgoing page back through Angular's renderer, so the animation engine's
+deferred removal leaves it alone.
 A nested `<router-outlet stackNav>` keeps its own stack when its parent page is
 temporarily detached.
 
