@@ -62,30 +62,31 @@ inside a page when that page is revealed again. A page with nothing focusable of
 its own is given `tabindex="-1"` while it is mounted, and focus that has already
 moved outside the container is never taken back.
 
-| Member                               | Purpose                                                     |
-| ------------------------------------ | ----------------------------------------------------------- |
-| `push(page, options?)`               | Adds a page. A mounted page is moved to the top.            |
-| `pop(options?)`                      | Removes the top page, unless it is the root.                |
-| `popTo(depth, options?)`             | Pops until the requested number of pages remain.            |
-| `popWith(page, options?)`            | Pops while revealing a supplied or previously mounted page. |
-| `replace(page, options?)`            | Replaces the top page without a transition.                 |
-| `present(page, direction, options?)` | Applies a resolved `push`, `pop`, or `replace`.             |
-| `remove(page)`                       | Removes a mounted page without a transition.                |
-| `reset(pages)`                       | Replaces the entire stack without a transition.             |
-| `beginInteractivePop()`              | Starts a pop controlled by your own gesture.                |
-| `on(event, listener)`                | Subscribes to stack and transition events.                  |
-| `destroy()`                          | Removes every page and releases the stack.                  |
+| Member                               | Purpose                                                                   |
+| ------------------------------------ | ------------------------------------------------------------------------- |
+| `push(page, options?)`               | Adds a page. A mounted page is moved to the top; the top page is a no-op. |
+| `pop(options?)`                      | Removes the top page, unless it is the root.                              |
+| `popTo(depth, options?)`             | Pops until the requested number of pages remain.                          |
+| `popWith(page, options?)`            | Pops while revealing a supplied or previously mounted page.               |
+| `replace(page, options?)`            | Replaces the top page without a transition.                               |
+| `present(page, direction, options?)` | Applies a resolved `push`, `pop`, or `replace`.                           |
+| `remove(page)`                       | Removes a mounted page without a transition.                              |
+| `reset(pages)`                       | Replaces the entire stack without a transition.                           |
+| `beginInteractivePop()`              | Starts a pop controlled by your own gesture.                              |
+| `on(event, listener)`                | Subscribes to stack and transition events.                                |
+| `destroy()`                          | Removes every page and releases the stack.                                |
+| `destroyed`                          | `true` once `destroy()` has run.                                          |
 
 Pages may be elements or factories. Navigation options can include `animated`,
 `data`, `key`, and `source`. Operations are serialized, so a call made during a
 transition waits for the current transition to finish.
 
-State is available through `depth`, `top`, `entries`, `busy`, `canPop()`, and
-`entryOf()`. Events are `push`, `pop`, `replace`, `reset`, `transitionstart`,
-`progress`, and `transitionend`.
+State is available through `depth`, `top`, `entries`, `busy`, `destroyed`,
+`canPop()`, and `entryOf()`. Events are `push`, `pop`, `replace`, `reset`,
+`transitionstart`, `progress`, and `transitionend`.
 
 `destroy()` is terminal. Pending and later navigation promises reject with an
-`AbortError`.
+`AbortError`, and events no longer fire.
 
 ### Interactive pop
 
@@ -227,7 +228,9 @@ event says so with `hasUAVisualTransition` (Baseline 2026), and on an engine
 too old to report it the platform is guessed at instead, as before: instant on
 iOS browsers, animated elsewhere. `animateHistoryPop` decides every pop
 instead, whatever the event says, and `onForward(targetDepth)` restores a page
-for forward navigation.
+for forward navigation. If the stack is destroyed without calling the
+returned detach function, the adapter detaches its own `popstate` listener the
+next time one fires.
 
 ## Custom transitions and chrome
 
