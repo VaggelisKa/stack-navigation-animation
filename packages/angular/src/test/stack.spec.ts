@@ -343,6 +343,91 @@ describe('StackNav', () => {
     expect(seen[1].to.key).toBe('a');
   });
 
+  /**
+   * The browser owns the back gesture: it slides the previous page across and
+   * fires `popstate` at the end, so a transition on top of that is the second
+   * animation of one move. `hasUAVisualTransition` is how the event says so.
+   * jsdom's `PopStateEvent` has no such property, and `provideLocationMocks()`
+   * never reaches the window anyway, so the event is dispatched here as the
+   * browser would, ahead of the back it is announcing.
+   */
+  const backAfterPopState = async (
+    fixture: ComponentFixture<unknown>,
+    router: Router,
+    ua?: boolean,
+  ) => {
+    if (ua !== undefined) {
+      const event = new PopStateEvent('popstate', { state: null });
+      Object.defineProperty(event, 'hasUAVisualTransition', { value: ua });
+      window.dispatchEvent(event);
+    }
+    const navigated = navigationSettled(router);
+    TestBed.inject(Location).back();
+    await navigated;
+    await settle(fixture);
+  };
+
+  it('does not animate a back the browser animated itself', async () => {
+    const { fixture, router, stack } = setup();
+    const animated: boolean[] = [];
+    stack.activate.subscribe((e) => animated.push(e.animated));
+    await go(fixture, router, '/a');
+    await go(fixture, router, '/b');
+    expect(animated.at(-1)).toBe(true);
+
+    await backAfterPopState(fixture, router, true);
+    expect(animated.at(-1)).toBe(false);
+    expect(stack.pages.map((p) => p.key)).toEqual(['a']);
+  });
+
+  it('animates a back the browser left alone, and one it says nothing about', async () => {
+    const { fixture, router, stack } = setup();
+    const animated: boolean[] = [];
+    stack.activate.subscribe((e) => animated.push(e.animated));
+    await go(fixture, router, '/a');
+    await go(fixture, router, '/b');
+
+    await backAfterPopState(fixture, router, false);
+    expect(animated.at(-1)).toBe(true);
+
+    // An engine older than the property: the trade #50 settled on stands, and
+    // a back button that animates nothing of its own is not left dead.
+    await go(fixture, router, '/b');
+    await backAfterPopState(fixture, router, undefined);
+    expect(animated.at(-1)).toBe(true);
+  });
+
+  it('does not put the predicate a question the browser has settled', async () => {
+    // As with the first page of a stack: the predicate is asked last, and only
+    // while animating is still possible.
+    const asked: string[] = [];
+    const { fixture, router } = setup({
+      animated: (c) => (asked.push(c.to.key), true),
+    });
+    await go(fixture, router, '/a');
+    await go(fixture, router, '/b');
+    expect(asked).toEqual(['b']);
+    await backAfterPopState(fixture, router, true);
+    expect(asked).toEqual(['b']);
+  });
+
+  it('a navigation that asks to animate anyway still does', async () => {
+    const { fixture, router, stack } = setup();
+    const animated: boolean[] = [];
+    stack.activate.subscribe((e) => animated.push(e.animated));
+    await go(fixture, router, '/a');
+    await go(fixture, router, '/b');
+    // The hint outranks the browser's answer, as it outranks the predicate.
+    const event = new PopStateEvent('popstate', { state: null });
+    Object.defineProperty(event, 'hasUAVisualTransition', { value: true });
+    window.dispatchEvent(event);
+    const navigated = navigationSettled(router);
+    void router.navigate(['/a'], { info: { stacknav: { animated: true } } });
+    await navigated;
+    await settle(fixture);
+    expect(animated.at(-1)).toBe(true);
+  });
+
   it('honours the per-navigation `animated: false` hint', async () => {
     const { fixture, router, host } = setup();
     await go(fixture, router, '/a');

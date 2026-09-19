@@ -145,24 +145,26 @@ function taking no arguments still works.
 provideStackNav({ animated: ({ trigger }) => trigger === 'imperative' });
 ```
 
-Every navigation animates by default, including one the browser's Back button
-triggered. If you want to skip the transitions the browser already draws for
-itself, the trigger is there to ask about. iOS Safari animates a snapshot of
-the previous page during its edge swipe, so a pop on top of that plays twice:
+Every navigation animates by default, with one exception the browser decides:
+a navigation it animated itself. Its back gesture slides the previous page
+across and fires `popstate` at the end, so a transition on top of that is the
+second animation of one move; the event says which it was, with
+`hasUAVisualTransition`, and such a navigation is not animated. Nothing to
+configure, and nothing guessed from the user agent: a Back button that draws
+nothing of its own animates as it always did, on the same device.
+
+The predicate is not asked about one of those, any more than it is asked about
+the first page of a stack -- the question is already settled. A navigation that
+wants a transition regardless asks for one itself:
 
 ```ts
-import { isIOSBrowser } from '@stacknav/core';
-
-provideStackNav({
-  animated: ({ trigger }) => !(trigger === 'history' && isIOSBrowser()),
-});
+router.navigate(['/items', 2], { info: { stacknav: { animated: true } } });
 ```
 
-stacknav does not do this for you, because `popstate` does not say what moved
-history. The edge swipe, the browser's own Back button and an app calling
-`location.back()` from a back button of its own all arrive as the same event,
-and only the first has anything animating beneath it. Which trade your app
-wants is yours to pick.
+`hasUAVisualTransition` is Baseline 2026 (Safari 18, Chrome 121). An engine
+older than that says nothing, and nothing is read as no UA animation: the
+transition runs, as it did before, and an app that knows better can still
+narrow it with a predicate of its own.
 
 Transition settings can also be CSS custom properties. CSS wins over the
 matching JavaScript option:

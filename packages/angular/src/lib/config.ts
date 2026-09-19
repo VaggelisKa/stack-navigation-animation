@@ -148,6 +148,16 @@ export interface StackNavConfig {
    * anything animating underneath it.
    */
   animated?: boolean | 'touch' | ((ctx: StackNavAnimationContext) => boolean);
+  /*
+   * One answer this is never asked for: a navigation the browser animated
+   * itself, which it reports with `PopStateEvent.hasUAVisualTransition` -- its
+   * own back gesture slides the previous page across and fires `popstate` at
+   * the end, so a transition on top would be the second animation of one move.
+   * Such a navigation does not animate, and the predicate is not put a question
+   * that is already settled, exactly as it is not asked about the first page of
+   * a stack. A navigation that wants it anyway says so for itself, with
+   * `info: { stacknav: { animated: true } }`.
+   */
   /**
    * Who scrolls the pages. Default `'page'`: each page is a scroll container
    * of its own inside the outlet's parent, which needs a height.

@@ -220,10 +220,14 @@ percentages. Invalid values fall back to the JavaScript option. Call
 ## Browser history
 
 `attachBrowserHistory(stack, options?)` mirrors the stack depth into
-`history.state` and returns a detach function. On iOS, history pops are instant
-by default because the browser already animates its own snapshot. Use
-`animateHistoryPop` to override that behavior and `onForward(targetDepth)` to
-restore a page for forward navigation.
+`history.state` and returns a detach function. A pop the browser animated
+itself -- its back gesture slides the previous page across and fires
+`popstate` at the end -- is instant, so the same move is not played twice; the
+event says so with `hasUAVisualTransition` (Baseline 2026), and on an engine
+too old to report it the platform is guessed at instead, as before: instant on
+iOS browsers, animated elsewhere. `animateHistoryPop` decides every pop
+instead, whatever the event says, and `onForward(targetDepth)` restores a page
+for forward navigation.
 
 ## Custom transitions and chrome
 

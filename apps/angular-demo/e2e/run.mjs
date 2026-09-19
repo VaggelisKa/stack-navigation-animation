@@ -547,4 +547,29 @@ for (const [label, act] of [
   );
 }
 
+// ---- a back the browser animated itself -------------------------------------
+// The real path, in a real browser: a genuine `popstate` from a genuine
+// history traversal, carrying the word only a back gesture says for itself.
+// The gesture cannot be performed under automation, so the property it would
+// set is defined on the prototype for the length of this check.
+section('a back the browser animated itself');
+await page.evaluate(() =>
+  Object.defineProperty(PopStateEvent.prototype, 'hasUAVisualTransition', {
+    configurable: true,
+    get: () => true,
+  }),
+);
+await transitioned(() => page.click('.sn-page-visible a:has-text("Item 3")'), null);
+eq((await state()).url, '/items/3', 'pushed a page for the browser to take back');
+let m = await motion(() => page.goBack());
+eq((await state()).url, '/', 'the back still popped the stack');
+check(m.travel < 5, `and nothing slid on top of it (${m.travel}px across ${m.frames} frames)`);
+await page.evaluate(() => delete PopStateEvent.prototype.hasUAVisualTransition);
+
+// And with the word taken away again, the same back animates as it always did.
+await transitioned(() => page.click('.sn-page-visible a:has-text("Item 3")'), null);
+m = await motion(() => page.goBack());
+eq((await state()).url, '/', 'the back popped the stack again');
+check(m.travel > 100, `and slid the page out (${m.travel}px across ${m.frames} frames)`);
+
 await finish();

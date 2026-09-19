@@ -103,7 +103,15 @@ check((await count('.sn-page-visible .feed-comment')) >= 2, 'comments arrived af
 await page.click('.sn-page-visible .feed-actions button');
 check((await text('.sn-page-visible .feed-actions button')).startsWith('♥'), 'liked the post');
 await page.fill('.sn-page-visible .feed-reply input', 'Nice one');
+// Enter submits the form through its default button, and a disabled one is not
+// submitted at all -- WebKit holds to that. The button is disabled until the
+// draft is in, and this app is zoneless, so the enabling is a render away: type
+// and press in the same breath, as only a driver can, and the keystroke lands
+// in the gap. A person cannot type that fast; waiting for the button is what
+// makes this the same press they would make.
+await page.waitForSelector('.sn-page-visible .feed-reply button:not([disabled])');
 await page.press('.sn-page-visible .feed-reply input', 'Enter');
+await waitCount('.sn-page-visible .feed-comment.mine', 1);
 eq(await count('.sn-page-visible .feed-comment.mine'), 1, 'reply added locally');
 await transitioned(() => page.goBack(), 'feed-back-1');
 await transitioned(() => page.goBack(), 'feed-back-2');
