@@ -1,5 +1,97 @@
 # @stacknav/angular
 
+## 1.1.0
+
+### Minor Changes
+
+- [#56](https://github.com/VaggelisKa/stack-navigation-animation/pull/56) [`7af2bcd`](https://github.com/VaggelisKa/stack-navigation-animation/commit/7af2bcdfb8bbb97cbe195cfb3ee50a21fc90687d) - Document scrolling, for a stack under a shell header that follows
+  `window.scrollY`: `createNativeStack({ scroll: 'document' })` and
+  `provideStackNav({ scroll: 'document' })`, with a `stackNavScroll` input per
+  outlet.
+  
+  The default is unchanged: each page is its own scroll container inside a
+  container of fixed height. In the new mode the page on top sits in the normal
+  flow and the document scrolls it, so an iOS-style large title that collapses on
+  the document's offset sees the page; the container needs no height of its own,
+  and pages kept beneath the top add nothing to the document's height.
+  
+  Each page's document offset is recorded and put back when the page returns,
+  and the switch to the destination's offset happens _before_ the slide, not
+  after it: a shell reading `scrollY` shows the destination's header state from
+  the first frame of a push, a pop, a history pop and an interactive pop, rather
+  than catching up once the slide is over. The page leaving is held where the
+  user saw it while the document moves under it. A released swipe that does not
+  complete puts the document back the same way. The stack takes
+  `history.scrollRestoration` to `manual` in this mode, as a router that owns
+  scrolling does, so the browser does not move the document under a history pop
+  first.
+  
+  The measurements this needs are two forced layouts in the navigation task,
+  which the default mode avoids; the trade is documented on the option.
+
+- [#59](https://github.com/VaggelisKa/stack-navigation-animation/pull/59) [`7cde99e`](https://github.com/VaggelisKa/stack-navigation-animation/commit/7cde99ea839b550ebf6ec86f5175882337bd8b2a) - `scroll: 'document'` no longer takes `history.scrollRestoration`.
+  
+  The mode used to set it to `manual` on every stack, reasoning that a history
+  pop would otherwise have the browser put the document back before the app heard
+  of the navigation, jumping the page still on top. Measured on Chromium and
+  WebKit, neither restores a same-document entry -- all a stack like this ever
+  navigates -- before the app hears the pop, not even behind a route that resolves
+  ten painted frames late. Meanwhile that one switch is shared by the whole
+  document, and an app under a shell has other claimants for it: the browser, or
+  Angular's router under `withInMemoryScrolling()`, which takes it to `manual`
+  itself. Taking it unasked broke whichever of them the app meant to use.
+  
+  Nothing else changes: the stack has always recorded each page's document offset
+  and put it back itself, which a page returning from a refused pop or a released
+  swipe needs and no history entry can supply.
+  
+  An app on an engine that does restore early can hand the switch back to the
+  stack with `scrollRestoration: 'manual'`, on `createNativeStack()` and
+  `provideStackNav()`.
+
+- [#59](https://github.com/VaggelisKa/stack-navigation-animation/pull/59) [`7cde99e`](https://github.com/VaggelisKa/stack-navigation-animation/commit/7cde99ea839b550ebf6ec86f5175882337bd8b2a) - A navigation the browser animated itself is no longer animated a second time.
+  
+  A browser that owns the back gesture slides the previous page across during the
+  swipe and fires `popstate` at the end of it, so the pop run on top played the
+  same move again. The library could not tell that case apart before: `popstate`
+  said only that history had moved, never what moved it, and the edge swipe, the
+  browser's Back button and an app calling `location.back()` all arrived as one
+  event with one shape. Refusing all three would have left every back button in
+  an app dead, so all three animated, and [#50](https://github.com/VaggelisKa/stack-navigation-animation/issues/50) took out the iOS guess that tried
+  otherwise.
+  
+  `PopStateEvent.hasUAVisualTransition` is that missing word, and it is Baseline
+  2026 (Safari 18, Chrome 121): true only when the browser really did animate
+  this navigation. Both packages now ask it.
+  
+  - `@stacknav/angular` no longer animates such a navigation. The predicate is
+    not asked about one, as it is not asked about the first page of a stack; a
+    navigation that wants a transition regardless still asks with
+    `info: { stacknav: { animated: true } }`.
+  - `@stacknav/core`'s `attachBrowserHistory` decides per pop rather than per
+    platform. `animateHistoryPop` no longer defaults to `!isIOSBrowser()`: unset,
+    it asks the event, and falls back to that guess only on an engine that cannot
+    answer. Given a boolean, it still decides every pop.
+  
+  On an engine older than the property nothing changes.
+
+### Patch Changes
+
+- [#66](https://github.com/VaggelisKa/stack-navigation-animation/pull/66) [`5b8a945`](https://github.com/VaggelisKa/stack-navigation-animation/commit/5b8a945fc2cd5719da463fd5f71800904a8e59d0) - `stackNavFillViewport` no longer runs a permanent `requestAnimationFrame` loop. It now measures on resize observers, viewport and scroll events, and transition/animation ends, with a short frame burst after each trigger and a slow 500ms fallback sample that pauses while the document is hidden.
+
+- [#64](https://github.com/VaggelisKa/stack-navigation-animation/pull/64) [`d26107d`](https://github.com/VaggelisKa/stack-navigation-animation/commit/d26107d33f2c92931fb50883f68ff42cb10ab460) - Cap `StackNavHistory`'s tracked entries at 200, matching browser history's own bounded stack instead of growing unbounded for the life of the app.
+
+- [#58](https://github.com/VaggelisKa/stack-navigation-animation/pull/58) [`b3cd0f2`](https://github.com/VaggelisKa/stack-navigation-animation/commit/b3cd0f2577e06c106fa2b30cb6e5fd9630c56e83) - Keep the outgoing page in the DOM under Angular's animation renderer. With
+  `provideAnimations()` (or `provideNoopAnimations()`) the renderer only notes a
+  `removeChild` and the animation engine carries it out when change detection
+  ends, from wherever the element is by then -- so the page the outlet had just
+  detached, put back in the container by the directive, was taken out again on
+  the same tick, and the new page animated over nothing. The directive now
+  re-inserts the page through Angular's own renderer, which is how Angular moves a
+  view and tells the engine to drop the pending removal. Fixes [#55](https://github.com/VaggelisKa/stack-navigation-animation/issues/55).
+- Updated dependencies [[`7af2bcd`](https://github.com/VaggelisKa/stack-navigation-animation/commit/7af2bcdfb8bbb97cbe195cfb3ee50a21fc90687d), [`7b3cc7b`](https://github.com/VaggelisKa/stack-navigation-animation/commit/7b3cc7bef2e24f944dd0369b0572e2e9b915c645), [`3b2e9cf`](https://github.com/VaggelisKa/stack-navigation-animation/commit/3b2e9cf8958f93f4842187f07ab47b8145f77f1e), [`0c63883`](https://github.com/VaggelisKa/stack-navigation-animation/commit/0c63883e19adf1705d69f93628ebb0cf78b56ce3), [`636441b`](https://github.com/VaggelisKa/stack-navigation-animation/commit/636441b2a0660ec91d7e7aacbd911f0345cb5472), [`7cde99e`](https://github.com/VaggelisKa/stack-navigation-animation/commit/7cde99ea839b550ebf6ec86f5175882337bd8b2a), [`7cde99e`](https://github.com/VaggelisKa/stack-navigation-animation/commit/7cde99ea839b550ebf6ec86f5175882337bd8b2a)]:
+  - @stacknav/core@0.7.0
+
 ## 1.0.2
 
 ### Patch Changes

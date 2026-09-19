@@ -1,6 +1,6 @@
 {
   "name": "@stacknav/angular",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Native-style (iOS and Android) push/pop transitions on Angular's own router outlet, with pages kept alive beneath the top one, built on @stacknav/core.",
   "license": "MIT",
   "repository": {
