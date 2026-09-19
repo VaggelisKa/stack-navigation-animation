@@ -11,6 +11,7 @@ import {
 } from '@angular/router';
 import type { Direction, DirectionOpinion, NavigationTrigger } from '@stacknav/core';
 import { STACKNAV_CONFIG } from './config';
+import { warn } from './setup-checks';
 
 /**
  * What a navigation can say to the outlet through the router's own
@@ -56,8 +57,9 @@ export const MAX_ENTRIES = 200;
 export class StackNavHistory {
   private readonly router = inject(Router);
   private readonly config = inject(STACKNAV_CONFIG);
-  private readonly cancelResolution =
-    inject(ROUTER_CONFIGURATION, { optional: true })?.canceledNavigationResolution ?? 'replace';
+  /** Left `undefined` when the app never set it: that is what the warning below is about. */
+  private readonly cancelResolution = inject(ROUTER_CONFIGURATION, { optional: true })
+    ?.canceledNavigationResolution;
   private entries: Entry[] = [];
   private cursor = -1;
   private pending: NavigationInfo | null = null;
@@ -83,7 +85,8 @@ export class StackNavHistory {
     this.router.events.subscribe((e) => {
       if (e instanceof NavigationStart) this.onStart(e);
       else if (e instanceof NavigationEnd) this.onEnd(e);
-      else if (e instanceof NavigationCancel || e instanceof NavigationError) this.onAbort();
+      else if (e instanceof NavigationCancel) this.onCancel();
+      else if (e instanceof NavigationError) this.onAbort();
       else if (e instanceof NavigationSkipped) this.pending = null;
     });
   }
@@ -169,6 +172,25 @@ export class StackNavHistory {
       this.entries.splice(0, excess);
       this.cursor -= excess;
     }
+  }
+
+  /**
+   * A navigation something refused, usually a guard. This is the one moment
+   * the router's unset `canceledNavigationResolution` does visible damage --
+   * only to a history navigation, and only then -- so the warning is said
+   * here rather than at setup, where every default install would hear it.
+   */
+  private onCancel(): void {
+    const wasHistory = this.pending?.trigger === 'history';
+    this.onAbort();
+    if (typeof ngDevMode !== 'undefined' && !ngDevMode) return;
+    if (!wasHistory || this.cancelResolution !== undefined) return;
+    warn(
+      'canceled-navigation',
+      'a back navigation a guard refused just rewrote the history entry the browser landed on, because ' +
+        "the router's canceledNavigationResolution is unset. " +
+        "Pass withRouterConfig({ canceledNavigationResolution: 'computed' }) to provideRouter(). Setting it explicitly, to either value, silences this.",
+    );
   }
 
   /**

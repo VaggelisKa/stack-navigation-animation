@@ -321,6 +321,6 @@ need the numeric transition progress.
 ## Development warnings
 
 Development builds warn once when the stack container has no height, the active
-route reuse strategy is incompatible, or Router uses the default
-`canceledNavigationResolution`. These checks are removed from production
-builds.
+route reuse strategy is incompatible, or a back navigation is cancelled while
+Router is on the default `canceledNavigationResolution`. These checks are
+removed from production builds.

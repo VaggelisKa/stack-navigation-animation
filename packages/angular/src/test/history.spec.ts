@@ -12,9 +12,10 @@ import {
   withRouterConfig,
   type Routes,
 } from '@angular/router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { provideStackNav, type StackNavConfig } from '../lib/config';
 import { StackNavHistory, MAX_ENTRIES, type NavigationInfo } from '../lib/history';
+import { resetWarnings } from '../lib/setup-checks';
 
 @Component({ selector: 'page-a', template: 'a' })
 class PageA {}
@@ -49,13 +50,23 @@ const routes: Routes = [
   { path: 'old', redirectTo: 'c' },
 ];
 
-function setup(opts: { computed?: boolean; config?: StackNavConfig } = {}) {
+function setup(opts: { computed?: boolean; unset?: boolean; config?: StackNavConfig } = {}): {
+  router: Router;
+  history: StackNavHistory;
+  location: Location;
+} {
+  // `unset` leaves the router on its default, which is what an app that never
+  // passed withRouterConfig() has.
+  const features = opts.unset
+    ? []
+    : [
+        withRouterConfig({
+          canceledNavigationResolution: opts.computed ? 'computed' : 'replace',
+        }),
+      ];
   TestBed.configureTestingModule({
     providers: [
-      provideRouter(
-        routes,
-        withRouterConfig({ canceledNavigationResolution: opts.computed ? 'computed' : 'replace' }),
-      ),
+      provideRouter(routes, ...features),
       provideLocationMocks(),
       provideStackNav(opts.config),
     ],
@@ -267,5 +278,76 @@ describe('StackNavHistory', () => {
     await done;
     expect(history.currentUrl).toBe('/a');
     expect(history.previousUrl).toBe('/b');
+  });
+});
+
+describe('the canceledNavigationResolution warning', () => {
+  let warned: string[];
+
+  beforeEach(() => {
+    warned = [];
+    // Said once per code, for the life of the module, so each test starts
+    // from a clean slate.
+    resetWarnings();
+    vi.spyOn(console, 'warn').mockImplementation((...args: unknown[]) => {
+      warned.push(String(args[0]));
+    });
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  /** The warnings about the unset option, by the words only it uses. */
+  function canceledNavigationWarnings(): string[] {
+    return warned.filter((m) => m.includes('canceledNavigationResolution'));
+  }
+
+  it('is said when a guard refuses a back navigation and the option is unset', async () => {
+    const { router, location } = setup({ unset: true });
+    await router.navigateByUrl('/a');
+    await router.navigateByUrl('/b');
+    await router.navigateByUrl('/c');
+    expect(canceledNavigationWarnings()).toEqual([]);
+    blockB = true;
+
+    const done = settled(router);
+    location.back();
+    await done;
+    expect(canceledNavigationWarnings()).toHaveLength(1);
+    expect(canceledNavigationWarnings()[0]).toContain('[stacknav]');
+  });
+
+  it('is silent when the option is set to `computed`', async () => {
+    const { router, location } = setup({ computed: true });
+    await router.navigateByUrl('/a');
+    await router.navigateByUrl('/b');
+    await router.navigateByUrl('/c');
+    blockB = true;
+
+    const done = settled(router);
+    location.back();
+    await done;
+    expect(canceledNavigationWarnings()).toEqual([]);
+  });
+
+  it('is silent when the navigation a guard refuses is imperative', async () => {
+    const { router } = setup({ unset: true });
+    await router.navigateByUrl('/a');
+    blockB = true;
+    // Nothing the browser did: history is where it was, so nothing is rewritten.
+    await router.navigateByUrl('/b');
+    expect(canceledNavigationWarnings()).toEqual([]);
+  });
+
+  it('is silent while nothing is cancelled, including at creation', async () => {
+    const { router, location } = setup({ unset: true });
+    expect(canceledNavigationWarnings()).toEqual([]);
+    await router.navigateByUrl('/a');
+    await router.navigateByUrl('/b');
+    expect(canceledNavigationWarnings()).toEqual([]);
+
+    const done = settled(router);
+    location.back();
+    await done;
+    expect(canceledNavigationWarnings()).toEqual([]);
   });
 });

@@ -20,7 +20,6 @@ import {
   NavigationEnd,
   NavigationError,
   NavigationSkipped,
-  ROUTER_CONFIGURATION,
   RouteReuseStrategy,
   Router,
   RouterOutlet,
@@ -204,11 +203,7 @@ export class StackNav implements OnInit, OnDestroy, PageKeeper {
     // The setup an app has to get right around the stack, said once. Folded
     // away by a production build.
     if (typeof ngDevMode === 'undefined' || ngDevMode) {
-      checkSetup(
-        this.host,
-        inject(ROUTER_CONFIGURATION, { optional: true })?.canceledNavigationResolution,
-        () => this.scrollMode() === 'document',
-      );
+      checkSetup(this.host, () => this.scrollMode() === 'document');
       checkStrategy(this.strategy instanceof StackNavRouteReuseStrategy);
     }
   }
