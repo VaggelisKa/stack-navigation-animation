@@ -69,6 +69,34 @@ test('iPhone, iPad and desktop browsers all resolve to iOS', () => {
   assert.equal(detectPlatform(), 'ios', 'nothing recognized falls back to iOS');
 });
 
+test('userAgentData platform hints are trusted for iOS detection', () => {
+  withNavigator({
+    platform: 'Linux armv8l',
+    userAgent: 'Mozilla/5.0 (Linux; Android 15) Chrome/128.0',
+    userAgentData: { platform: 'iOS' },
+  });
+  assert.equal(isIOSBrowser(), true, 'a userAgentData hint of iOS is trusted directly');
+
+  withNavigator({
+    platform: 'MacIntel',
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+    maxTouchPoints: 5,
+    userAgentData: { platform: 'macOS' },
+  });
+  assert.equal(
+    isIOSBrowser(),
+    true,
+    'a macOS hint still falls through to the touch-capable Mac check for iPadOS',
+  );
+
+  withNavigator({
+    platform: 'Linux armv8l',
+    userAgent: 'Mozilla/5.0 (Linux; Android 15) Chrome/128.0',
+    userAgentData: { platform: 'Android' },
+  });
+  assert.equal(isIOSBrowser(), false, 'a hint naming a non-Mac, non-iOS platform wins outright');
+});
+
 test('the transition takes the detected platform and its preset', () => {
   withNavigator({
     platform: 'Linux armv8l',

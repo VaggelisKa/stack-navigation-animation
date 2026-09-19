@@ -157,19 +157,37 @@ export class FakeCSSStyleSheet {
 }
 
 // A window for the document-scrolling tests, with a `scrollTo` clamped to
-// `scrollHeight` as a browser's is. `installGlobals` leaves the document
+// `scrollHeight` as a browser's is, and just enough of the event-target API
+// (`addEventListener` / `removeEventListener` / `dispatchEvent`) for a test to
+// fire a `resize` mid-transition. `installGlobals` leaves the document
 // without one, so a test that wants scrolling installs it:
 // `document.defaultView = makeWindow()`.
-export function makeWindow({ innerHeight = 800, scrollHeight = Infinity } = {}): any {
+export function makeWindow({
+  innerHeight = 800,
+  innerWidth = 400,
+  scrollHeight = Infinity,
+} = {}): any {
+  const listeners: Record<string, Set<(event: unknown) => void>> = {};
   const win: any = {
     scrollY: 0,
     innerHeight,
+    innerWidth,
     scrollHeight,
     scrolls: [] as Array<{ top: number; behavior: string }>,
     history: { scrollRestoration: 'auto' },
     scrollTo(options: { top: number; behavior?: string }) {
       win.scrolls.push({ top: options.top, behavior: options.behavior ?? 'auto' });
       win.scrollY = Math.max(0, Math.min(options.top, win.scrollHeight - win.innerHeight));
+    },
+    addEventListener(type: string, fn: (event: unknown) => void) {
+      (listeners[type] ||= new Set()).add(fn);
+    },
+    removeEventListener(type: string, fn: (event: unknown) => void) {
+      listeners[type]?.delete(fn);
+    },
+    dispatchEvent(event: { type: string }) {
+      listeners[event.type]?.forEach((fn) => fn(event));
+      return true;
     },
   };
   return win;
