@@ -18,6 +18,7 @@ packages:
 # them to the catalog range would be a breaking change for consumers.
 catalog:
   # Angular toolchain - bump these together.
+  '@angular/animations': ^22.1.0
   '@angular/build': ^22.1.0
   '@angular/cli': ^22.1.0
   '@angular/common': ^22.1.0

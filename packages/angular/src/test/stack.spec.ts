@@ -1,7 +1,8 @@
 import { Location } from '@angular/common';
 import { provideLocationMocks } from '@angular/common/testing';
-import { Component, Directive, viewChild, type OnDestroy } from '@angular/core';
+import { Component, Directive, viewChild, type OnDestroy, type Provider } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
+import { provideAnimations, provideNoopAnimations } from '@angular/platform-browser/animations';
 import {
   NavigationCancel,
   NavigationEnd,
@@ -126,7 +127,7 @@ const routes: Routes = [
 ];
 
 // ----------------------------------------------------------------- harness
-function setup(config?: StackNavConfig) {
+function setup(config?: StackNavConfig, providers: Provider[] = []) {
   TestBed.configureTestingModule({
     providers: [
       // `computed` is what the library asks apps for, and it keeps the setup
@@ -134,6 +135,7 @@ function setup(config?: StackNavConfig) {
       provideRouter(routes, withRouterConfig({ canceledNavigationResolution: 'computed' })),
       provideLocationMocks(),
       provideStackNav(config),
+      ...providers,
     ],
   });
   const router = TestBed.inject(Router);
@@ -508,5 +510,72 @@ describe('StackNav', () => {
       fixture.detectChanges();
       expect(fixture.componentInstance.stack().stack.scroll).toBe('document');
     });
+  });
+
+  describe("under Angular's animation renderer", () => {
+    // `provideAnimations()` (and its noop twin) wrap the DOM renderer in one
+    // that removes nothing at once: a `removeChild` is only noted, and the
+    // animation engine carries it out when change detection ends, from
+    // wherever the element is by then. The outlet detaches the page that is
+    // leaving through that renderer, so putting the element back in the
+    // container by hand is undone at the end of the very same tick, and the
+    // new page would animate over nothing. Issue #55.
+    const renderers = [
+      ['provideAnimations', provideAnimations],
+      ['provideNoopAnimations', provideNoopAnimations],
+    ] as const;
+
+    for (const [name, provide] of renderers) {
+      describe(name, () => {
+        it('keeps the page beneath in the DOM across a push', async () => {
+          const { fixture, router, host, stack } = setup(undefined, [provide()]);
+          await go(fixture, router, '/a');
+          const a = stack.pages[0].el;
+          await go(fixture, router, '/b');
+
+          expect(keys(stack)).toEqual(['a', 'b']);
+          expect(host.activations[1]).toMatchObject({ direction: 'push', animated: true });
+          expect(a.isConnected).toBe(true);
+          expect(a.parentElement).toBe(stack.stack.container);
+          expect(visible(a)).toBe(false);
+          expect(visible(stack.pages[1].el)).toBe(true);
+        });
+
+        it('shows the kept page again on a pop', async () => {
+          const { fixture, router, stack } = setup(undefined, [provide()]);
+          await go(fixture, router, '/a');
+          const a = last('a');
+          const el = stack.pages[0].el;
+          await go(fixture, router, '/b');
+          await go(fixture, router, '/a');
+
+          expect(keys(stack)).toEqual(['a']);
+          expect(last('a')).toBe(a);
+          expect(destroyed).toEqual(['b']);
+          expect(el.isConnected).toBe(true);
+          expect(visible(el)).toBe(true);
+        });
+
+        it('keeps every page of a nested stack it suspends and resumes', async () => {
+          const { fixture, router, stack } = setup(undefined, [provide()]);
+          await go(fixture, router, '/shell/x');
+          const shell = last('shell') as Shell;
+          await go(fixture, router, '/shell/y');
+          const [x, y] = shell.stack().pages.map((p) => p.el);
+          await go(fixture, router, '/b');
+          expect(keys(stack)).toEqual(['shell', 'b']);
+          expect(destroyed).toEqual([]);
+
+          await go(fixture, router, '/shell/y');
+          expect(keys(stack)).toEqual(['shell']);
+          expect(keys(shell.stack())).toEqual(['shell/x', 'shell/y']);
+          expect(shell.stack().pages.map((p) => p.el)).toEqual([x, y]);
+          expect(x.isConnected).toBe(true);
+          expect(y.isConnected).toBe(true);
+          expect(visible(y)).toBe(true);
+          expect(destroyed).toEqual(['b']);
+        });
+      });
+    }
   });
 });
