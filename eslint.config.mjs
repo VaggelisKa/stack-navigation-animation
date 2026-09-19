@@ -67,6 +67,10 @@ export default tseslint.config(
       // The tests spell the arithmetic out (`500 > 400 ? 400 : 500`) so the
       // expected number reads like the formula it comes from.
       'no-constant-condition': 'off',
+      // The DOM stub these tests run against is deliberately untyped: it fakes
+      // only the handful of properties a case touches, so every handle into it
+      // is an `any` on purpose. The nudge belongs on source, not here.
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 
