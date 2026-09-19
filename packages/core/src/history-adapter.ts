@@ -49,6 +49,10 @@ export function attachBrowserHistory(
   // by the levels gained or lost.
   let mirrored = stack.depth;
   const mirror = (source: NavigationSource): void => {
+    // Mirror handlers cannot fire once the stack is destroyed -- its events
+    // are cleared along with it -- but the check is cheap enough to keep as a
+    // guard rather than rely on that.
+    if (stack.destroyed) return;
     // A navigation the back button asked for: history is already there.
     if (source !== 'history') {
       const delta = stack.depth - mirrored;
@@ -72,7 +76,22 @@ export function attachBrowserHistory(
   const uaAnimated = (ev: PopStateEvent) =>
     typeof ev.hasUAVisualTransition === 'boolean' ? ev.hasUAVisualTransition : isIOSBrowser();
 
+  const detach = () => {
+    offPush();
+    offPop();
+    offReplace();
+    offReset();
+    window.removeEventListener('popstate', onPopState);
+  };
+
   const onPopState = (ev: PopStateEvent) => {
+    // The stack outlived its own detach: nothing below is safe to run -- the
+    // stack refuses navigation and has nothing to reveal -- so this is where
+    // an app that forgot to detach gets cleaned up instead.
+    if (stack.destroyed) {
+      detach();
+      return;
+    }
     const target = depthOf(ev.state) + 1;
     if (target === stack.depth) return;
     if (target < stack.depth)
@@ -94,11 +113,5 @@ export function attachBrowserHistory(
   };
   window.addEventListener('popstate', onPopState);
 
-  return () => {
-    offPush();
-    offPop();
-    offReplace();
-    offReset();
-    window.removeEventListener('popstate', onPopState);
-  };
+  return detach;
 }

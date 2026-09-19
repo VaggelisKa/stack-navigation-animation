@@ -216,6 +216,23 @@ test('a back press the stack refuses does not become an unhandled rejection', as
   assert.deepEqual(unhandled, []);
 });
 
+test('a destroyed stack detaches its own popstate listener instead of bouncing', async () => {
+  // Without this, an app that calls destroy() without also calling the
+  // returned detach function leaves the listener on window forever: every
+  // later back press would run `history.back()` -- undoing the very press
+  // that fired it -- since the stack has nothing left to reveal.
+  attachBrowserHistory(stack);
+  await stack.push(makeElement('section'));
+  stack.destroy();
+  calls.length = 0;
+  const handler = popstate;
+  handler({ state: history.state });
+  assert.deepEqual(calls, [], 'no history.go or history.back call');
+  assert.equal(popstate, null, 'the listener removed itself');
+  handler({ state: history.state });
+  assert.deepEqual(calls, [], 'a second popstate does nothing either');
+});
+
 /** What the adapter asked of the stack for the pop a back produced. */
 const popOptions = async (attach, event) => {
   attach();
