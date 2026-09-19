@@ -230,6 +230,10 @@ export class NavigationStack {
   get top(): StackEntry | null {
     return this.entries[this.entries.length - 1] || null;
   }
+  /** Whether `destroy()` has run: navigation rejects and events no longer fire. */
+  get destroyed(): boolean {
+    return this._destroyed;
+  }
   width(): number {
     return this.container.clientWidth;
   }
@@ -283,7 +287,8 @@ export class NavigationStack {
   /**
    * Pushes an element, or a function returning one. Resolves with the entry
    * once the transition has finished. An element already mounted lower in the
-   * stack is moved to the top.
+   * stack is moved to the top. An element that is already the top is a no-op:
+   * it resolves with the existing entry, without animating or emitting `push`.
    */
   push<T = unknown>(
     elOrFactory: HTMLElement | (() => HTMLElement),
@@ -291,6 +296,8 @@ export class NavigationStack {
   ): Promise<StackEntry> {
     return this._run(async () => {
       const el = typeof elOrFactory === 'function' ? elOrFactory() : elOrFactory;
+      const top = this.top;
+      if (top && top.el === el) return top;
       this._remember();
       this._forget(el);
       const lower = this.top;

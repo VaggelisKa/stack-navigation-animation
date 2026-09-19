@@ -403,6 +403,25 @@ test('present dispatches on direction', async () => {
   );
 });
 
+test('pushing the top page is a no-op', async () => {
+  const a = el('a'),
+    b = el('b');
+  await stack.push(a);
+  await stack.push(b);
+  t.log.length = 0;
+  const events = [];
+  stack.on('push', (d) => events.push(d));
+  const entry = await stack.push(b);
+  assert.equal(entry.el, b);
+  assert.equal(t.log.length, 0, 'no transition ran');
+  assert.equal(events.length, 0, 'no push event');
+  assert.equal(stack.depth, 2);
+  assert.deepEqual(
+    stack.entries.map((e) => e.el.id),
+    ['a', 'b'],
+  );
+});
+
 test('pushing an element already lower in the stack moves it to the top', async () => {
   const a = el('a'),
     b = el('b');
