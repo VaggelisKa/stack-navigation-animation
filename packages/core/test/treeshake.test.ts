@@ -14,9 +14,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { basename, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { build, type Plugin } from 'esbuild';
+import type { build as EsbuildBuild, Plugin } from 'esbuild';
 
 const SRC = fileURLToPath(new URL('../src/', import.meta.url));
+
+let build: typeof EsbuildBuild;
+try {
+  ({ build } = await import('esbuild'));
+} catch {
+  throw new Error('treeshake.test.ts needs esbuild (a devDependency): run pnpm install');
+}
 
 /** Every module of the package, by file name without the extension. */
 const ALL = [

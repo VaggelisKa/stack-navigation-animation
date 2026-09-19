@@ -261,6 +261,61 @@ test('every scroll the stack makes is instant, whatever the root scroll-behavior
   assert.ok(own.every((s: any) => s.behavior === 'instant'));
 });
 
+test('a window resize mid-transition does not disturb the frame, and cleanup still lands correctly', async () => {
+  // DocumentScroll has no resize handling of its own -- the frame it opens in
+  // `begin` is sized once, from the `innerHeight` at that moment. This proves
+  // a shell resizing under the pages mid-transition is a no-op for it: the
+  // frame it already opened is untouched, and the settle at the end still
+  // lands exactly where the numbers above (from the plain push test) say it
+  // should.
+  const a = el('a'),
+    b = el('b');
+  await stack.push(a, { animated: false });
+  scrollTo(320);
+
+  // A transition the test controls the end of, so a resize can land mid-flight.
+  stack.transition.duration = 100;
+  let finishAnimation: () => void;
+  const finished = new Promise<void>((resolve) => {
+    finishAnimation = resolve;
+  });
+  for (const page of [a, b]) {
+    page.getAnimations = () => [{ transitionProperty: 'transform', finished }];
+  }
+
+  const pushed = stack.push(b);
+
+  // Mid-transition: the frame is open, sized for the taller of the two
+  // offsets plus the viewport at the moment `begin` ran, and `a` is held
+  // where the switch to `b`'s offset moved it.
+  assert.equal(container.style.height, '1120px');
+  assert.equal(a.style.top, '-320px');
+  assert.equal(b.style.top, undefined, 'the arriving page is never given an inline offset');
+  assert.equal(win.scrollY, 0);
+
+  win.innerHeight = 600;
+  win.innerWidth = 320;
+  win.dispatchEvent({ type: 'resize' });
+
+  assert.equal(
+    container.style.height,
+    '1120px',
+    'the already-open frame is untouched by the resize',
+  );
+  assert.equal(a.style.top, '-320px', 'the held page keeps its offset through the resize');
+
+  finishAnimation!();
+  await pushed;
+
+  assert.equal(container.style.height, '', 'the frame is closed once the push lands');
+  assert.equal(a.style.top, '', 'no lingering inline offset on the page that left');
+  assert.equal(b.style.top, '', 'no lingering inline offset on the page that arrived');
+  assert.equal(win.scrollY, 0, 'b is a fresh page: it starts at the top');
+  assert.ok(!a.classList.contains('sn-page-visible'));
+  assert.ok(b.classList.contains('sn-page-visible'));
+  assert.equal(stack.depth, 2);
+});
+
 test('destroy closes the frame and drops the mode class', async () => {
   const a = el('a'),
     b = el('b');
