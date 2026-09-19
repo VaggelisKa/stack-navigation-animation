@@ -2,9 +2,10 @@
  * The things an app has to get right around the stack that nothing else
  * reports: the element around the outlet needs a height, the strategy has to
  * be installed, and a guard that refuses a back navigation needs the router's
- * `computed` cancellation to leave history alone. All are silent when wrong --
- * a blank screen, nothing animating out, a history entry rewritten one
- * navigation later -- so each is said once, in development only.
+ * `computed` cancellation to leave history alone (said by `StackNavHistory`,
+ * the moment such a navigation is actually cancelled). All are silent when
+ * wrong -- a blank screen, nothing animating out, a history entry rewritten
+ * one navigation later -- so each is said once, in development only.
  *
  * Every call is inside `if (ngDevMode)`, which a production build folds away
  * along with this module.
@@ -18,6 +19,11 @@ export function warn(code: string, message: string): void {
   console.warn(`[stacknav] ${message}`);
 }
 
+/** Test-only: forgets what has been said, so the next call says it again. */
+export function resetWarnings(): void {
+  said.clear();
+}
+
 /**
  * Called once per stack, when it is created, with the outlet element.
  * `documentScrolls` is a callback because it reads an input that is not set
@@ -25,16 +31,8 @@ export function warn(code: string, message: string): void {
  */
 export function checkSetup(
   outlet: HTMLElement,
-  canceledNavigationResolution: string | undefined,
   documentScrolls: () => boolean = () => false,
 ): void {
-  if (canceledNavigationResolution === undefined) {
-    warn(
-      'canceled-navigation',
-      "the router's canceledNavigationResolution is unset, so a back navigation a guard refuses rewrites the history entry the browser already landed on. " +
-        "Pass withRouterConfig({ canceledNavigationResolution: 'computed' }) to provideRouter(). Setting it explicitly, to either value, silences this.",
-    );
-  }
   // Layout has not happened yet when the stack is created, and there is none
   // to wait for on a server.
   if (typeof requestAnimationFrame === 'undefined') return;
