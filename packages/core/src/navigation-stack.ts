@@ -191,8 +191,8 @@ export class NavigationStack {
   transition: Transition;
   readonly pageClass: string;
   readonly scroll: ScrollMode;
-  entries: StackEntry[] = [];
-  busy = false;
+  private readonly _entries: StackEntry[] = [];
+  private _busy = false;
   private _destroyed = false;
   private readonly _manageFocus: boolean;
   /** Only in `scroll: 'document'`. */
@@ -224,6 +224,20 @@ export class NavigationStack {
   }
 
   // ---------------------------------------------------------------- state
+  /**
+   * The mounted pages, bottom first. This is the stack's own array, handed
+   * out read-only rather than copied, so reads are cheap and its identity is
+   * stable across calls -- but it changes underneath you as the stack
+   * navigates. Take a `slice()` if you need a snapshot; the `entries` on an
+   * event detail is already one.
+   */
+  get entries(): readonly StackEntry[] {
+    return this._entries;
+  }
+  /** Whether a transition or a gesture is running: operations started now are queued behind it. */
+  get busy(): boolean {
+    return this._busy;
+  }
   get depth(): number {
     return this.entries.length;
   }
@@ -302,7 +316,7 @@ export class NavigationStack {
       this._forget(el);
       const lower = this.top;
       const upper = this._mount(el, this.entries.length, data, key);
-      this.entries.push(upper);
+      this._entries.push(upper);
       await this._transition(lower, upper, 0, 1, animated, 'push');
       // Destroyed while the transition ran: the page is already unmounted, so
       // resolving with its entry would hand back something that is no longer
@@ -345,7 +359,7 @@ export class NavigationStack {
     return this._run(async () => {
       if (!this.entries.length) {
         const entry = this._mount(el, 0, data, key);
-        this.entries.push(entry);
+        this._entries.push(entry);
         // The first page of a stack keeps the document where the app has it,
         // however the direction was resolved; only `begin` would record that.
         this._docScroll?.save(entry);
@@ -359,7 +373,7 @@ export class NavigationStack {
       const existing = this.entries.findIndex((e) => e.el === el);
       if (existing >= 0) return this._popRevealing(existing + 1, animated, source);
       const lower = this._mount(el, this.entries.length - 1, data, key, top.el);
-      this.entries.splice(this.entries.length - 1, 0, lower);
+      this._entries.splice(this.entries.length - 1, 0, lower);
       return this._popRevealing(this.entries.length - 1, animated, source);
     });
   }
@@ -375,9 +389,9 @@ export class NavigationStack {
       this._remember();
       this._docScroll?.save(old);
       this._forget(el);
-      const removed = old ? [this._unmount(this.entries.pop()!)] : [];
+      const removed = old ? [this._unmount(this._entries.pop()!)] : [];
       const entry = this._mount(el, this.entries.length, data, key);
-      this.entries.push(entry);
+      this._entries.push(entry);
       this._settle();
       this._focus(false);
       this._emit('replace', { entry, removed, entries: this.entries.slice(), source });
@@ -424,8 +438,8 @@ export class NavigationStack {
     return this._run(async () => {
       this._docScroll?.save(this.top);
       const removed: StackEntry[] = [];
-      while (this.entries.length) removed.push(this._unmount(this.entries.pop()!));
-      elements.forEach((el, i) => this.entries.push(this._mount(el, i, null, null)));
+      while (this.entries.length) removed.push(this._unmount(this._entries.pop()!));
+      elements.forEach((el, i) => this._entries.push(this._mount(el, i, null, null)));
       this._settle();
       // A reset is also how a host puts a stack back as it was -- the Angular
       // port resumes an outlet this way -- so the top page gets its own focus
@@ -476,7 +490,7 @@ export class NavigationStack {
         if (this._destroyed) return;
         this._end(lower, upper, 'interactive');
         if (complete) {
-          this.entries.pop();
+          this._entries.pop();
           this._unmount(upper);
         }
         this._settle();
@@ -526,7 +540,7 @@ export class NavigationStack {
     this._destroyed = true;
     this._listeners.clear();
     for (const task of this._queue.splice(0)) task.cancel();
-    this.busy = false;
+    this._busy = false;
     const active = this._activeTransition;
     this._activeTransition = null;
     if (active) {
@@ -534,7 +548,7 @@ export class NavigationStack {
       // During a pop the outgoing page has already left entries.
       if (!this.entries.includes(active.upper)) this._unmount(active.upper);
     }
-    while (this.entries.length) this._unmount(this.entries.pop()!);
+    while (this.entries.length) this._unmount(this._entries.pop()!);
     this._docScroll?.release();
     this.container.classList.remove('sn-container', 'sn-scroll-document', 'sn-busy');
     this.container.style.removeProperty('--sn-t');
@@ -544,7 +558,7 @@ export class NavigationStack {
   // -------------------------------------------------------------- internals
   private _setBusy(v: boolean): void {
     if (this._destroyed) return;
-    this.busy = v;
+    this._busy = v;
     this.container.classList.toggle('sn-busy', v);
   }
 
@@ -577,9 +591,9 @@ export class NavigationStack {
     animated: boolean,
     source: NavigationSource,
   ): Promise<StackEntry> {
-    const upper = this.entries.pop()!; // the visible page: it animates out
+    const upper = this._entries.pop()!; // the visible page: it animates out
     const removed: StackEntry[] = [];
-    while (this.entries.length > depth) removed.push(this._unmount(this.entries.pop()!)); // intermediate pages: removed without animation
+    while (this.entries.length > depth) removed.push(this._unmount(this._entries.pop()!)); // intermediate pages: removed without animation
     const lower = this.top;
     await this._transition(lower, upper, 1, 0, animated, 'pop');
     if (this._destroyed) throw destroyedError();
@@ -613,7 +627,7 @@ export class NavigationStack {
   private _forget(el: HTMLElement): StackEntry | null {
     const i = this.entries.findIndex((e) => e.el === el);
     if (i < 0) return null;
-    const [entry] = this.entries.splice(i, 1);
+    const [entry] = this._entries.splice(i, 1);
     return this._unmount(entry);
   }
 
