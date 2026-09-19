@@ -14,7 +14,7 @@ import {
 } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { provideStackNav, type StackNavConfig } from '../lib/config';
-import { StackNavHistory, type NavigationInfo } from '../lib/history';
+import { StackNavHistory, MAX_ENTRIES, type NavigationInfo } from '../lib/history';
 
 @Component({ selector: 'page-a', template: 'a' })
 class PageA {}
@@ -248,5 +248,24 @@ describe('StackNavHistory', () => {
     // entry before it is `/a`.
     expect(history.currentUrl).toBe('/c');
     expect(history.previousUrl).toBe('/a');
+  });
+
+  it('caps the entry list at MAX_ENTRIES, matching browser behaviour', async () => {
+    const { router, history, location } = setup();
+    // Alternate between two routes so every navigation actually moves the
+    // cursor forward (navigating to the same URL twice in a row is a no-op).
+    for (let i = 0; i < MAX_ENTRIES + 50; i++) {
+      await router.navigateByUrl(i % 2 === 0 ? '/a' : '/b');
+    }
+    // Private, but this is the only way to see the array length from a test.
+    expect((history as unknown as { entries: unknown[] }).entries.length).toBe(MAX_ENTRIES);
+    expect(history.currentUrl).toBe('/b');
+    expect(history.previousUrl).toBe('/a');
+
+    const done = settled(router);
+    location.back();
+    await done;
+    expect(history.currentUrl).toBe('/a');
+    expect(history.previousUrl).toBe('/b');
   });
 });

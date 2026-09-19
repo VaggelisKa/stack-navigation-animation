@@ -42,6 +42,9 @@ interface Entry {
   url: string;
 }
 
+/** Caps how many entries we track, mirroring the browser's own bounded history stack. */
+export const MAX_ENTRIES = 200;
+
 /**
  * A model of the browser's history as the router walks it: which entry is
  * current, and which came before. It answers two questions for the outlet: is
@@ -159,6 +162,13 @@ export class StackNavHistory {
     this.entries.splice(this.cursor + 1);
     this.entries.push(entry);
     this.cursor++;
+    if (this.entries.length > MAX_ENTRIES) {
+      // Drop the oldest entries and shift the cursor by the same amount so it
+      // keeps pointing at the same logical entry.
+      const excess = this.entries.length - MAX_ENTRIES;
+      this.entries.splice(0, excess);
+      this.cursor -= excess;
+    }
   }
 
   /**
