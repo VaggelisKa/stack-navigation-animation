@@ -24,29 +24,6 @@ export interface Comment {
   author: Author;
   text: string;
 }
-export interface Product {
-  id: number;
-  name: string;
-  price: number;
-  category: string;
-  hue: number;
-  rating: number;
-  blurb: string;
-  details: string[];
-}
-export interface Conversation {
-  id: number;
-  with: Author;
-  last: string;
-  unread: number;
-  minutesAgo: number;
-}
-export interface Message {
-  id: number;
-  mine: boolean;
-  text: string;
-  at: string;
-}
 export interface Photo {
   id: number;
   title: string;
@@ -55,26 +32,6 @@ export interface Photo {
   /** aspect ratio */
   ratio: number;
   place: string;
-}
-export interface SearchResult {
-  id: number;
-  kind: 'post' | 'product' | 'person' | 'photo';
-  title: string;
-  subtitle: string;
-  link: unknown[];
-}
-export interface Stats {
-  tiles: { label: string; value: string; delta: number }[];
-  bars: { label: string; value: number }[];
-}
-export interface Activity {
-  id: number;
-  when: string;
-  who: string;
-  what: string;
-  where: string;
-  status: 'ok' | 'warn' | 'fail';
-  duration: string;
 }
 export interface Email {
   id: number;
@@ -92,16 +49,6 @@ export interface Note {
   body: string[];
   minutesAgo: number;
   pinned: boolean;
-}
-export interface TeamMember {
-  id: number;
-  name: string;
-  handle: string;
-  role: string;
-  hue: number;
-  commits: number;
-  timezone: string;
-  focus: string[];
 }
 
 // ---------------------------------------------------------------- data
@@ -207,34 +154,6 @@ const COMMENTS = [
   'How does this behave with a guard that refuses?',
   'Same here. Ship it.',
 ];
-const CATEGORIES = ['Audio', 'Home', 'Outdoors', 'Desk'];
-const PRODUCT_NAMES: Record<string, string[]> = {
-  Audio: [
-    'Loop Earbuds',
-    'Slab Speaker',
-    'Vellum Headphones',
-    'Pocket Amp',
-    'Ribbon Mic',
-    'Tape Deck Mini',
-  ],
-  Home: [
-    'Ember Lamp',
-    'Cirrus Diffuser',
-    'Ledge Shelf',
-    'Fold Chair',
-    'Quiet Kettle',
-    'Terra Planter',
-  ],
-  Outdoors: [
-    'Ridge Jacket',
-    'Trail Bottle',
-    'Camp Stool',
-    'Ember Stove',
-    'Cloud Hammock',
-    'Summit Pack',
-  ],
-  Desk: ['Grid Notebook', 'Brass Pen', 'Felt Mat', 'Cable Loop', 'Stand Up', 'Clip Light'],
-};
 const PLACES = [
   'Reykjavík',
   'Kyoto',
@@ -246,27 +165,6 @@ const PLACES = [
   'Oaxaca',
   'Bergen',
   'Ljubljana',
-];
-const ROLES = ['Engineer', 'Designer', 'Product', 'Research', 'Support', 'Ops'];
-const ACTIONS = [
-  'deployed',
-  'rolled back',
-  'merged',
-  'opened',
-  'reviewed',
-  'restarted',
-  'scaled',
-  'migrated',
-];
-const TARGETS = [
-  'api-gateway',
-  'checkout',
-  'search-index',
-  'mail-worker',
-  'web-frontend',
-  'billing',
-  'feed-ranker',
-  'image-cdn',
 ];
 
 function buildPosts(): Post[] {
@@ -281,34 +179,6 @@ function buildPosts(): Post[] {
     image: i % 3 === 0 ? [Math.floor(r() * 360), Math.floor(r() * 360)] : null,
   }));
 }
-function buildProducts(): Product[] {
-  const r = rng(11);
-  const out: Product[] = [];
-  for (const category of CATEGORIES) {
-    for (const name of PRODUCT_NAMES[category]) {
-      out.push({
-        id: out.length + 1,
-        name,
-        price: 12 + Math.floor(r() * 280),
-        category,
-        hue: Math.floor(r() * 360),
-        rating: 3 + Math.round(r() * 20) / 10,
-        blurb: pick(r, [
-          'Made to be carried everywhere.',
-          'Quietly well made.',
-          'One material, no seams.',
-          'Better on the third week than the first.',
-        ]),
-        details: [
-          pick(r, ['Recycled aluminium', 'Solid oak', 'Ripstop nylon', 'Stoneware']),
-          pick(r, ['Two-year warranty', 'Lifetime repairs', 'Thirty-day returns']),
-          pick(r, ['Ships in 2 days', 'Ships next week']),
-        ],
-      });
-    }
-  }
-  return out;
-}
 function buildPhotos(): Photo[] {
   const r = rng(23);
   return Array.from({ length: 30 }, (_, i) => ({
@@ -320,37 +190,9 @@ function buildPhotos(): Photo[] {
     place: pick(r, PLACES),
   }));
 }
-function buildTeam(): TeamMember[] {
-  const r = rng(31);
-  return AUTHORS.map((a, i) => ({
-    id: i + 1,
-    name: a.name,
-    handle: a.handle,
-    role: ROLES[i % ROLES.length],
-    hue: a.hue,
-    commits: Math.floor(r() * 400),
-    timezone: pick(r, ['UTC−8', 'UTC−5', 'UTC', 'UTC+1', 'UTC+2', 'UTC+9']),
-    focus: [pick(r, TARGETS), pick(r, TARGETS)],
-  }));
-}
-function buildActivity(): Activity[] {
-  const r = rng(41);
-  return Array.from({ length: 40 }, (_, i) => ({
-    id: i + 1,
-    when: `${String(9 + Math.floor(i / 5)).padStart(2, '0')}:${String((i * 11) % 60).padStart(2, '0')}`,
-    who: pick(r, AUTHORS).name,
-    what: pick(r, ACTIONS),
-    where: pick(r, TARGETS),
-    status: r() < 0.08 ? 'fail' : r() < 0.2 ? 'warn' : 'ok',
-    duration: `${(r() * 40).toFixed(1)}s`,
-  }));
-}
 
 const POSTS = buildPosts();
-const PRODUCTS = buildProducts();
 const PHOTOS = buildPhotos();
-const TEAM = buildTeam();
-const ACTIVITY = buildActivity();
 const SUBJECTS = [
   'Easing curve for the pop',
   'Friday demo',
@@ -428,7 +270,6 @@ export class FakeApi {
   readonly failing = signal(false);
   /** Number of requests currently in flight. */
   readonly inflight = signal(0);
-  private readonly messages = new Map<number, Message[]>();
   private nextId = 1000;
 
   private request<T>(make: () => T, ms = this.latency(), fail = this.failing()): Promise<T> {
@@ -485,41 +326,7 @@ export class FakeApi {
     );
   }
 
-  // shop
-  categories(): string[] {
-    return CATEGORIES;
-  }
-  products(category: string | null): Promise<Product[]> {
-    return this.request(() =>
-      category ? PRODUCTS.filter((p) => p.category === category) : PRODUCTS,
-    );
-  }
-  product(id: number): Promise<Product> {
-    return this.request(() => {
-      const p = PRODUCTS.find((x) => x.id === id);
-      if (!p) throw new Error(`No product ${id}`);
-      return p;
-    });
-  }
-  related(id: number): Promise<Product[]> {
-    return this.request(() => {
-      const p = PRODUCTS.find((x) => x.id === id);
-      return PRODUCTS.filter((x) => x.category === p?.category && x.id !== id).slice(0, 4);
-    }, this.latency() * 1.5);
-  }
-  placeOrder(
-    lines: { product: Product; qty: number }[],
-    opts: { fail?: boolean } = {},
-  ): Promise<{ id: string; total: number }> {
-    const total = lines.reduce((s, l) => s + l.product.price * l.qty, 0);
-    return this.request(
-      () => ({ id: `SN-${String(2400 + (total % 500)).padStart(4, '0')}`, total }),
-      this.latency() * 2,
-      opts.fail || this.failing(),
-    );
-  }
-
-  // messages
+  // mail
   /** Bumped whenever the mail data changes, so a kept folder page can reload. */
   readonly mailVersion = signal(0);
   mail(folder: Email['folder']): Promise<Email[]> {
@@ -558,55 +365,6 @@ export class FakeApi {
       this.mailVersion.update((v) => v + 1);
     });
   }
-  conversations(): Promise<Conversation[]> {
-    const r = rng(3);
-    return this.request(() =>
-      AUTHORS.map((a, i) => ({
-        id: i + 1,
-        with: a,
-        last: this.messages.get(i + 1)?.at(-1)?.text ?? pick(r, SENTENCES),
-        unread: i % 3 === 0 ? 1 + Math.floor(r() * 4) : 0,
-        minutesAgo: 2 + i * 41,
-      })),
-    );
-  }
-  thread(id: number): Promise<Message[]> {
-    return this.request(() => {
-      if (!Number.isInteger(id) || id < 1 || id > AUTHORS.length)
-        throw new Error(`No conversation ${id}`);
-      let m = this.messages.get(id);
-      if (!m) {
-        const r = rng(100 + id);
-        m = Array.from({ length: 8 + Math.floor(r() * 10) }, (_, i) => ({
-          id: i + 1,
-          mine: r() > 0.5,
-          text: pick(r, [...SENTENCES, ...COMMENTS]),
-          at: `${9 + Math.floor(i / 2)}:${String((i * 7) % 60).padStart(2, '0')}`,
-        }));
-        this.messages.set(id, m);
-      }
-      return [...m];
-    });
-  }
-  /** Records `text` immediately. The reply arrives after a delay. */
-  send(id: number, text: string): { sent: Message; reply: Promise<Message> } {
-    const m = this.messages.get(id) ?? [];
-    const sent: Message = { id: ++this.nextId, mine: true, text, at: now() };
-    m.push(sent);
-    this.messages.set(id, m);
-    const reply = this.request(() => {
-      const r: Message = {
-        id: ++this.nextId,
-        mine: false,
-        text: pick(rng(this.nextId), COMMENTS),
-        at: now(),
-      };
-      m.push(r);
-      return r;
-    }, this.latency() * 2.5);
-    return { sent, reply };
-  }
-
   // gallery
   photos(): Promise<Photo[]> {
     return this.request(() => PHOTOS);
@@ -633,115 +391,6 @@ export class FakeApi {
       return n;
     }, this.latency() * 0.6);
   }
-
-  // search
-  search(q: string, signal?: AbortSignal): Promise<SearchResult[]> {
-    const needle = q.trim().toLowerCase();
-    return new Promise<SearchResult[]>((resolve, reject) => {
-      const t = setTimeout(() => {
-        this.inflight.update((n) => n - 1);
-        if (this.failing()) return reject(new Error('The network is unreachable (simulated).'));
-        const hit = (s: string) => s.toLowerCase().includes(needle);
-        const out: SearchResult[] = [];
-        for (const a of AUTHORS)
-          if (hit(a.name) || hit(a.handle))
-            out.push({
-              id: out.length,
-              kind: 'person',
-              title: a.name,
-              subtitle: `@${a.handle}`,
-              link: ['/feed/user', a.handle],
-            });
-        for (const p of PRODUCTS)
-          if (hit(p.name) || hit(p.category))
-            out.push({
-              id: out.length,
-              kind: 'product',
-              title: p.name,
-              subtitle: `${p.category} · $${p.price}`,
-              link: ['/shop/p', p.id],
-            });
-        for (const p of POSTS)
-          if (hit(p.text))
-            out.push({
-              id: out.length,
-              kind: 'post',
-              title: p.text,
-              subtitle: `@${p.author.handle}`,
-              link: ['/feed/post', p.id],
-            });
-        for (const p of PHOTOS)
-          if (hit(p.title) || hit(p.place))
-            out.push({
-              id: out.length,
-              kind: 'photo',
-              title: p.title,
-              subtitle: p.place,
-              link: ['/gallery', p.id],
-            });
-        resolve(out.slice(0, 30));
-      }, this.latency());
-      this.inflight.update((n) => n + 1);
-      signal?.addEventListener('abort', () => {
-        clearTimeout(t);
-        this.inflight.update((n) => n - 1);
-        reject(new DOMException('Aborted', 'AbortError'));
-      });
-    });
-  }
-
-  // dashboard
-  stats(range: 'day' | 'week' | 'month'): Promise<Stats> {
-    const r = rng(range.length * 97);
-    const n = range === 'day' ? 24 : range === 'week' ? 7 : 30;
-    return this.request(() => ({
-      tiles: [
-        {
-          label: 'Requests',
-          value: `${(120 + r() * 900).toFixed(1)}k`,
-          delta: Math.round((r() - 0.4) * 30),
-        },
-        {
-          label: 'p95 latency',
-          value: `${Math.floor(90 + r() * 200)} ms`,
-          delta: Math.round((r() - 0.6) * 30),
-        },
-        { label: 'Errors', value: `${(r() * 2).toFixed(2)}%`, delta: Math.round((r() - 0.5) * 10) },
-        {
-          label: 'Signups',
-          value: `${Math.floor(r() * 400)}`,
-          delta: Math.round((r() - 0.3) * 40),
-        },
-      ],
-      bars: Array.from({ length: n }, (_, i) => ({
-        label:
-          range === 'day'
-            ? `${i}h`
-            : range === 'week'
-              ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i]
-              : `${i + 1}`,
-        value: 0.2 + r() * 0.8,
-      })),
-    }));
-  }
-  activity(): Promise<Activity[]> {
-    return this.request(() => ACTIVITY);
-  }
-  team(): Promise<TeamMember[]> {
-    return this.request(() => TEAM);
-  }
-  member(id: number): Promise<TeamMember> {
-    return this.request(() => {
-      const m = TEAM.find((x) => x.id === id);
-      if (!m) throw new Error(`No member ${id}`);
-      return m;
-    });
-  }
-}
-
-function now(): string {
-  const d = new Date();
-  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 export const initials = (name: string): string =>

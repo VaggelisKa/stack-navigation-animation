@@ -47,7 +47,7 @@ export class DemoNav {
 }
 
 /**
- * `<button snBack="/shop">`: goes back through history, falling back to that
+ * `<button snBack="/gallery">`: goes back through history, falling back to that
  * route as a pop after a deep link. The library has no back API of its own.
  * This is the app's `useBack()` wrapped in a directive, so the demo headers stay
  * a single line.

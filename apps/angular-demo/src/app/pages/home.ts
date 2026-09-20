@@ -36,12 +36,7 @@ export const ITEMS = Array.from({ length: 40 }, (_, i) => ({ id: i + 1, name: `I
 export class Home {
   readonly demos = [
     { path: '/feed', name: 'Feed', note: 'skeletons, load more, profiles' },
-    { path: '/shop', name: 'Shop', note: 'grid, resolver, cart, checkout' },
-    { path: '/messages', name: 'Messages', note: 'sticky composer, late replies' },
     { path: '/gallery', name: 'Gallery', note: 'dark viewer, filmstrip, @defer' },
-    { path: '/forms', name: 'Forms', note: 'long form, numbered wizard' },
-    { path: '/search', name: 'Search', note: 'debounced, cancelled, in the URL' },
-    { path: '/dashboard', name: 'Dashboard', note: 'nested outlet, wide table' },
     { path: '/mail', name: 'Mail', note: 'direction from data.animation' },
     { path: '/notes', name: 'Notes', note: 'large title, collapsing header' },
     { path: '/lab', name: 'Lab', note: 'swipe modes, slow motion, stress' },

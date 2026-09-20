@@ -6,15 +6,7 @@ import type { ResolveFn, Routes } from '@angular/router';
  */
 export const DEMO_ROUTES: Routes = [
   { path: 'feed', loadChildren: () => import('./feed/routes').then((m) => m.FEED_ROUTES) },
-  { path: 'shop', loadChildren: () => import('./shop/routes').then((m) => m.SHOP_ROUTES) },
-  { path: 'messages', loadChildren: () => import('./chat/routes').then((m) => m.CHAT_ROUTES) },
   { path: 'gallery', loadChildren: () => import('./gallery/routes').then((m) => m.GALLERY_ROUTES) },
-  { path: 'forms', loadChildren: () => import('./forms/routes').then((m) => m.FORMS_ROUTES) },
-  { path: 'search', loadChildren: () => import('./search/routes').then((m) => m.SEARCH_ROUTES) },
-  {
-    path: 'dashboard',
-    loadChildren: () => import('./dashboard/routes').then((m) => m.DASHBOARD_ROUTES),
-  },
   { path: 'mail', loadChildren: () => import('./mail/routes').then((m) => m.MAIL_ROUTES) },
   { path: 'notes', loadChildren: () => import('./notes/routes').then((m) => m.NOTES_ROUTES) },
   { path: 'lab', loadChildren: () => import('./lab/routes').then((m) => m.LAB_ROUTES) },
