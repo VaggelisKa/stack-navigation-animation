@@ -8,7 +8,7 @@ import { DEMO_ROUTES } from './demos/routes';
 
 export const routes: Routes = [
   { path: '', component: Home },
-  // Feed, shop, messages, gallery, forms, search, dashboard and lab: one lazy route tree each.
+  // Feed, gallery, mail, notes and lab: one lazy route tree each.
   ...DEMO_ROUTES,
   // The route tree decides these: /items/:id is beneath / (push), and /items/:id/reviews beneath that.
   { path: 'items/:id', component: Item },

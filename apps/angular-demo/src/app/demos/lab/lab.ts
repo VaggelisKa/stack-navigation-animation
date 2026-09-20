@@ -13,7 +13,7 @@ import { BackButton, DEMO_UI, DemoNav, DemoPrefs } from '../shared';
       <header class="hdr"><button type="button" class="back" snBack="/">‹ Demos</button><h1>Lab</h1><span class="spacer"></span></header>
       <div class="body">
         <h2>Transition</h2>
-        <div class="frm-group">
+        <div class="lab-group">
           <label class="lab-row"><span>Platform</span>
             <select [value]="prefs.platform()" (change)="prefs.platform.set($any($event.target).value)">
               <option value="auto">Auto ({{ detected }})</option>
@@ -39,7 +39,7 @@ import { BackButton, DEMO_UI, DemoNav, DemoPrefs } from '../shared';
           <a class="item" routerLink="/lab/deep/1"><span>Try the selected mode</span><small>Open a page, then go back however your browser does it</small><i>›</i></a>
         </section>
         <h2>Fake backend</h2>
-        <div class="frm-group">
+        <div class="lab-group">
           <label class="lab-range"><span>Latency <b>{{ api.latency() }} ms</b></span><input type="range" min="0" max="3000" step="100" [value]="api.latency()" (input)="api.latency.set(+$any($event.target).value)" /></label>
           <label class="switch"><span>Every request fails</span><input type="checkbox" [checked]="api.failing()" (change)="api.failing.set($any($event.target).checked)" /><i></i></label>
           <div class="lab-row"><span>In flight</span><b>{{ api.inflight() }}</b></div>
@@ -156,8 +156,8 @@ export class LabSlow {
           </div>
         }
         <h2>A wide table</h2>
-        <div class="dash-scroll">
-          <table class="dash-table">
+        <div class="lab-scroll">
+          <table class="lab-table">
             <thead><tr>@for (c of cells; track c) {<th>Col {{ c }}</th>}</tr></thead>
             <tbody>@for (r of rows; track r) {<tr>@for (c of cells; track c) {<td>{{ r * c }}</td>}</tr>}</tbody>
           </table>
