@@ -1,5 +1,13 @@
 # @stacknav/core
 
+## 0.8.0
+
+### Minor Changes
+
+- [#70](https://github.com/VaggelisKa/stack-navigation-animation/pull/70) [`d12c52f`](https://github.com/VaggelisKa/stack-navigation-animation/commit/d12c52fdf10aa55174a8e2e4c104f4ccfe73a4a9) - `NavigationStack.entries` is now a `readonly StackEntry[]` -- the same live array as before, so reads stay cheap and its identity stays stable -- and `busy` is a getter.
+  
+  Code that assigned to `stack.entries` or `stack.busy`, or that mutated the array in place, no longer type-checks and must go through the stack's own operations instead.
+
 ## 0.7.0
 
 ### Minor Changes
